@@ -32,7 +32,7 @@ namespace SuperSpeedNote
 {
     static class Program
     {
-        public const string Version = "1.1.0";
+        public const string Version = "1.2.0";
         public const string WebView2Version = "1.0.4258.31";
         public static string DataDir, LocalDir;
         public static readonly Stopwatch Clock = Stopwatch.StartNew();
@@ -92,7 +92,7 @@ namespace SuperSpeedNote
         {
             try
             {
-                string marker = Path.Combine(LocalDir, "version.txt");
+                string marker = Path.Combine(DataDir, "version.txt");     // per data folder (portable copies have their own)
                 string last = File.Exists(marker) ? File.ReadAllText(marker).Trim() : "";
                 if (last == Version) return;
                 if (File.Exists(Path.Combine(DataDir, "state.json")))
@@ -170,6 +170,14 @@ namespace SuperSpeedNote
         const char SEP = '\x1f';
         const string Origin = "https://app.ssn/";
         const string AppKey = "@app";
+        const string FindKey = "@find";
+        string pendingPalette;            // search window to open once the page is ready ("pop" / "in")
+        bool paletteOpen;                 // page reports its search window open
+        // "find & paste" over another program: a small window the WebView moves into while it is open
+        PopForm pop;
+        bool popWanted, popShown;
+        Color popBg = Color.White;
+        static readonly uint MyPid = Native.GetCurrentProcessId();
 
         readonly bool dev;
         readonly string uiPath;
@@ -277,12 +285,13 @@ namespace SuperSpeedNote
         {
             SaveBounds();
             if (Visible) Hide();
+            DetachPop();
             saver.Flush(3000);
             webReady = false;
             webStarted = false;
             try { if (ctl != null) ctl.Close(); } catch { }
             ctl = null; wv = null; env = null; envTask = null; bootTask = null;
-            activeNote = ""; hasReturn = false; pendingOpen = null; pendingNew = false;
+            activeNote = ""; hasReturn = false; pendingOpen = null; pendingNew = false; pendingPalette = null; paletteOpen = false;
             GC.Collect(); GC.WaitForPendingFinalizers(); GC.Collect();
             UpdateTrayText();
             Invalidate();
@@ -363,7 +372,7 @@ namespace SuperSpeedNote
         protected override void OnResize(EventArgs e)
         {
             base.OnResize(e);
-            if (ctl != null && WindowState != FormWindowState.Minimized)
+            if (ctl != null && !popShown && WindowState != FormWindowState.Minimized)
                 ctl.Bounds = new Rectangle(Point.Empty, ClientSize);
             UpdateWebVisibility();
             bool max = WindowState == FormWindowState.Maximized;
@@ -379,7 +388,7 @@ namespace SuperSpeedNote
         protected override void OnActivated(EventArgs e)
         {
             base.OnActivated(e);
-            if (ctl != null) { try { ctl.MoveFocus(CoreWebView2MoveFocusReason.Programmatic); } catch { } }
+            if (ctl != null && !popShown) { try { ctl.MoveFocus(CoreWebView2MoveFocusReason.Programmatic); } catch { } }
         }
 
         protected override void OnDeactivate(EventArgs e)
@@ -391,7 +400,7 @@ namespace SuperSpeedNote
         void UpdateWebVisibility()
         {
             if (ctl == null || wv == null) return;
-            bool vis = Visible && WindowState != FormWindowState.Minimized;
+            bool vis = popShown || (Visible && WindowState != FormWindowState.Minimized);
             try
             {
                 if (ctl.IsVisible != vis) ctl.IsVisible = vis;
@@ -536,6 +545,19 @@ namespace SuperSpeedNote
                 if (front) GoBack(); else Summon(null);
                 return;
             }
+            if (key == FindKey)                    // find a line in any note, Enter pastes it back where you were
+            {
+                if (popWanted || popShown) { Post("palette", "close"); GoBack(); DetachPop(); return; }   // pressed again
+                if (front)                         // inside the app: the search box opens over the app
+                {
+                    if (paletteOpen) Post("palette", "close");
+                    else if (webReady) Post("palette", "in");
+                    else pendingPalette = "in";
+                    return;
+                }
+                OpenPop();
+                return;
+            }
             if (front && activeNote == key) GoBack();
             else Summon(key);
         }
@@ -544,6 +566,130 @@ namespace SuperSpeedNote
         // Switching notes inside the app never changes that target: the second press always goes back to
         // the program you were in before entering the app (focus - and so its caret - is restored there).
         void Summon(string noteId)
+        {
+            RememberReturn();
+            ClosePop();
+            ShowApp();
+            if (noteId != null)
+            {
+                if (webReady) Post("open", noteId);
+                else pendingOpen = noteId;
+            }
+        }
+
+        // ---------- find & paste window ----------
+        // Opens right over the program you are in. Instead of a second page it borrows the app's WebView
+        // (moved into this window while it is open), so it is instant and every note is already indexed.
+        void OpenPop()
+        {
+            RememberReturn();
+            if (pop == null)
+            {
+                pop = new PopForm();
+                pop.BackColor = popBg;
+                // clicked somewhere else: just close (no paste, no window switching)
+                pop.Deactivate += (s, e) => CheckPopFocus(0);
+                pop.Activated += (s, e) => { if (popShown && ctl != null) { try { ctl.MoveFocus(CoreWebView2MoveFocusReason.Programmatic); } catch { } } };
+                pop.FormClosing += (s, e) =>   // Alt+F4 = Esc
+                {
+                    if (finished || e.CloseReason != CloseReason.UserClosing) return;
+                    e.Cancel = true;
+                    Post("palette", "close"); GoBack(); DetachPop();
+                };
+            }
+            PlacePop();
+            popWanted = true;
+            pop.Attached = false;
+            pop.Invalidate();
+            if (!pop.Visible) pop.Show();
+            ForceForeground(pop.Handle);
+            if (webReady) Post("palette", "pop");
+            else { pendingPalette = "pop"; EnsureWeb(); }   // from standby: the engine starts now (~1 s)
+        }
+
+        // Taking the foreground and moving the WebView in make Windows send passing "deactivated" messages
+        // (for a moment no window is in front at all), so look again once that has settled.
+        void CheckPopFocus(int tries)
+        {
+            var t = new System.Windows.Forms.Timer { Interval = 120 };
+            t.Tick += (s, e) =>
+            {
+                t.Stop(); t.Dispose();
+                if (!popWanted && !popShown) return;
+                IntPtr fg = Native.GetForegroundWindow();
+                if (fg == pop.Handle || Native.GetAncestor(fg, 3 /*GA_ROOTOWNER*/) == pop.Handle) return;
+                if (fg == IntPtr.Zero) { if (tries < 5) CheckPopFocus(tries + 1); return; }
+                if (popShown) Post("palette", "close"); else { pendingPalette = null; DetachPop(); }
+            };
+            t.Start();
+        }
+
+        // centred on the screen of the program you came from, a bit above the middle
+        void PlacePop()
+        {
+            IntPtr anchor = hasReturn ? retHwnd : IntPtr.Zero, mon;
+            Native.POINT cur;
+            Native.GetCursorPos(out cur);
+            mon = anchor != IntPtr.Zero ? Native.MonitorFromWindow(anchor, 2 /*NEAREST*/) : Native.MonitorFromPoint(cur, 2);
+            uint dx = 96, dy = 96;
+            try { Native.GetDpiForMonitor(mon, 0, out dx, out dy); } catch { }
+            float s = dx / 96f;
+            Rectangle wa = (anchor != IntPtr.Zero ? Screen.FromHandle(anchor) : Screen.FromPoint(new Point(cur.X, cur.Y))).WorkingArea;
+            int w = Math.Min((int)(900 * s), wa.Width - (int)(32 * s)), h = Math.Min((int)(540 * s), wa.Height - (int)(32 * s));
+            pop.Bounds = new Rectangle(wa.Left + (wa.Width - w) / 2, wa.Top + Math.Max((int)(16 * s), (wa.Height - h) * 2 / 7), w, h);
+        }
+
+        // the page has drawn the search box: move the WebView in and give it the keyboard
+        void AttachPop()
+        {
+            if (ctl == null || pop == null) return;
+            popShown = true;
+            pop.Attached = true;
+            try
+            {
+                ctl.DefaultBackgroundColor = popBg;
+                ctl.ParentWindow = pop.Handle;
+                ctl.Bounds = new Rectangle(Point.Empty, pop.ClientSize);
+                ctl.IsVisible = true;
+                wv.MemoryUsageTargetLevel = CoreWebView2MemoryUsageTargetLevel.Normal;
+            }
+            catch (Exception ex) { Program.Log(ex); }
+            if (!pop.Visible) pop.Show();
+            ForceForeground(pop.Handle);
+            try { ctl.MoveFocus(CoreWebView2MoveFocusReason.Programmatic); } catch { }
+            Post("palette", "focus");
+        }
+
+        // back into the main window (still hidden / where it was)
+        void DetachPop()
+        {
+            popWanted = false;
+            if (popShown)
+            {
+                popShown = false;
+                if (ctl != null)
+                {
+                    try
+                    {
+                        ctl.ParentWindow = Handle;
+                        ctl.DefaultBackgroundColor = bg;
+                        if (WindowState != FormWindowState.Minimized) ctl.Bounds = new Rectangle(Point.Empty, ClientSize);
+                    }
+                    catch (Exception ex) { Program.Log(ex); }
+                }
+                UpdateWebVisibility();
+            }
+            if (pop != null) { pop.Attached = false; if (pop.Visible) pop.Hide(); }
+        }
+
+        void ClosePop()
+        {
+            if (!popWanted && !popShown) return;
+            Post("palette", "close");
+            DetachPop();
+        }
+
+        void RememberReturn()
         {
             retNote = null;
             if (IsFront())
@@ -563,12 +709,6 @@ namespace SuperSpeedNote
                 retMinimized = Visible && WindowState == FormWindowState.Minimized;
             }
             hasReturn = retHwnd != IntPtr.Zero;
-            ShowApp();
-            if (noteId != null)
-            {
-                if (webReady) Post("open", noteId);
-                else pendingOpen = noteId;
-            }
         }
 
         // Second press: give focus back to the program used right before entering the app.
@@ -604,10 +744,13 @@ namespace SuperSpeedNote
             Native.SetWinEventHook(3 /*EVENT_SYSTEM_FOREGROUND*/, 3, IntPtr.Zero, fgHook, 0, 0, 0x0002 /*SKIPOWNPROCESS*/);
         }
 
-        bool IsExternalWindow(IntPtr h)
+        // a visible window of another program (none of ours: main window, search window, dialogs)
+        static bool IsExternalWindow(IntPtr h)
         {
-            return h != IntPtr.Zero && Native.IsWindow(h) && Native.IsWindowVisible(h) && !IsShellWindow(h)
-                && h != Handle && Native.GetAncestor(h, 3 /*GA_ROOTOWNER*/) != Handle;
+            if (h == IntPtr.Zero || !Native.IsWindow(h) || !Native.IsWindowVisible(h) || IsShellWindow(h)) return false;
+            uint pid;
+            Native.GetWindowThreadProcessId(h, out pid);
+            return pid != MyPid;
         }
 
         static bool IsShellWindow(IntPtr h)
@@ -882,6 +1025,7 @@ namespace SuperSpeedNote
                     catch { }
                     if (pendingOpen != null) { Post("open", pendingOpen); pendingOpen = null; }
                     if (pendingNew) { Post("new"); pendingNew = false; }
+                    if (pendingPalette != null) { if (pendingPalette != "pop" || popWanted) Post("palette", pendingPalette); pendingPalette = null; }
                     break;
                 case "saveNote": { string id = Cut(ref a); if (SafeId(id)) saver.Write(Path.Combine(NotesDir, id + ".html"), a); break; }
                 case "delNote":
@@ -905,6 +1049,13 @@ namespace SuperSpeedNote
                     break;
                 case "hkSuspend": hotkeysSuspended = a == "1"; ApplyHotkeys(); break;
                 case "active": activeNote = a; break;
+                case "palette":                                  // page reports its search window open / closed
+                    paletteOpen = a == "1";
+                    if (paletteOpen) { if (popWanted && !popShown) AttachPop(); }
+                    else if (popWanted || popShown) DetachPop();
+                    break;
+                case "back": GoBack(); break;                    // Esc in the search window: back to where you were
+                case "show": ShowApp(); break;                   // search window -> "open this note"
                 case "drag": BeginDrag(HTCAPTION); break;
                 case "resize": BeginDrag(EdgeHit(a)); break;
                 // native ShowWindow: WinForms' WindowState setter re-adds a frame we removed and grows the window
@@ -920,8 +1071,10 @@ namespace SuperSpeedNote
                     break;
                 case "theme":
                     bg = a == "dark" ? Color.FromArgb(0x05, 0x0C, 0x1F) : Color.FromArgb(0x08, 0x15, 0x36);
+                    popBg = a == "dark" ? Color.FromArgb(0x12, 0x1E, 0x3B) : Color.White;   // = --menu
                     BackColor = bg;
-                    if (ctl != null) ctl.DefaultBackgroundColor = bg;
+                    if (pop != null) pop.BackColor = popBg;
+                    if (ctl != null) ctl.DefaultBackgroundColor = popShown ? popBg : bg;
                     break;
                 case "export": { string name = Cut(ref a), body = a; BeginInvoke(new Action(() => Export(name, body))); break; }
                 case "openUrl": OpenUrl(a); break;
@@ -1313,5 +1466,66 @@ namespace SuperSpeedNote
         [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern int GetClassName(IntPtr hWnd, StringBuilder name, int max);
         [DllImport("user32.dll")] public static extern short GetAsyncKeyState(int vk);
         [DllImport("user32.dll")] public static extern void keybd_event(byte vk, byte scan, uint flags, UIntPtr extra);
+        [DllImport("dwmapi.dll")] public static extern int DwmSetWindowAttribute(IntPtr hWnd, int attr, ref int value, int size);
+        [DllImport("user32.dll")] public static extern IntPtr MonitorFromWindow(IntPtr hWnd, uint flags);
+        [DllImport("user32.dll")] public static extern IntPtr MonitorFromPoint(POINT pt, uint flags);
+        [DllImport("shcore.dll")] public static extern int GetDpiForMonitor(IntPtr mon, int type, out uint x, out uint y);
+        [DllImport("kernel32.dll")] public static extern uint GetCurrentProcessId();
+    }
+
+    // The "find & paste" window. It has no page of its own: the app's WebView is moved into it while open.
+    sealed class PopForm : Form
+    {
+        public bool Attached;                     // false while the engine is still starting (from standby)
+
+        public PopForm()
+        {
+            FormBorderStyle = FormBorderStyle.None;
+            ShowInTaskbar = false;
+            StartPosition = FormStartPosition.Manual;
+            AutoScaleMode = AutoScaleMode.None;
+            TopMost = true;
+            DoubleBuffered = true;
+            Text = "Super Speed Note · 찾아 붙여넣기";
+        }
+
+        protected override CreateParams CreateParams
+        {
+            get
+            {
+                CreateParams cp = base.CreateParams;
+                cp.ClassStyle |= 0x20000;         // CS_DROPSHADOW
+                cp.ExStyle |= 0x80;               // WS_EX_TOOLWINDOW: no taskbar button, not in Alt+Tab
+                return cp;
+            }
+        }
+
+        protected override void OnHandleCreated(EventArgs e)
+        {
+            base.OnHandleCreated(e);
+            int round = 2;                        // Windows 11: rounded corners (ignored on 10)
+            try { Native.DwmSetWindowAttribute(Handle, 33 /*DWMWA_WINDOW_CORNER_PREFERENCE*/, ref round, 4); } catch { }
+        }
+
+        protected override void WndProc(ref Message m)
+        {
+            if (m.Msg == 0x02E0) { m.Result = IntPtr.Zero; return; }   // WM_DPICHANGED: sized by the app for each monitor
+            base.WndProc(ref m);
+        }
+
+        protected override void OnPaintBackground(PaintEventArgs e)
+        {
+            e.Graphics.Clear(BackColor);
+            if (Attached) return;
+            float scale = DeviceDpi / 96f;
+            bool dark = BackColor.GetBrightness() < 0.5f;
+            using (var f = new Font("Malgun Gothic", 14f * scale, GraphicsUnit.Pixel))
+            using (var b = new SolidBrush(dark ? Color.FromArgb(0x8F, 0x9B, 0xB8) : Color.FromArgb(0x8B, 0x96, 0xAD)))
+            {
+                e.Graphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+                var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
+                e.Graphics.DrawString("찾아 붙여넣기 준비 중…", f, b, ClientRectangle, sf);
+            }
+        }
     }
 }

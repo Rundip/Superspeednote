@@ -339,6 +339,54 @@ select.sel{height:32px;border-radius:9px;border:1px solid var(--line-2);backgrou
 .qs-txt b{display:block;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .qs-txt small{display:block;color:var(--ink-3);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .qs-empty{padding:26px;text-align:center;color:var(--ink-3)}
+.pal{width:min(920px,calc(100vw - 32px))}
+.pal-body{display:flex;min-height:0}
+.pal-body .qs-list{flex:1;min-width:0;max-height:58vh}
+.pal .qs-item{padding:8px 10px}
+.pal .qs-txt b{font-weight:550}
+.pal .qs-txt small em{font-style:normal}
+.pal-col{color:var(--accent-ink);font-weight:650}
+.pal-n{flex:none;margin-left:6px;min-width:16px;text-align:center;color:var(--ink-3);opacity:.55;font-weight:600}
+.qs-item.on .pal-n{opacity:1}
+.pal-sec{padding:8px 12px 4px;font-size:11.5px;font-weight:650;color:var(--ink-3)}
+.pick{border-radius:4px;background:var(--accent-soft);box-shadow:0 0 0 1.5px var(--accent);padding:0 1px}
+.cell-sep{font-style:normal;color:var(--ink-3);margin:0 7px}
+.pal-pv{flex:0 0 37%;min-width:0;border-left:1px solid var(--line);padding:12px 14px;overflow:hidden;font-size:12.5px;line-height:1.55;background:linear-gradient(180deg,var(--hover),transparent 140px)}
+.pv-head{display:flex;align-items:center;gap:8px;margin-bottom:8px;min-width:0}
+.pv-head b{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pv-head small{margin-left:auto;flex:none;color:var(--ink-3);font-size:11px}
+.pv-cols{padding:2px 7px 4px;margin-bottom:2px;font-size:11.5px;font-weight:650;color:var(--accent-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-bottom:1px dashed var(--line-2)}
+.pv-l{padding:2px 7px;border-radius:6px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pv-l.on{color:var(--ink);font-weight:600;background:var(--accent-soft);white-space:normal;word-break:break-all;margin:2px 0}
+.pv-tip{color:var(--ink-2);font-size:12.5px}
+.pv-tip p{margin:8px 0 0;line-height:1.6}
+.pv-tip i{font-style:normal;padding:0 5px;border-radius:5px;background:var(--hover);color:var(--ink)}
+.pal-foot{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;padding:9px 16px;border-top:1px solid var(--line);font-size:11.5px;color:var(--ink-3)}
+.pal-foot .fill{flex:1}
+.pal-foot kbd{padding:1px 6px;margin-right:5px;border-radius:5px;border:1px solid var(--line-2);color:var(--ink-2)}
+@media (max-width:680px){.pal-pv{display:none}}
+/* the search window on its own, over another program */
+body.pal-pop{background:var(--menu)}
+body.pal-pop #app{visibility:hidden;content-visibility:hidden}
+body.pal-pop .rz{display:none}
+body.pal-pop #modal{background:transparent;padding:0;align-items:stretch}
+body.pal-pop .pal{width:100%;max-height:none;border-radius:0;border:1px solid var(--line-2);box-shadow:none;animation:none}
+body.pal-pop .pal-body{flex:1}
+body.pal-pop .pal-body .qs-list{max-height:none}
+body.pal-pop .qs-in{padding:15px 18px}
+body.pal-pop .qs-in input{font-size:17px}
+body.pal-pop #toasts{bottom:56px}
+.set .dlg-body{max-height:calc(80vh - 140px)}
+.kh{margin:16px 0 4px;font-size:12px;color:var(--accent-ink);letter-spacing:.03em}
+.kh:first-child{margin-top:6px}
+.kh small{font-weight:500;color:var(--ink-3);margin-left:6px;letter-spacing:0}
+.krow{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:5px 0;border-bottom:1px dashed var(--line)}
+.kname{min-width:0;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.kname small{margin-left:8px;color:var(--ink-3);font-size:11.5px}
+.kbtns{display:flex;align-items:center;gap:6px;flex:none}
+.kreset{width:26px;height:26px;border-radius:8px;color:var(--ink-3);font-size:15px}
+.kreset:hover{background:var(--hover);color:var(--ink)}
+.khint{font-size:11.5px;color:var(--ink-3);padding:8px 0 2px;line-height:1.5}
 .help{display:grid;grid-template-columns:1fr 1fr;gap:4px 26px}
 .help h4{grid-column:1/-1;margin:12px 0 4px;font-size:12px;color:var(--accent-ink);letter-spacing:.04em}
 .help div{display:flex;justify-content:space-between;gap:12px;font-size:12.5px;padding:3px 0;border-bottom:1px dashed var(--line)}
@@ -403,10 +451,10 @@ body.maxed .rz,body.web .rz{display:none}
       <div class="wordmark">SUPER SPEED<span>NOTE</span></div>
     </div>
     <div class="tb-mid" id="tbMid"></div>
-    <button class="tbtn" id="btnSwitch" title="빠른 이동 (Ctrl+K)"><svg class="i"><use href="#i-search"/></svg></button>
+    <button class="tbtn" id="btnSwitch" data-k="switcher" data-t="빠른 이동" title="빠른 이동 (Ctrl+K)"><svg class="i"><use href="#i-search"/></svg></button>
     <button class="tbtn" id="btnTop" title="항상 위에 표시"><svg class="i"><use href="#i-top"/></svg></button>
     <button class="tbtn" id="btnTheme" title="라이트 / 다크"><svg class="i"><use href="#i-moon"/></svg></button>
-    <button class="tbtn" id="btnSettings" title="설정 (Ctrl+,)"><svg class="i"><use href="#i-gear"/></svg></button>
+    <button class="tbtn" id="btnSettings" data-k="settings" data-t="설정" title="설정 (Ctrl+,)"><svg class="i"><use href="#i-gear"/></svg></button>
     <span class="tsep2"></span>
     <button class="wc" id="wcMin" title="최소화"><svg class="i"><use href="#i-min"/></svg></button>
     <button class="wc" id="wcMax" title="최대화"><svg class="i maxi"><use href="#i-max"/></svg><svg class="i restore"><use href="#i-restore"/></svg></button>
@@ -417,13 +465,13 @@ body.maxed .rz,body.web .rz{display:none}
     <section class="hero" data-drag>
       <div class="crumb"><span class="crumb-t">전체 메모</span><span class="pill" id="noteCount">0 / 500</span><span class="pill sel-pill" id="selCount" hidden></span></div>
       <div class="hero-act">
-        <label class="search"><svg class="i"><use href="#i-search"/></svg><input id="boardSearch" placeholder="메모 검색" spellcheck="false" autocomplete="off"><kbd>Ctrl+F</kbd></label>
+        <label class="search"><svg class="i"><use href="#i-search"/></svg><input id="boardSearch" placeholder="메모 검색" spellcheck="false" autocomplete="off"><kbd data-k="find">Ctrl+F</kbd></label>
         <button class="btn-new" id="btnNew"><svg class="i"><use href="#i-plus"/></svg>새 메모</button>
       </div>
     </section>
     <section id="grid" class="grid" tabindex="0"></section>
     <div class="board-foot">
-      <span><kbd>← ↑ → ↓</kbd>선택</span><span><kbd>Enter</kbd>열기 · 더블클릭</span><span><kbd>F2</kbd>이름 변경</span><span><kbd>Shift</kbd>여러 개 선택</span><span><kbd>Del</kbd>삭제</span><span><kbd>Ctrl+1~9</kbd>바로 열기</span><span><kbd>Ctrl+K</kbd>빠른 이동</span><span><kbd>F1</kbd>모든 단축키</span>
+      <span><kbd>← ↑ → ↓</kbd>선택</span><span><kbd>Enter</kbd>열기 · 더블클릭</span><span><kbd>F2</kbd>이름 변경</span><span><kbd>Shift</kbd>여러 개 선택</span><span><kbd>Del</kbd>삭제</span><span><kbd>Ctrl+1~9</kbd>바로 열기</span><span><kbd data-k="switcher">Ctrl+K</kbd>빠른 이동</span><span><kbd data-k="help">F1</kbd>모든 단축키</span>
     </div>
   </main>
 
@@ -431,15 +479,15 @@ body.maxed .rz,body.web .rz{display:none}
     <aside id="sidebar">
       <div class="sb-head" data-drag>
         <button class="sb-back" id="btnBack" title="보드로 (Esc)"><svg class="i"><use href="#i-grid"/></svg>메모 보드<kbd>Esc</kbd></button>
-        <button class="sb-add" id="btnSbNew" title="새 메모 (Ctrl+N)"><svg class="i"><use href="#i-plus"/></svg></button>
+        <button class="sb-add" id="btnSbNew" data-k="newNote" data-t="새 메모" title="새 메모 (Ctrl+N)"><svg class="i"><use href="#i-plus"/></svg></button>
       </div>
       <div class="sb-label" id="sbLabel">NOTES</div>
       <div id="sbList" tabindex="-1"></div>
-      <div class="sb-foot">Ctrl+Tab 다음 메모 · Ctrl+K 찾기</div>
+      <div class="sb-foot" id="sbFoot">Ctrl+Tab 다음 메모 · Ctrl+K 찾기</div>
     </aside>
     <section id="pane">
       <div id="noteHead">
-        <button class="hbtn" id="hSide" title="목록 접기 / 펼치기"><svg class="i"><use href="#i-side"/></svg></button>
+        <button class="hbtn" id="hSide" data-k="sidebar" data-t="목록 접기 / 펼치기" title="목록 접기 / 펼치기"><svg class="i"><use href="#i-side"/></svg></button>
         <button class="cdot" id="hColor" title="메모 색상"></button>
         <input id="noteTitle" placeholder="제목 (비우면 첫 줄)" spellcheck="false" autocomplete="off">
         <button class="hk-chip" id="hHotkey" title="이 메모를 어디서든 부르는 전역 단축키"></button>
@@ -450,24 +498,24 @@ body.maxed .rz,body.web .rz{display:none}
       <div id="toolbar">
         <button class="tb" id="tbBlock" data-pop="block" title="문단 스타일"><span id="tbBlockLbl">본문</span><svg class="i sm"><use href="#i-chev"/></svg></button>
         <span class="tsep"></span>
-        <button class="tb" data-cmd="bold" title="굵게 (Ctrl+B)"><b class="glyph">B</b></button>
-        <button class="tb" data-cmd="underline" title="밑줄 (Ctrl+U)"><u class="glyph">U</u></button>
-        <button class="tb" data-cmd="italic" title="기울임 (Ctrl+I)"><span class="glyph it">I</span></button>
-        <button class="tb" data-cmd="strikeThrough" title="취소선 (Ctrl+Shift+S)"><s class="glyph">S</s></button>
+        <button class="tb" data-cmd="bold" data-k="bold" data-t="굵게" title="굵게 (Ctrl+B)"><b class="glyph">B</b></button>
+        <button class="tb" data-cmd="underline" data-k="underline" data-t="밑줄" title="밑줄 (Ctrl+U)"><u class="glyph">U</u></button>
+        <button class="tb" data-cmd="italic" data-k="italic" data-t="기울임" title="기울임 (Ctrl+I)"><span class="glyph it">I</span></button>
+        <button class="tb" data-cmd="strikeThrough" data-k="strike" data-t="취소선" title="취소선 (Ctrl+Shift+S)"><s class="glyph">S</s></button>
         <span class="tsep"></span>
-        <span class="split"><button class="tb" id="tbFg" title="글자색 적용"><span class="glyph">A</span><i class="bar" id="fgBar"></i></button><button class="tb arrow" data-pop="fg" title="글자색 고르기"><svg class="i sm"><use href="#i-chev"/></svg></button></span>
-        <span class="split"><button class="tb" id="tbHl" title="형광펜 (Ctrl+Shift+H)"><svg class="i"><use href="#i-marker"/></svg><i class="bar" id="hlBar"></i></button><button class="tb arrow" data-pop="hl" title="형광펜 색 고르기"><svg class="i sm"><use href="#i-chev"/></svg></button></span>
+        <span class="split"><button class="tb" id="tbFg" data-k="fgColor" data-t="글자색 적용" title="글자색 적용"><span class="glyph">A</span><i class="bar" id="fgBar"></i></button><button class="tb arrow" data-pop="fg" title="글자색 고르기"><svg class="i sm"><use href="#i-chev"/></svg></button></span>
+        <span class="split"><button class="tb" id="tbHl" data-k="hl" data-t="형광펜" title="형광펜 (Ctrl+Shift+H)"><svg class="i"><use href="#i-marker"/></svg><i class="bar" id="hlBar"></i></button><button class="tb arrow" data-pop="hl" title="형광펜 색 고르기"><svg class="i sm"><use href="#i-chev"/></svg></button></span>
         <span class="tsep"></span>
-        <button class="tb" data-list="ul" title="글머리 목록 (Ctrl+Shift+8)"><svg class="i"><use href="#i-list"/></svg></button>
-        <button class="tb" data-list="ol" title="번호 목록 (Ctrl+Shift+7)"><svg class="i"><use href="#i-olist"/></svg></button>
-        <button class="tb" data-list="chk" title="체크리스트 (Ctrl+Shift+L)"><svg class="i"><use href="#i-check"/></svg></button>
+        <button class="tb" data-list="ul" data-k="ul" data-t="글머리 목록" title="글머리 목록 (Ctrl+Shift+8)"><svg class="i"><use href="#i-list"/></svg></button>
+        <button class="tb" data-list="ol" data-k="ol" data-t="번호 목록" title="번호 목록 (Ctrl+Shift+7)"><svg class="i"><use href="#i-olist"/></svg></button>
+        <button class="tb" data-list="chk" data-k="chk" data-t="체크리스트" title="체크리스트 (Ctrl+Shift+L)"><svg class="i"><use href="#i-check"/></svg></button>
         <span class="tsep"></span>
-        <button class="tb" data-pop="table" title="표 넣기 (Ctrl+Shift+T) · 엑셀 붙여넣기 지원"><svg class="i"><use href="#i-table"/></svg></button>
+        <button class="tb" data-pop="table" data-k="table" data-t="표 넣기 · 엑셀 붙여넣기 지원" title="표 넣기 (Ctrl+Shift+T) · 엑셀 붙여넣기 지원"><svg class="i"><use href="#i-table"/></svg></button>
         <button class="tb" id="tbHr" title="구분선 (--- 입력 후 Enter)"><svg class="i"><use href="#i-hr"/></svg></button>
-        <button class="tb" id="tbStamp" title="날짜·시간 넣기 (Ctrl+;)"><svg class="i"><use href="#i-clock"/></svg></button>
-        <button class="tb" id="tbClear" title="서식 지우기 (Ctrl+\)"><svg class="i"><use href="#i-eraser"/></svg></button>
+        <button class="tb" id="tbStamp" data-k="stamp" data-t="날짜·시간 넣기" title="날짜·시간 넣기 (Ctrl+;)"><svg class="i"><use href="#i-clock"/></svg></button>
+        <button class="tb" id="tbClear" data-k="clearFmt" data-t="서식 지우기" title="서식 지우기 (Ctrl+\)"><svg class="i"><use href="#i-eraser"/></svg></button>
         <span class="tb-fill"></span>
-        <button class="tb" id="tbFind" title="찾기 (Ctrl+F)"><svg class="i"><use href="#i-search"/></svg></button>
+        <button class="tb" id="tbFind" data-k="find" data-t="찾기" title="찾기 (Ctrl+F)"><svg class="i"><use href="#i-search"/></svg></button>
         <div id="findbar"><input id="findIn" placeholder="메모에서 찾기" spellcheck="false"><span id="findCount"></span><button class="tb" id="findPrev" title="이전 (Shift+Enter)"><svg class="i"><use href="#i-up"/></svg></button><button class="tb" id="findNext" title="다음 (Enter)"><svg class="i"><use href="#i-chev"/></svg></button><button class="tb" id="findX" title="닫기 (Esc)"><svg class="i"><use href="#i-close"/></svg></button></div>
       </div>
       <div id="scroller">
@@ -583,9 +631,11 @@ const firstRun = !S && !Object.keys(bodies).length;
 if (!S || !Array.isArray(S.notes)) S = { v: 1, notes: [], settings: {} };
 S.settings = Object.assign({
   theme: 'light', closeToTray: true, onTop: false, fontSize: 15, font: 'ui', sidebar: true,
-  appHotkey: { mods: 3, vk: 78, label: 'Ctrl+Alt+N' }, fg: '#d92d20', hl: '#fff176'
+  appHotkey: { mods: 3, vk: 78, label: 'Ctrl+Alt+N' }, findHotkey: { mods: 3, vk: 70, code: 'KeyF', label: 'Ctrl+Alt+F' }, fg: '#d92d20', hl: '#fff176'
 }, S.settings || {});
 const st = S.settings;
+// v1.2: the first default (Ctrl+Alt+Space) is taken by other apps (e.g. Claude desktop) -> F for "find"
+if (!st.findHotkeyMine && st.findHotkey && st.findHotkey.label === 'Ctrl+Alt+Space') st.findHotkey = { mods: 3, vk: 70, code: 'KeyF', label: 'Ctrl+Alt+F' };
 { // reconcile index with note files (adopt orphans after a crash, keep titles of missing bodies)
   S.notes = S.notes.filter(n => n && n.id);
   const known = new Set(S.notes.map(n => n.id));
@@ -688,13 +738,62 @@ function textEntry(id) {
   return e;
 }
 function noteText(id) { return textEntry(id).t; }
+// A note as searchable lines: { s: text (a table row's cells joined by tabs), l: lower-case, c: the row's cells,
+// h: that table's first row (column names), sec: the heading above }. Built while idle, kept until the note changes.
+function linesOf(id) {
+  const e = textEntry(id);
+  if (!e.L) e.L = indexLines(frag(bodies[id]));
+  return e.L;
+}
+function indexLines(root) {
+  const L = [];
+  let line = '', sec = '', pre = 0;
+  const add = (s, c, h) => { if (s && s !== '[이미지]') L.push({ s, l: s.toLowerCase(), c, h, sec }); };
+  const flush = () => {
+    if (pre) for (const p of line.split('\n')) add(p.replace(/[ \t\xa0]+/g, ' ').trim());
+    else add(line.replace(/\s+/g, ' ').trim());
+    line = '';
+  };
+  const walk = node => {
+    for (let c = node.firstChild; c; c = c.nextSibling) {
+      if (c.nodeType === 3) { line += c.nodeValue; continue; }
+      if (c.nodeType !== 1) continue;
+      const tag = c.nodeName;
+      if (tag === 'BR' || tag === 'HR' || tag === 'IMG') { flush(); continue; }
+      if (tag === 'TABLE') {
+        flush();
+        const rows = Array.from(c.rows, tr => Array.from(tr.cells, td => toPlain(td).trim()));
+        const h = rows.length > 1 ? rows[0].map(v => v.replace(/\s+/g, ' ')) : null;
+        rows.forEach((r, i) => {
+          const s = r.map(v => v.replace(/\s+/g, ' ')).join('\t'), n = L.length;
+          if (s.trim()) add(s, r, i ? h : null);
+          if (!i && h && L.length > n) L[n].hd = true;              // the column-name row itself
+        });
+        continue;
+      }
+      const block = /^(DIV|P|H[1-6]|LI|BLOCKQUOTE|PRE|UL|OL)$/.test(tag);
+      if (block) flush();
+      if (tag === 'PRE') pre++;
+      walk(c);
+      if (block) {
+        const head = /^H[1-3]$/.test(tag) ? line.replace(/\s+/g, ' ').trim() : '';
+        flush();
+        if (head) sec = head.slice(0, 40);
+      }
+      if (tag === 'PRE') pre--;
+    }
+  };
+  walk(root);
+  flush();
+  return L;
+}
 function noteTextLower(id) { return textEntry(id).l; }
 // build the search text of every note while the app is idle, so the first search is instant
 function warmSearch() {
   const ids = S.notes.map(n => n.id);
   let i = 0;
   const step = dl => {
-    while (i < ids.length && dl.timeRemaining() > 3) { if (bodies[ids[i]] !== undefined) textEntry(ids[i]); i++; }
+    while (i < ids.length && dl.timeRemaining() > 3) { if (bodies[ids[i]] !== undefined) linesOf(ids[i]); i++; }
     if (i < ids.length) requestIdleCallback(step, { timeout: 2000 });
   };
   requestIdleCallback(step, { timeout: 2000 });
@@ -1407,23 +1506,15 @@ editor.addEventListener('keydown', e => {
   }
   if (e.isComposing || e.keyCode === 229) return;
   const mod = e.ctrlKey || e.metaKey, code = e.code;
-  if (mod && !e.altKey) {
+  const act = actionFor(e, 'ed');                   // editing shortcuts from Settings > 단축키
+  if (act) { e.preventDefault(); e.stopPropagation(); act.run(); return; }
+  if (mod && !e.altKey) {                           // fixed keys
     const sh = e.shiftKey;
     let done = true;
     if (code === 'KeyZ' && !sh) undo();
     else if (code === 'KeyY' || (code === 'KeyZ' && sh)) redo();
-    else if (code === 'KeyB' && !sh) fmt('bold');
-    else if (code === 'KeyU' && !sh) fmt('underline');
-    else if (code === 'KeyI' && !sh) fmt('italic');
-    else if (code === 'KeyS' && sh) fmt('strikeThrough');
-    else if (code === 'KeyH' && sh) toggleHl();
-    else if (code === 'KeyL' && sh) toggleList('chk');
-    else if (code === 'Digit8' && sh) toggleList('ul');
-    else if (code === 'Digit7' && sh) toggleList('ol');
-    else if (code === 'KeyT' && sh) insertTable(3, 3);
-    else if (code === 'Backslash') clearFmt();
-    else if (code === 'Semicolon') stamp();
     else if (code === 'Enter' && !sh) { const td = closestSel('td'); if (td) { clearNav(); exitTable(td.closest('table')); } else done = false; }
+    else if (/^Key[BIU]$/.test(code) && !sh) { /* the browser's own bold/italic/underline would bypass undo: these keys were moved */ }
     else { done = false; if (code === 'KeyV' && sh) plainNext = true; }
     if (done) { e.preventDefault(); return; }
   }
@@ -2343,10 +2434,10 @@ editor.addEventListener('contextmenu', e => {
       { label: '표 삭제', icon: 'i-trash', danger: true, action: () => tableOp('delTable', t, td) });
   } else {
     items.push({ sep: true },
-      { label: '굵게', kbd: 'Ctrl+B', action: () => fmt('bold') },
-      { label: '밑줄', kbd: 'Ctrl+U', action: () => fmt('underline') },
-      { label: '형광펜', icon: 'i-marker', kbd: 'Ctrl+Shift+H', action: toggleHl },
-      { label: '서식 지우기', icon: 'i-eraser', kbd: 'Ctrl+\\', action: clearFmt });
+      { label: '굵게', kbd: kl('bold'), action: () => fmt('bold') },
+      { label: '밑줄', kbd: kl('underline'), action: () => fmt('underline') },
+      { label: '형광펜', icon: 'i-marker', kbd: kl('hl'), action: toggleHl },
+      { label: '서식 지우기', icon: 'i-eraser', kbd: kl('clearFmt'), action: clearFmt });
   }
   items.push({ sep: true }, { label: '모두 선택', kbd: 'Ctrl+A', action: () => { editor.focus(); exec('selectAll'); } });
   showMenu(e.clientX, e.clientY, items);
@@ -2366,11 +2457,12 @@ function openFind() {
   findIn.focus(); findIn.select();
   runFind(true);
 }
-function findText(q) {                           // open the find bar on q and jump to the first match
+function findText(q, nth = 0) {                  // open the find bar on q and jump to its nth match
   findOpen = true;
   $('#findbar').classList.add('show');
   findIn.value = q;
   runFind(false);
+  if (hits.length) { hitI = clamp(nth, 0, hits.length - 1); showHit(); }
   findIn.focus(); findIn.select();
 }
 function findSoon() { clearTimeout(findT); findT = setTimeout(() => runFind(false), 200); }
@@ -2550,6 +2642,249 @@ function sendOut(mode) {
   host.send('sendOut', mode, String(p.text.length), p.text + p.html);
 }
 
+// ---------------------------------------------------------------- quick paste search (찾아 붙여넣기)
+// A global hotkey opens a small search window right over the program you are using: find any line of any
+// note and Enter pastes it straight back there. It all runs on an in-memory line index built while idle.
+let paletteOn = false, palMode = '';             // 'pop' = own little window over another program, 'in' / 'key' = inside the app
+const CHO = 'ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ';
+function choOf(s) {                               // 김철수 -> ㄱㅊㅅ (same length, so match positions line up)
+  let o = '';
+  for (let i = 0; i < s.length; i++) { const c = s.charCodeAt(i) - 0xAC00; o += c >= 0 && c < 11172 ? CHO[(c / 588) | 0] : s[i]; }
+  return o;
+}
+const isCho = t => /^[ㄱ-ㅎ]+$/.test(t);
+function ctxOf(x) {                               // heading above + column names: words there count as found too
+  if (x.cx === undefined) x.cx = ((x.sec || '') + '\t' + (x.h ? x.h.join('\t') : '')).toLowerCase();
+  return x.cx;
+}
+function ctxChoOf(x) { if (x.ck === undefined) x.ck = choOf(ctxOf(x)); return x.ck; }
+// What Tab can pick out of a line: a table row's cells, else the value of "label: value" and the single words.
+function partsOf(x) {
+  if (x.p) return x.p;
+  const s = x.s, P = [];
+  if (x.c) {
+    let at = 0;
+    x.c.forEach((v, j) => {
+      const d = s.indexOf('\t', at), end = d < 0 ? s.length : d;
+      if (v.trim()) P.push({ a: at, b: end, v: v.trim(), k: x.h && x.h[j] ? x.h[j] : '' });
+      at = end + 1;
+    });
+    if (P.length < 2) P.length = 0;               // one filled cell: the row already is that cell
+  } else {
+    const m = /^(.{1,30}?[^\d\s])\s*[:：]\s*(\S.*)$/.exec(s);       // "전화: 010-..." (not a time like 10:30)
+    if (m) P.push({ a: s.length - m[2].length, b: s.length, v: m[2], k: m[1].trim() });
+    const re = /[^\s,;|│]+/g, W = [];
+    let w;
+    while ((w = re.exec(s))) W.push({ a: w.index, b: w.index + w[0].length, v: w[0].replace(/[:：,.]+$/, ''), k: '' });
+    if (W.length > 1 && W.length <= 16) for (const p of W) if (p.v && !P.some(q => q.a === p.a && q.b === p.b)) P.push(p);
+  }
+  return (x.p = P);
+}
+const usedPart = (u, x) => u && u[2] >= 0 && u[2] < partsOf(x).length ? u[2] : -1;
+function searchLines(q, limit = 50) {
+  const ql = q.toLowerCase().trim();
+  const terms = [...new Set(ql.split(/\s+/).filter(Boolean))];
+  if (!terms.length) return [];
+  const cho = terms.map(isCho), anyCho = cho.some(Boolean);
+  const notes = S.notes.slice().sort((a, b) => (b.updated || 0) - (a.updated || 0));
+  const use = st.palUse || {}, N = notes.length, out = [], weekAgo = now() - 7 * 864e5;
+  for (let r = 0; r < N && out.length < 3000; r++) {
+    const n = notes[r], L = linesOf(n.id), tl = titleOf(n).toLowerCase(), tk = anyCho ? choOf(tl) : '';
+    const fresh = (N - r) / N * 30;               // newer notes first among equals
+    for (let i = 0; i < L.length; i++) {
+      const x = L[i], l = x.l;
+      let inLine = 0, inCtx = 0, ok = true;
+      for (let j = 0; j < terms.length; j++) {
+        const t = terms[j];
+        if (l.includes(t)) { inLine++; continue; }
+        if (cho[j]) { if (x.k === undefined) x.k = choOf(l); if (x.k.includes(t)) { inLine++; continue; } }
+        const cx = ctxOf(x);                                                      // the other words may be the heading,
+        if (cx.length > 1 && (cx.includes(t) || (cho[j] && ctxChoOf(x).includes(t)))) { inCtx++; continue; }   // the column
+        if (tl.includes(t) || (cho[j] && tk.includes(t))) continue;              // or the note's name
+        ok = false; break;
+      }
+      if (!ok || !inLine) continue;
+      let sc = (inLine === terms.length ? 1000 : 0) + inCtx * 50 + fresh - Math.min(60, x.s.length / 6) - (x.hd ? 150 : 0);
+      if (l === ql) sc += 300;
+      else { const p = l.indexOf(terms[0]); if (p === 0) sc += 80; else if (p > 0 && /[\s\t(\[:/,·-]/.test(l[p - 1])) sc += 40; }
+      const u = use[n.id + SEP + x.s];
+      if (u) sc += Math.min(240, u[0] * 60) + (u[1] > weekAgo ? 60 : 0);   // what you paste often comes first
+      out.push({ n, i, x, sc, part: usedPart(u, x) });
+    }
+  }
+  out.sort((a, b) => b.sc - a.sc);
+  return out.slice(0, limit);
+}
+function recentLines(limit = 12) {                // empty search box: what you pasted lately
+  const use = st.palUse || {}, out = [];
+  for (const key of Object.keys(use).sort((a, b) => use[b][1] - use[a][1])) {
+    const j = key.indexOf(SEP), id = key.slice(0, j), s = key.slice(j + 1), n = noteById(id);
+    if (!n) continue;
+    const L = linesOf(id), i = L.findIndex(x => x.s === s);
+    if (i < 0) continue;                          // the line was edited or deleted since: never offer stale text
+    out.push({ n, i, x: L[i], recent: true, part: usedPart(use[key], L[i]) });
+    if (out.length >= limit) break;
+  }
+  return out;
+}
+function rememberUse(it) {
+  const use = st.palUse || (st.palUse = {}), k = it.n.id + SEP + it.x.s, u = use[k];
+  use[k] = [(u ? u[0] : 0) + 1, now(), it.part];
+  const keys = Object.keys(use);
+  if (keys.length > 300) keys.sort((a, b) => use[a][1] - use[b][1]).slice(0, keys.length - 300).forEach(x => delete use[x]);
+  saveStateSoon();
+}
+function payloadOf(it) {
+  const P = it.part >= 0 ? partsOf(it.x)[it.part] : null;
+  if (P) return { text: P.v, html: cellHTML(P.v) };
+  if (it.x.c) return { text: it.x.c.map(tsvCell).join('\t'), html: rowsHTML([it.x.c]) };   // a table row pastes as cells
+  return { text: it.x.s, html: esc(it.x.s) };
+}
+function hitMap(s, terms) {
+  const low = s.toLowerCase(), hit = new Uint8Array(s.length);
+  let cho = null;
+  for (const t of terms) {
+    let src = low;
+    if (isCho(t) && !low.includes(t)) src = cho || (cho = choOf(low));
+    for (let i = src.indexOf(t); i >= 0; i = src.indexOf(t, i + 1)) hit.fill(1, i, i + t.length);
+  }
+  return hit;
+}
+function marked(s, hit, a, b) {
+  let h = '', on = false;
+  for (let i = a; i < b; i++) {
+    if (!!hit[i] !== on) { on = !on; h += on ? '<mark>' : '</mark>'; }
+    const c = s[i];
+    h += c === '\t' ? (on ? '</mark>' : '') + '<i class="cell-sep">│</i>' + (on ? '<mark>' : '') : c === '<' ? '&lt;' : c === '>' ? '&gt;' : c === '&' ? '&amp;' : c;
+  }
+  return h + (on ? '</mark>' : '');
+}
+// one line with the search words marked and the picked cell / word boxed; long lines show the part that matters
+function lineHTML(s, terms, P, max = 220) {
+  const hit = hitMap(s, terms);
+  let a = 0, b = s.length;
+  if (b > max) {
+    const f = P ? P.a : hit.indexOf(1);
+    a = Math.max(0, (f < 0 ? 0 : f) - 50); b = Math.min(s.length, a + max);
+  }
+  const pre = a ? '…' : '', post = b < s.length ? '…' : '';
+  if (!P || P.a < a || P.b > b) return pre + marked(s, hit, a, b) + post;
+  return pre + marked(s, hit, a, P.a) + '<span class="pick">' + marked(s, hit, P.a, P.b) + '</span>' + marked(s, hit, P.b, b) + post;
+}
+function openPalette(mode) {
+  if (paletteOn) {                                // already open: maybe now in its own window
+    if (mode === 'pop' && palMode !== 'pop') { palMode = 'pop'; app.classList.add('pal-pop'); }
+    const i = $('#palIn'); if (i) { i.focus(); i.select(); }
+    host.send('palette', '1');
+    return;
+  }
+  palMode = mode;
+  if (mode === 'pop') app.classList.add('pal-pop');
+  closePop();
+  if (cur) flushNote();
+  openModal(`<div class="dlg qs pal"><div class="qs-in">${ic('i-search')}<input id="palIn" placeholder="찾을 내용 (초성도 돼요) → Enter로 바로 붙여넣기" spellcheck="false" autocomplete="off"><kbd>Esc</kbd></div>` +
+    `<div class="pal-body"><div class="qs-list" id="palList"></div><div class="pal-pv" id="palPv"></div></div>` +
+    `<div class="pal-foot"><span><kbd>Enter</kbd>붙여넣기</span><span><kbd>Tab</kbd>칸·단어만</span><span><kbd>Shift+Enter</kbd>복사만</span><span><kbd>Ctrl+Enter</kbd>메모 열기</span><span><kbd>Alt+1~9</kbd>바로 붙여넣기</span><span class="fill"></span><span><kbd>Esc</kbd>${mode === 'pop' ? '돌아가기' : '닫기'}</span></div></div>`,
+    () => { paletteOn = false; app.classList.remove('pal-pop'); host.send('palette', '0'); });
+  paletteOn = true;
+  host.send('palette', '1');
+  const inp = $('#palIn'), list = $('#palList'), pv = $('#palPv');
+  let items = [], idx = 0, terms = [], q = '';
+  const where = it => [titleOf(it.n) || '제목 없음', !it.x.c && it.x.sec].filter(Boolean).map(esc).join(' › ');
+  const itemHTML = (it, i) => {
+    const P = it.part >= 0 ? partsOf(it.x)[it.part] : null;
+    return `<div class="qs-item${i === idx ? ' on' : ''}" data-i="${i}"><span class="c-dot" style="--c:${NOTE_COLORS[it.n.color]}"></span>` +
+      `<div class="qs-txt"><b>${lineHTML(it.x.s, terms, P)}</b><small>${where(it)}${P && P.k ? ` · <em class="pal-col">${esc(P.k)}</em>` : ''}</small></div>${i < 9 ? `<kbd class="pal-n">${i + 1}</kbd>` : ''}</div>`;
+  };
+  const preview = () => {
+    const it = items[idx];
+    if (!it) { pv.innerHTML = q ? '' : '<div class="pv-tip"><b>이렇게 써 보세요</b><p>거래처 이름, 계좌, 전화번호처럼 <b>기억나는 단어</b>를 입력하면 모든 메모에서 그 줄을 찾아요.</p><p>띄어쓰기로 단어를 더 넣으면 좁혀져요. 메모 제목·표의 열 이름도 함께 찾아요. 예) <i>한빛 전화</i></p><p><b>ㄱㅊㅅ</b>처럼 초성만 넣어도 돼요.</p><p>표의 한 행은 <b>Tab</b>으로 칸 하나만 골라 붙여넣을 수 있어요.</p></div>'; return; }
+    const L = linesOf(it.n.id), i = it.i, a = Math.max(0, i - 4), b = Math.min(L.length, a + 14);
+    const P = it.part >= 0 ? partsOf(it.x)[it.part] : null;
+    let h = `<div class="pv-head"><span class="c-dot" style="--c:${NOTE_COLORS[it.n.color]}"></span><b>${esc(titleOf(it.n) || '제목 없음')}</b><small>${relTime(it.n.updated)}</small></div>`;
+    if (it.x.h) h += `<div class="pv-cols">${it.x.h.map(esc).join('<i class="cell-sep">│</i>')}</div>`;
+    for (let j = a; j < b; j++) h += `<div class="pv-l${j === i ? ' on' : ''}">${lineHTML(L[j].s, terms, j === i ? P : null, j === i ? 600 : 160)}</div>`;
+    pv.innerHTML = h;
+  };
+  const render = () => {
+    q = inp.value.trim();
+    terms = [...new Set(q.toLowerCase().split(/\s+/).filter(Boolean))];
+    items = q ? searchLines(q) : recentLines();
+    idx = clamp(idx, 0, Math.max(0, items.length - 1));
+    list.innerHTML = (!q && items.length ? '<div class="pal-sec">최근 붙여넣은 줄</div>' : '') +
+      (items.map(itemHTML).join('') || `<div class="qs-empty">${q ? '일치하는 줄이 없어요' : '찾을 내용을 입력하세요'}</div>`);
+    const on = list.querySelector('.on');
+    if (on) on.scrollIntoView({ block: 'nearest' });
+    preview();
+  };
+  const move = i => {
+    if (!items.length) return;
+    idx = clamp(i, 0, items.length - 1);
+    for (const el of list.querySelectorAll('.qs-item')) el.classList.toggle('on', +el.dataset.i === idx);
+    const on = list.querySelector('.on');
+    if (on) on.scrollIntoView({ block: 'nearest' });
+    preview();
+  };
+  const redraw = i => {                           // one item changed (picked part)
+    const el = list.querySelector(`.qs-item[data-i="${i}"]`);
+    if (el) el.outerHTML = itemHTML(items[i], i);
+    preview();
+  };
+  const pick = (i, how) => {
+    const it = items[i];
+    if (!it) return;
+    const pop = palMode === 'pop';
+    if (how === 'open') {
+      const t = terms.find(x => it.x.l.includes(x)) || it.x.s.split('\t').find(Boolean).slice(0, 40);
+      const L = linesOf(it.n.id), tl = t.toLowerCase();
+      let nth = 0;                                // land on this very line: count the same word above it
+      for (let j = 0; j < it.i; j++) for (let k = L[j].l.indexOf(tl); k >= 0; k = L[j].l.indexOf(tl, k + 1)) nth++;
+      closeModal();
+      openNote(it.n.id);
+      findText(t, nth);
+      if (pop) host.send('show');
+      return;
+    }
+    rememberUse(it);
+    const p = payloadOf(it);
+    if (!HOST) { closeModal(); putClip(p); toast(`복사됨 · ${p.text.slice(0, 40)} (브라우저 미리보기에서는 창 전환이 없어요)`); return; }
+    host.send('sendOut', how, String(p.text.length), p.text + p.html);   // back to the program, then paste
+    closeModal();
+  };
+  const cyclePart = d => {
+    const it = items[idx];
+    if (!it) return;
+    const P = partsOf(it.x);
+    if (!P.length) return;
+    it.part = d > 0 ? (it.part + 1 >= P.length ? -1 : it.part + 1) : (it.part <= -1 ? P.length - 1 : it.part - 1);
+    redraw(idx);
+  };
+  let raf = 0;
+  inp.addEventListener('input', () => { idx = 0; if (!raf) raf = requestAnimationFrame(() => { raf = 0; render(); }); });
+  inp.addEventListener('keydown', e => {
+    if (e.isComposing) return;                    // Korean IME: the key that ends the syllable comes again
+    const k = e.key;
+    if (k === 'ArrowDown') { e.preventDefault(); move(idx + 1); }
+    else if (k === 'ArrowUp') { e.preventDefault(); move(idx - 1); }
+    else if (k === 'PageDown') { e.preventDefault(); move(idx + 8); }
+    else if (k === 'PageUp') { e.preventDefault(); move(idx - 8); }
+    else if (k === 'Tab') { e.preventDefault(); cyclePart(e.shiftKey ? -1 : 1); }
+    else if (k === 'Enter') { e.preventDefault(); if (raf) { cancelAnimationFrame(raf); raf = 0; render(); } pick(idx, e.ctrlKey ? 'open' : e.shiftKey ? 'copy' : 'paste'); }
+    else if (e.altKey && /^Digit[1-9]$/.test(e.code)) { e.preventDefault(); if (raf) { cancelAnimationFrame(raf); raf = 0; render(); } pick(+e.code.slice(5) - 1, 'paste'); }
+    else if (e.ctrlKey && e.code === 'KeyC' && inp.selectionStart === inp.selectionEnd && items[idx]) { e.preventDefault(); pick(idx, 'copy'); }
+    else if (k === 'Escape') {
+      e.preventDefault(); e.stopPropagation();
+      if (palMode === 'pop') host.send('back');   // summoned over another program: go back there
+      closeModal();
+    }
+  });
+  list.addEventListener('mousemove', e => { const it = e.target.closest('.qs-item'); if (it && +it.dataset.i !== idx) move(+it.dataset.i); });
+  list.addEventListener('mousedown', e => e.preventDefault());   // keep typing in the box
+  list.addEventListener('click', e => { const it = e.target.closest('.qs-item'); if (it) pick(+it.dataset.i, e.ctrlKey ? 'open' : e.shiftKey ? 'copy' : 'paste'); });
+  render();
+  inp.focus();
+}
+
 // ---------------------------------------------------------------- quick switcher (Ctrl+K)
 function openSwitcher() {
   flushNote();
@@ -2671,18 +3006,21 @@ function hkProblem(c) {
 }
 function hkConflictName(c) { const p = c && hkProblem(c); return p && p.lvl === 1 ? p.name : ''; }
 function hkOwner(c, skip) {
-  if (skip !== '@app' && sameKey(st.appHotkey, c)) return '앱 호출';
+  if (skip !== '@app' && sameKey(st.appHotkey, c)) return '앱 부르기';
+  if (skip !== '@find' && sameKey(st.findHotkey, c)) return '한 줄 찾아 붙여넣기';
   const n = S.notes.find(x => x.id !== skip && sameKey(x.hotkey, c));
   return n ? (titleOf(n) || '제목 없음') : '';
 }
 function applyHotkeys() {
   const parts = [];
   if (st.appHotkey) parts.push(['@app', st.appHotkey.mods, st.appHotkey.vk].join(','));
+  if (st.findHotkey) parts.push(['@find', st.findHotkey.mods, st.findHotkey.vk].join(','));
   for (const n of S.notes) if (n.hotkey) parts.push([n.id, n.hotkey.mods, n.hotkey.vk].join(','));
   host.send('hotkeys', parts.join(';'));
 }
 let recording = false;
-function recordHotkey(title, current, owner, onSave, after) {
+// local = an in-app shortcut (owner = action id) instead of a system-wide hotkey
+function recordHotkey(title, current, owner, onSave, after, local) {
   recording = true;
   host.send('hkSuspend', '1');                 // so pressing an existing combo can be re-recorded
   let combo = current || null;
@@ -2710,19 +3048,23 @@ function recordHotkey(title, current, owner, onSave, after) {
       hint.textContent = 'Windows는 Shift를 누른 채(또는 NumLock이 꺼진 상태에서) 오른쪽 숫자키를 누르면 숫자 대신 End·↓ 같은 이동키로 바꿔 버려서 단축키로 쓸 수 없어요. NumLock을 켜고 Ctrl+Alt+Win+숫자키나 Ctrl+Alt+숫자키를 써 주세요.';
       return;
     }
-    const name = e.code ? keyName(e.code) : (e.key && e.key.length === 1 ? e.key.toUpperCase() : (e.key || 'Key' + vk));
-    const c = { mods, vk, label: [...modNames(mods), name].join('+') };
+    const code = codeOf(e);
+    const name = code ? keyName(code) : (e.key && e.key.length === 1 ? e.key.toUpperCase() : (e.key || 'Key' + vk));
+    const c = { mods, vk, code, label: [...modNames(mods), name].join('+') };
     show(c);
-    const p = hkProblem(c);
+    const p = local ? localProblem(c, owner) : hkProblem(c);
     if (p && p.lvl === 2) { combo = null; hint.className = 'hint warn'; hint.textContent = p.msg; return; }
     combo = c;
-    const who = hkOwner(c, owner);
-    hint.className = p ? 'hint warn' : 'hint ok';
-    hint.textContent = [p && p.msg, who && `‘${who}’에 쓰던 단축키예요. 저장하면 이쪽으로 옮겨집니다.`].filter(Boolean).join(' ') || 'Enter 또는 [저장]을 누르면 바로 적용돼요.';
+    const who = local ? '' : hkOwner(c, owner), inApp = local ? null : localOwner(c, null);
+    hint.className = p || inApp ? 'hint warn' : 'hint ok';
+    hint.textContent = [p && p.msg, who && `‘${who}’에 쓰던 단축키예요. 저장하면 이쪽으로 옮겨집니다.`,
+      inApp && `앱 안 단축키 ‘${inApp.n}’과 같은 키예요. 저장하면 그쪽은 지정 안 함이 돼요.`].filter(Boolean).join(' ') || 'Enter 또는 [저장]을 누르면 바로 적용돼요.';
   };
   const done = () => { recording = false; document.removeEventListener('keydown', onKey, true); host.send('hkSuspend', '0'); if (after) after(); };
-  openModal(`<div class="dlg"><div class="dlg-head">${ic('i-key')}<h3>전역 단축키</h3><span class="dlg-sub">${esc(title)}</span></div>
-    <div class="dlg-body"><div class="keys" id="hkKeys"></div><div class="hint" id="hkHint">원하는 키 조합을 누르세요 (최대 4개: Ctrl·Alt·Shift·Win 중 최대 3개 + 키 1개)<br>예) Ctrl+Alt+1, Ctrl+Alt+Shift+K, F8 ·누르면 앞으로 나오고, 한 번 더 누르면 직전 창으로 돌아갑니다.</div></div>
+  openModal(`<div class="dlg"><div class="dlg-head">${ic('i-key')}<h3>${local ? '앱 안 단축키' : '전역 단축키'}</h3><span class="dlg-sub">${esc(title)}</span></div>
+    <div class="dlg-body"><div class="keys" id="hkKeys"></div><div class="hint" id="hkHint">${local
+      ? '원하는 키 조합을 누르세요 (Ctrl·Alt·Shift 중 최대 3개 + 키 1개)<br>예) Ctrl+Alt+B, Ctrl+Shift+1, F7 · 이 앱 안에서만 동작해요.'
+      : '원하는 키 조합을 누르세요 (최대 4개: Ctrl·Alt·Shift·Win 중 최대 3개 + 키 1개)<br>예) Ctrl+Alt+1, Ctrl+Alt+Shift+K, F8 ·누르면 앞으로 나오고, 한 번 더 누르면 직전 창으로 돌아갑니다.'}</div></div>
     <div class="dlg-foot">${current ? '<button class="btn ghost" id="hkClear">단축키 해제</button>' : ''}<span style="flex:1"></span><button class="btn" id="hkCancel">취소</button><button class="btn primary" id="hkSave">저장</button></div></div>`, done);
   const keys = $('#hkKeys'), hint = $('#hkHint');
   const show = c => { keys.innerHTML = c ? c.label.split('+').map(k => `<kbd>${esc(k || '+')}</kbd>`).join('<span class="plus">+</span>') : '<kbd class="ghost">?</kbd>'; };
@@ -2736,9 +3078,13 @@ function recordHotkey(title, current, owner, onSave, after) {
 function takeKey(c, owner) {            // a combo lives in one place only
   if (!c) return;
   if (owner !== '@app' && sameKey(st.appHotkey, c)) st.appHotkey = null;
+  if (owner !== '@find' && sameKey(st.findHotkey, c)) st.findHotkey = null;
   for (const n of S.notes) if (n.id !== owner && sameKey(n.hotkey, c)) n.hotkey = null;
+  // a global hotkey wins over an in-app shortcut on the same keys: free that one
+  const lo = localOwner(c, null);
+  if (lo) { st.keys = st.keys || {}; st.keys[lo.id] = null; rebuildKeys(); updateKeyHints(); }
 }
-function setNoteHotkey(id) {
+function setNoteHotkey(id, after) {
   const n = noteById(id);
   if (!n) return;
   recordHotkey(titleOf(n) || '제목 없음', n.hotkey, id, c => {
@@ -2748,12 +3094,27 @@ function setNoteHotkey(id) {
     saveStateSoon(); applyHotkeys(); rerender();
     if (!c) toast('단축키를 해제했어요');
     else if (!HOST) toast(`‘${c.label}’ 지정됨 (브라우저 미리보기에서는 전역 단축키가 동작하지 않아요)`);
-  });
+  }, after);
 }
 const hkWarned = new Set();
-function hotkeyOf(key) { return key === '@app' ? st.appHotkey : (noteById(key) || {}).hotkey; }
+function hotkeyOf(key) { return key === '@app' ? st.appHotkey : key === '@find' ? st.findHotkey : (noteById(key) || {}).hotkey; }
+// the find hotkey you never chose yourself moves on to a free combo if another program already has it
+const FIND_KEYS = [{ mods: 3, vk: 70, code: 'KeyF', label: 'Ctrl+Alt+F' }, { mods: 3, vk: 32, code: 'Space', label: 'Ctrl+Alt+Space' },
+  { mods: 7, vk: 70, code: 'KeyF', label: 'Ctrl+Alt+Shift+F' }, { mods: 3, vk: 74, code: 'KeyJ', label: 'Ctrl+Alt+J' }];
+const findTried = new Set();
 function onHotkeyStatus(list) {
   hkFailed = new Set(list ? list.split(',') : []);
+  if (hkFailed.has('@find') && !st.findHotkeyMine && st.findHotkey) {
+    findTried.add(st.findHotkey.mods + ':' + st.findHotkey.vk);
+    const next = FIND_KEYS.find(c => !findTried.has(c.mods + ':' + c.vk) && !hkOwner(c, '@find') && !localOwner(c, null));
+    if (next) {
+      const was = st.findHotkey.label;
+      st.findHotkey = Object.assign({}, next);
+      saveStateSoon(); applyHotkeys();
+      toast(`${was}은(는) 다른 프로그램이 쓰고 있어서 ‘한 줄 찾아 붙여넣기’를 ${next.label}(으)로 정했어요 · 설정에서 바꿀 수 있어요`);
+      return;
+    }
+  }
   if (hkJustSet) {
     const c = hotkeyOf(hkJustSet), label = c && c.label, clash = hkConflictName(c);
     if (hkFailed.has(hkJustSet)) toast(`‘${label}’은(는) Windows나 다른 프로그램이 이미 쓰고 있어 등록되지 않았어요. 다른 조합을 골라 주세요.`);
@@ -2769,7 +3130,124 @@ function onHotkeyStatus(list) {
     toast(`단축키 ${lost.map(x => x.c.label).join(', ')}을(를) 다른 프로그램이 쓰고 있어 등록되지 않았어요 (빨간 표시)`);
   }
   rerender();
-  if (modalOpen() && $('#setAppHk')) $('#setAppHk').classList.toggle('bad', hkFailed.has('@app'));
+  if (modalOpen() && $('#setAppHk')) {
+    $('#setAppHk').classList.toggle('bad', hkFailed.has('@app'));
+    $('#setFindHk').classList.toggle('bad', hkFailed.has('@find'));
+    for (const b of $$('[data-note]', modal)) b.classList.toggle('bad', hkFailed.has(b.dataset.note));
+  }
+}
+
+// ---------------------------------------------------------------- in-app shortcuts (every one can be changed in Settings > 단축키)
+// A key is { mods, code, vk, label }; mods bits as for global hotkeys: 1 Alt, 2 Ctrl, 4 Shift, 8 Win.
+// s: 'app' = anywhere in the window, 'ed' = while writing in a note.
+const ACTIONS = [
+  { id: 'newNote', g: '앱 전체', n: '새 메모', k: [2, 'KeyN'], run: () => newNote() },
+  { id: 'switcher', g: '앱 전체', n: '빠른 이동 (메모 찾아 열기)', k: [2, 'KeyK'], run: () => openSwitcher() },
+  { id: 'find', g: '앱 전체', n: '찾기 (메모 안 / 보드 검색)', k: [2, 'KeyF'], run: () => { if (view === 'editor') openFind(); else { boardSearch.focus(); boardSearch.select(); } } },
+  { id: 'nextNote', g: '앱 전체', n: '다음 메모', k: [2, 'Tab'], run: () => cycle(1) },
+  { id: 'prevNote', g: '앱 전체', n: '이전 메모', k: [6, 'Tab'], run: () => cycle(-1) },
+  { id: 'closeView', g: '앱 전체', n: '보드로 / 창 닫기', k: [2, 'KeyW'], run: () => { if (view === 'editor') showBoard(); else { flushAll(); host.send('close'); } } },
+  { id: 'save', g: '앱 전체', n: '저장 (원래 자동 저장)', k: [2, 'KeyS'], run: () => { flushAll(); toast('저장했어요 · 원래 자동 저장됩니다'); } },
+  { id: 'quit', g: '앱 전체', n: '끄기 (단축키는 계속 대기)', k: [2, 'KeyQ'], run: () => { flushAll(); host.send('quit'); } },
+  { id: 'settings', g: '앱 전체', n: '설정', k: [2, 'Comma'], run: () => openSettings() },
+  { id: 'help', g: '앱 전체', n: '단축키 모두 보기', k: [0, 'F1'], run: () => showHelp() },
+  { id: 'zoomIn', g: '앱 전체', n: '글자 크게', k: [2, 'Equal'], run: () => zoom(1) },
+  { id: 'zoomOut', g: '앱 전체', n: '글자 작게', k: [2, 'Minus'], run: () => zoom(-1) },
+  { id: 'zoomReset', g: '앱 전체', n: '글자 크기 원래대로', k: [2, 'Digit0'], run: () => zoom(0) },
+  { id: 'onTop', g: '앱 전체', n: '항상 위에 표시 켜기 / 끄기', k: null, run: () => { setOnTop(!st.onTop); toast(st.onTop ? '항상 위에 표시' : '항상 위에 표시 끔'); } },
+  { id: 'theme', g: '앱 전체', n: '라이트 / 다크 바꾸기', k: null, run: () => setTheme(st.theme === 'dark' ? 'light' : 'dark') },
+  { id: 'sidebar', g: '앱 전체', n: '메모 목록 접기 / 펼치기', k: null, run: () => $('#hSide').click() },
+  { id: 'palette', g: '꺼내 쓰기', n: '한 줄 찾아 붙여넣기 (앱 안에서)', k: [6, 'KeyF'], run: () => openPalette('key') },
+  { id: 'sendPaste', g: '꺼내 쓰기', n: '복사 → 원래 창에 바로 붙여넣기', k: [6, 'Enter'], run: () => sendOut('paste') },
+  { id: 'sendCopy', g: '꺼내 쓰기', n: '복사 → 원래 창으로', k: [6, 'KeyC'], run: () => sendOut('copy') },
+  { id: 'bold', s: 'ed', g: '편집 (메모 안)', n: '굵게', k: [2, 'KeyB'], run: () => fmt('bold') },
+  { id: 'underline', s: 'ed', g: '편집 (메모 안)', n: '밑줄', k: [2, 'KeyU'], run: () => fmt('underline') },
+  { id: 'italic', s: 'ed', g: '편집 (메모 안)', n: '기울임', k: [2, 'KeyI'], run: () => fmt('italic') },
+  { id: 'strike', s: 'ed', g: '편집 (메모 안)', n: '취소선', k: [6, 'KeyS'], run: () => fmt('strikeThrough') },
+  { id: 'fgColor', s: 'ed', g: '편집 (메모 안)', n: '글자색 (마지막에 고른 색)', k: null, run: () => applyFg(st.fg) },
+  { id: 'hl', s: 'ed', g: '편집 (메모 안)', n: '형광펜', k: [6, 'KeyH'], run: () => toggleHl() },
+  { id: 'clearFmt', s: 'ed', g: '편집 (메모 안)', n: '서식 지우기', k: [2, 'Backslash'], run: () => clearFmt() },
+  { id: 'ul', s: 'ed', g: '편집 (메모 안)', n: '글머리 목록', k: [6, 'Digit8'], run: () => toggleList('ul') },
+  { id: 'ol', s: 'ed', g: '편집 (메모 안)', n: '번호 목록', k: [6, 'Digit7'], run: () => toggleList('ol') },
+  { id: 'chk', s: 'ed', g: '편집 (메모 안)', n: '체크리스트', k: [6, 'KeyL'], run: () => toggleList('chk') },
+  { id: 'table', s: 'ed', g: '편집 (메모 안)', n: '표 넣기', k: [6, 'KeyT'], run: () => insertTable(3, 3) },
+  { id: 'hr', s: 'ed', g: '편집 (메모 안)', n: '구분선', k: null, run: () => insertHr() },
+  { id: 'stamp', s: 'ed', g: '편집 (메모 안)', n: '날짜·시간 넣기', k: [2, 'Semicolon'], run: () => stamp() },
+  { id: 'h1', s: 'ed', g: '편집 (메모 안)', n: '제목 1', k: null, run: () => setBlock('h1') },
+  { id: 'h2', s: 'ed', g: '편집 (메모 안)', n: '제목 2', k: null, run: () => setBlock('h2') },
+  { id: 'h3', s: 'ed', g: '편집 (메모 안)', n: '제목 3', k: null, run: () => setBlock('h3') },
+  { id: 'para', s: 'ed', g: '편집 (메모 안)', n: '본문으로', k: null, run: () => setBlock('div') }
+];
+const ACT = new Map(ACTIONS.map(a => [a.id, a]));
+// keys that keep their meaning everywhere (copy, undo, open n-th note, ...): they can't be reassigned
+const FIXED_KEYS = (() => {
+  const m = new Map(), C = 2, S = 4, A = 1;
+  [[C, 'KeyC', '복사'], [C, 'KeyV', '붙여넣기'], [C, 'KeyX', '잘라내기'], [C, 'KeyA', '모두 선택'], [C, 'KeyZ', '실행 취소'], [C, 'KeyY', '다시 실행'],
+   [C | S, 'KeyZ', '다시 실행'], [C | S, 'KeyV', '서식 없이 붙여넣기'], [C, 'Enter', '표 빠져나가기'], [A, 'F4', '창 닫기'], [A, 'Tab', '창 전환'],
+   [A, 'Space', '창 메뉴'], [0, 'F2', '이름 바꾸기'], [C, 'NumpadAdd', '글자 크게'], [C, 'NumpadSubtract', '글자 작게'], [C, 'Numpad0', '글자 크기 원래대로']
+  ].forEach(([mods, code, n]) => m.set(mods + ':' + code, n));
+  for (let d = 1; d <= 9; d++) m.set(C + ':Digit' + d, d + '번째 메모 바로 열기');
+  return m;
+})();
+const mkKey = (mods, code) => ({ mods, code, vk: vkOf(code), label: [...modNames(mods), keyName(code)].join('+') });
+const defKey = a => a.k ? mkKey(a.k[0], a.k[1]) : null;
+function keyOf(id) {
+  const o = st.keys && st.keys[id];
+  return o !== undefined ? o : defKey(ACT.get(id));
+}
+function kl(id, dflt = '') { const k = keyOf(id); return k ? k.label : dflt; }       // label for hints
+function modsOf(e) { return (e.altKey ? 1 : 0) | (e.ctrlKey ? 2 : 0) | (e.shiftKey ? 4 : 0) | (e.metaKey ? 8 : 0); }
+function codeOf(e) {                              // some keyboards / remote tools send no e.code
+  if (e.code) return e.code;
+  const k = e.keyCode;
+  if (k >= 65 && k <= 90) return 'Key' + String.fromCharCode(k);
+  if (k >= 48 && k <= 57) return 'Digit' + (k - 48);
+  if (k >= 96 && k <= 105) return 'Numpad' + (k - 96);
+  if (k >= 112 && k <= 135) return 'F' + (k - 111);
+  for (const c in VK) if (VK[c] === k) return c;
+  return '';
+}
+let keyMap = new Map();                           // 'scope|mods|code' -> action
+function rebuildKeys() {
+  keyMap = new Map();
+  for (const a of ACTIONS) { const k = keyOf(a.id); if (k) keyMap.set((a.s || 'app') + '|' + k.mods + '|' + k.code, a); }
+}
+function actionFor(e, scope) { return keyMap.get(scope + '|' + modsOf(e) + '|' + codeOf(e)) || null; }
+function localOwner(c, skip) {
+  for (const a of ACTIONS) { if (a.id === skip) continue; const k = keyOf(a.id); if (k && k.mods === c.mods && k.code === c.code) return a; }
+  return null;
+}
+function localProblem(c, skip) {
+  const fkey = /^F\d{1,2}$/.test(c.code);
+  if (c.mods & 8) return { lvl: 2, msg: 'Win 키 조합은 Windows가 먼저 가져가서 앱 안 단축키로 쓸 수 없어요.' };
+  if (!c.mods && !fkey) return { lvl: 2, msg: 'Ctrl · Alt · Shift와 함께 눌러 주세요. (F1~F12는 단독 가능)' };
+  if (c.mods === 4 && !fkey) return { lvl: 2, msg: 'Shift만 쓰면 글자 입력과 겹쳐요. Ctrl이나 Alt를 함께 눌러 주세요.' };
+  const fixed = FIXED_KEYS.get(c.mods + ':' + c.code);
+  if (fixed) return { lvl: 2, msg: `${c.label}은(는) ‘${fixed}’에 쓰는 키라서 바꿀 수 없어요.` };
+  const g = hkOwner(c, null);
+  if (g) return { lvl: 2, msg: `${c.label}은(는) 전역 단축키(‘${g}’)라서 앱 안에서는 그쪽이 먼저 실행돼요. 다른 키를 골라 주세요.` };
+  const o = localOwner(c, skip);
+  if (o) return { lvl: 1, msg: `‘${o.n}’에 쓰던 키예요. 저장하면 이쪽으로 옮겨지고 ‘${o.n}’은(는) 지정 안 함이 돼요.` };
+  return null;
+}
+function setLocalKey(id, c) {
+  st.keys = st.keys || {};
+  if (c) for (const a of ACTIONS) { if (a.id === id) continue; const k = keyOf(a.id); if (k && k.mods === c.mods && k.code === c.code) st.keys[a.id] = null; }
+  const d = defKey(ACT.get(id));
+  if (c ? d && d.mods === c.mods && d.code === c.code : !d) delete st.keys[id]; else st.keys[id] = c;
+  saveStateSoon(); rebuildKeys(); updateKeyHints();
+}
+// shortcut labels shown around the app follow the current keys
+function updateKeyHints() {
+  for (const el of $$('[data-k]')) {
+    const k = keyOf(el.dataset.k), t = el.dataset.t;
+    if (t) el.title = k ? `${t} (${k.label})` : t;
+    else el.textContent = k ? k.label : '';
+    if (!t) el.hidden = !k;
+  }
+  const sw = kl('switcher'), nx = kl('nextNote');
+  $('#stHint').textContent = ['Esc 보드', sw && sw + ' 이동'].filter(Boolean).join(' · ');
+  $('#sbFoot').textContent = [nx && nx + ' 다음 메모', sw && sw + ' 찾기'].filter(Boolean).join(' · ');
 }
 
 // ---------------------------------------------------------------- settings / help
@@ -2782,20 +3260,68 @@ function applyFont() { document.documentElement.style.setProperty('--ef', (FONTS
 function zoom(d) { st.fontSize = d === 0 ? 15 : clamp(st.fontSize + d, 10, 36); applyZoom(); saveStateSoon(); }
 function setTheme(t) { st.theme = t; applyTheme(); host.send('theme', t); saveStateSoon(); }
 function setOnTop(on) { st.onTop = on; $('#btnTop').classList.toggle('on', on); host.send('top', on ? '1' : '0'); saveStateSoon(); }
-function openSettings() {
+function openSettings(tab) {
+  tab = tab || 'general';
   const sw = (k, on) => `<button class="switch${on ? ' on' : ''}" data-sw="${k}"></button>`;
   const row = (b, s, c) => `<div class="row"><div class="lbl"><b>${b}</b>${s ? `<small>${s}</small>` : ''}</div>${c}</div>`;
-  const ak = st.appHotkey;
-  openModal(`<div class="dlg wide"><div class="dlg-head">${ic('i-gear')}<h3>설정</h3></div><div class="dlg-body">
-    ${row('테마', '네이비 & 화이트', `<div class="seg" id="setTheme"><button data-v="light">라이트</button><button data-v="dark">다크 네이비</button></div>`)}
-    ${row('앱 호출 단축키', '어디서든 열고, 한 번 더 누르면 원래 창으로', `<button class="hk-chip${ak ? ' set' : ''}${hkFailed.has('@app') ? ' bad' : ''}" id="setAppHk">${ic('i-key')}${ak ? esc(ak.label) : '지정 안 함'}</button>`)}
+  const chip = (k, attr, bad) => `<button class="hk-chip${k ? ' set' : ''}${bad ? ' bad' : ''}" ${attr}>${ic('i-key')}${k ? esc(k.label) : '지정 안 함'}</button>`;
+  let body;
+  if (tab === 'keys') {
+    const krow = (name, sub, c) => `<div class="krow"><div class="kname">${name}${sub ? `<small>${sub}</small>` : ''}</div><div class="kbtns">${c}</div></div>`;
+    const hkNotes = S.notes.filter(n => n.hotkey);
+    let h = `<h4 class="kh">어디서든 · 전역 단축키 <small>다른 프로그램을 쓰다가 눌러도 동작</small></h4>` +
+      krow('앱 부르기 / 원래 창으로', '', chip(st.appHotkey, 'id="setAppHk"', hkFailed.has('@app'))) +
+      krow('한 줄 찾아 바로 붙여넣기', '쓰던 창 위에 검색창이 떠요', chip(st.findHotkey, 'id="setFindHk"', hkFailed.has('@find'))) +
+      hkNotes.map(n => krow(`메모 · ${esc(titleOf(n) || '제목 없음')}`, '', chip(n.hotkey, `data-note="${n.id}"`, hkFailed.has(n.id)))).join('') +
+      `<div class="khint">메모마다 단축키는 메모 위쪽의 ⌨ 버튼으로 지정해요.</div>`;
+    let g = '';
+    for (const a of ACTIONS) {
+      if (a.g !== g) { g = a.g; h += `<h4 class="kh">${esc(g)}${a.s === 'ed' ? ' <small>메모에 글을 쓰는 중에 동작</small>' : ''}</h4>`; }
+      const k = keyOf(a.id), d = defKey(a), changed = !(k === d || (k && d && k.mods === d.mods && k.code === d.code));
+      h += krow(esc(a.n), '', (changed ? `<button class="kreset" data-reset="${a.id}" title="기본값(${d ? esc(d.label) : '지정 안 함'})으로">↺</button>` : '') + chip(k, `data-act="${a.id}"`));
+    }
+    h += `<div class="khint">바꿀 수 없는 키: 복사·붙여넣기·실행 취소 (Ctrl+C/V/X/Z/Y/A) · Ctrl+1~9 메모 열기 · Esc · F2 · 표 안의 Enter / Tab / 방향키</div>`;
+    body = h;
+  } else {
+    body = `${row('테마', '네이비 & 화이트', `<div class="seg" id="setTheme"><button data-v="light">라이트</button><button data-v="dark">다크 네이비</button></div>`)}
+    ${row('단축키', `앱 부르기 ${esc(kl0(st.appHotkey))} · 찾아 붙여넣기 ${esc(kl0(st.findHotkey))} · 모든 단축키를 바꿀 수 있어요`, `<button class="btn" id="setGoKeys">단축키 설정</button>`)}
     ${row('닫기(X) → 트레이로 숨기기', '켜 두면 다음 호출이 즉시 열립니다 (권장)', sw('closeToTray', st.closeToTray))}
     ${row('Windows 시작 시', '<span class="wrap"><b>단축키 대기</b> 꺼져 있어도 단축키로 열림 · 메모리 거의 안 씀 · 첫 호출 약 1초<br><b>트레이 상주</b> 언제나 즉시 열림 · 메모리 더 사용</span>', `<div class="seg" id="setStart"><button data-v="off">끔</button><button data-v="standby">단축키 대기</button><button data-v="tray">트레이 상주</button></div>`)}
     ${row('항상 위에 표시', '', sw('onTop', st.onTop))}
     ${row('에디터 글꼴', '', `<select class="sel" id="setFont">${Object.entries(FONTS).map(([k, v]) => `<option value="${k}"${st.font === k ? ' selected' : ''}>${v[0]}</option>`).join('')}</select>`)}
     ${row('글자 크기', 'Ctrl + 마우스 휠로도 조절', `<div class="seg"><button data-z="-1">−</button><span class="val" id="setZ">${st.fontSize}px</span><button data-z="1">+</button></div>`)}
-    ${row('데이터 폴더', esc(boot.dataDir || ''), `<div class="row-btns"><button class="btn" id="setOpen">${HOST ? '열기' : '-'}</button><button class="btn" id="setBackup">지금 백업</button></div>`)}
-    </div><div class="dlg-foot"><span class="ver">Super Speed Note ${esc(boot.version || '')} · 자동 저장 · 매일 자동 백업(14일)</span><span style="flex:1"></span><button class="btn" id="setHelp">단축키 (F1)</button><button class="btn primary" id="setDone">완료</button></div></div>`);
+    ${row('데이터 폴더', esc(boot.dataDir || ''), `<div class="row-btns"><button class="btn" id="setOpen">${HOST ? '열기' : '-'}</button><button class="btn" id="setBackup">지금 백업</button></div>`)}`;
+  }
+  openModal(`<div class="dlg wide set"><div class="dlg-head">${ic('i-gear')}<h3>설정</h3><span style="flex:1"></span><div class="seg" id="setTabs"><button data-v="general"${tab === 'general' ? ' class="on"' : ''}>일반</button><button data-v="keys"${tab === 'keys' ? ' class="on"' : ''}>단축키</button></div></div><div class="dlg-body" id="setBody">${body}</div>` +
+    `<div class="dlg-foot">${tab === 'keys' ? '<button class="btn ghost" id="setResetKeys">앱 안 단축키 모두 기본값으로</button>' : `<span class="ver">Super Speed Note ${esc(boot.version || '')} · 자동 저장 · 매일 자동 백업(14일)</span>`}<span style="flex:1"></span><button class="btn primary" id="setDone">완료</button></div></div>`);
+  $('#setTabs').onclick = e => { const b = e.target.closest('button'); if (b && b.dataset.v !== tab) openSettings(b.dataset.v); };
+  $('#setDone').onclick = closeModal;
+  const back = () => openSettings(tab);
+  if (tab === 'keys') {
+    const sb = $('#setBody');
+    sb.scrollTop = keysScroll;
+    sb.addEventListener('scroll', () => { keysScroll = sb.scrollTop; });
+    $('#setFindHk').onclick = () => recordHotkey('한 줄 찾아 바로 붙여넣기', st.findHotkey, '@find', c => { takeKey(c, '@find'); st.findHotkey = c; st.findHotkeyMine = true; hkJustSet = c ? '@find' : null; saveStateSoon(); applyHotkeys(); rerender(); }, back);
+    $('#setAppHk').onclick = () => recordHotkey('앱 부르기 / 원래 창으로', st.appHotkey, '@app', c => { takeKey(c, '@app'); st.appHotkey = c; hkJustSet = c ? '@app' : null; saveStateSoon(); applyHotkeys(); rerender(); }, back);
+    for (const b of $$('[data-note]', modal)) b.onclick = () => setNoteHotkey(b.dataset.note, back);
+    for (const b of $$('[data-act]', modal)) b.onclick = () => {
+      const a = ACT.get(b.dataset.act);
+      recordHotkey(a.n, keyOf(a.id), a.id, c => { setLocalKey(a.id, c); toast(c ? `‘${a.n}’ → ${c.label}` : `‘${a.n}’ 단축키를 해제했어요`); }, back, true);
+    };
+    for (const b of $$('[data-reset]', modal)) b.onclick = () => {
+      const a = ACT.get(b.dataset.reset), d = defKey(a), g = d && hkOwner(d, null);
+      if (g) { toast(`${d.label}은(는) 지금 전역 단축키 ‘${g}’로 쓰고 있어요`); return; }
+      setLocalKey(a.id, d); back();
+    };
+    $('#setResetKeys').onclick = () => {
+      const prev = st.keys;
+      st.keys = {};
+      for (const a of ACTIONS) { const d = defKey(a); if (d && hkOwner(d, null)) st.keys[a.id] = null; }   // a global hotkey still owns those keys
+      saveStateSoon(); rebuildKeys(); updateKeyHints(); back();
+      toast('앱 안 단축키를 기본값으로 돌렸어요', '되돌리기', () => { st.keys = prev; saveStateSoon(); rebuildKeys(); updateKeyHints(); if (modalOpen() && $('#setResetKeys')) back(); });
+    };
+    return;
+  }
   const segT = $('#setTheme');
   const paintSeg = () => { for (const b of segT.children) b.classList.toggle('on', b.dataset.v === st.theme); };
   paintSeg();
@@ -2819,24 +3345,25 @@ function openSettings() {
   for (const b of $$('[data-z]', modal)) b.onclick = () => { zoom(+b.dataset.z); $('#setZ').textContent = st.fontSize + 'px'; };
   $('#setOpen').onclick = () => host.send('openData');
   $('#setBackup').onclick = () => { flushAll(); host.send('backup'); if (!HOST) toast('브라우저 미리보기에서는 백업하지 않아요'); };
-  $('#setHelp').onclick = showHelp;
-  $('#setDone').onclick = closeModal;
-  $('#setAppHk').onclick = () => {
-    recordHotkey('앱 호출 (보이기 / 숨기기)', st.appHotkey, '@app', c => { takeKey(c, '@app'); st.appHotkey = c; hkJustSet = c ? '@app' : null; saveStateSoon(); applyHotkeys(); rerender(); }, openSettings);
-  };
+  $('#setGoKeys').onclick = () => openSettings('keys');
 }
+let keysScroll = 0;
+const kl0 = k => k ? k.label : '없음';
 function showHelp() {
-  const g = (title, rows) => `<h4>${title}</h4>` + rows.map(([a, b]) => `<div><span>${a}</span><kbd>${esc(b)}</kbd></div>`).join('');
-  const ak = st.appHotkey ? st.appHotkey.label : '설정에서 지정';
-  openModal(`<div class="dlg wide"><div class="dlg-head">${ic('i-help')}<h3>단축키</h3></div><div class="dlg-body"><div class="help">
-    ${g('어디서든 (전역)', [['앱 보이기 / 숨기기', ak], ['메모별 단축키', '누르면 열기 · 다시 누르면 이전 창']])}
-    ${g('메모 보드', [['선택 이동', '← ↑ → ↓'], ['열기', 'Enter / 더블클릭'], ['이름 바꾸기', 'F2'], ['삭제 (되돌리기 가능)', 'Del'], ['여러 개 선택', 'Shift+클릭·방향키 / Ctrl+클릭 / Ctrl+A'], ['새 메모', 'Ctrl+N'], ['N번째 메모 열기', 'Ctrl+1~9'], ['빠른 이동', 'Ctrl+K'], ['검색', 'Ctrl+F']])}
-    ${g('편집', [['굵게 / 밑줄 / 기울임', 'Ctrl+B / U / I'], ['취소선', 'Ctrl+Shift+S'], ['형광펜', 'Ctrl+Shift+H'], ['서식 지우기', 'Ctrl+\\'], ['글머리 / 번호 목록', 'Ctrl+Shift+8 / 7'], ['체크리스트', 'Ctrl+Shift+L'], ['날짜·시간', 'Ctrl+;'], ['서식 없이 붙여넣기', 'Ctrl+Shift+V'], ['찾기', 'Ctrl+F'], ['확대 / 축소', 'Ctrl+휠, Ctrl+= / -'], ['보드로', 'Esc'], ['다음 / 이전 메모', 'Ctrl+Tab / Ctrl+Shift+Tab'], ['실행 취소 / 다시', 'Ctrl+Z / Ctrl+Y'], ['끄기 (단축키는 대기)', 'Ctrl+Q']])}
-    ${g('표 (엑셀처럼)', [['칸 선택·이동', '클릭 / 방향키'], ['범위 선택', 'Shift+방향키 / 드래그'], ['선택한 칸에 바로 입력', '기존 값을 새로 씀'], ['칸 편집 (끝에 커서)', 'F2 / 더블클릭'], ['편집 취소', 'Esc'], ['칸 지우기', 'Delete'], ['아래 칸 / 마지막 행이면 행 추가', 'Enter'], ['칸 안 줄바꿈', 'Shift+Enter (편집 중)'], ['다음 / 이전 칸', 'Tab / Shift+Tab'], ['표 전체 선택', 'Ctrl+A'], ['표 넣기 / 빠져나가기', 'Ctrl+Shift+T / Ctrl+Enter'], ['행·열 추가', '표 바깥 + 버튼'], ['엑셀 붙여넣기 · 범위 복사', 'Ctrl+V / Ctrl+C'], ['행·열 삭제', '오른쪽 클릭']])}
-    ${g('꺼내 쓰기', [['복사 → 원래 창에 바로 붙여넣기', 'Ctrl+Shift+Enter'], ['복사 → 원래 창으로', 'Ctrl+Shift+C'], ['보낼 내용', '선택 > 칸 > 현재 줄 (보드: 메모 전체)'], ['메모 전체 복사 (보드)', 'Ctrl+C / 카드 복사 버튼'], ['검색한 곳으로 바로 이동', 'Ctrl+K → Enter']])}
+  const g = (title, rows) => `<h4>${title}</h4>` + rows.filter(r => r[1]).map(([a, b]) => `<div><span>${a}</span><kbd>${esc(b)}</kbd></div>`).join('');
+  const k = id => kl(id, '');
+  const join = (...ids) => ids.map(k).filter(Boolean).join(' / ');
+  openModal(`<div class="dlg wide"><div class="dlg-head">${ic('i-help')}<h3>단축키</h3><span class="dlg-sub">바꾸려면 설정 › 단축키</span></div><div class="dlg-body"><div class="help">
+    ${g('어디서든 (전역)', [['앱 부르기 / 원래 창으로', kl0(st.appHotkey)], ['한 줄 찾아 바로 붙여넣기', kl0(st.findHotkey)], ['메모별 단축키', '누르면 열기 · 다시 누르면 이전 창']])}
+    ${g('찾아 붙여넣기 검색창', [['원래 창에 바로 붙여넣기', 'Enter / 클릭'], ['N번째 결과 바로 붙여넣기', 'Alt+1~9'], ['칸 · 단어만 골라 붙여넣기', 'Tab / Shift+Tab'], ['복사만 하고 돌아가기', 'Shift+Enter'], ['그 메모 열기', 'Ctrl+Enter'], ['그냥 돌아가기', 'Esc'], ['초성으로 찾기', 'ㄱㅊㅅ → 김철수']])}
+    ${g('메모 보드', [['선택 이동', '← ↑ → ↓'], ['열기', 'Enter / 더블클릭'], ['이름 바꾸기', 'F2'], ['삭제 (되돌리기 가능)', 'Del'], ['여러 개 선택', 'Shift+클릭·방향키 / Ctrl+클릭 / Ctrl+A'], ['새 메모', k('newNote')], ['N번째 메모 열기', 'Ctrl+1~9'], ['빠른 이동', k('switcher')], ['검색', k('find')]])}
+    ${g('편집', [['굵게 / 밑줄 / 기울임', join('bold', 'underline', 'italic')], ['취소선', k('strike')], ['글자색', k('fgColor')], ['형광펜', k('hl')], ['서식 지우기', k('clearFmt')], ['글머리 / 번호 목록', join('ul', 'ol')], ['체크리스트', k('chk')], ['제목 1 / 2 / 3', join('h1', 'h2', 'h3')], ['구분선', k('hr')], ['날짜·시간', k('stamp')], ['서식 없이 붙여넣기', 'Ctrl+Shift+V'], ['찾기', k('find')], ['확대 / 축소', ['Ctrl+휠', join('zoomIn', 'zoomOut')].filter(Boolean).join(', ')], ['보드로', 'Esc'], ['다음 / 이전 메모', join('nextNote', 'prevNote')], ['실행 취소 / 다시', 'Ctrl+Z / Ctrl+Y'], ['끄기 (단축키는 대기)', k('quit')]])}
+    ${g('표 (엑셀처럼)', [['칸 선택·이동', '클릭 / 방향키'], ['범위 선택', 'Shift+방향키 / 드래그'], ['선택한 칸에 바로 입력', '기존 값을 새로 씀'], ['칸 편집 (끝에 커서)', 'F2 / 더블클릭'], ['편집 취소', 'Esc'], ['칸 지우기', 'Delete'], ['아래 칸 / 마지막 행이면 행 추가', 'Enter'], ['칸 안 줄바꿈', 'Shift+Enter (편집 중)'], ['다음 / 이전 칸', 'Tab / Shift+Tab'], ['표 전체 선택', 'Ctrl+A'], ['표 넣기 / 빠져나가기', [k('table'), 'Ctrl+Enter'].filter(Boolean).join(' / ')], ['행·열 추가', '표 바깥 + 버튼'], ['엑셀 붙여넣기 · 범위 복사', 'Ctrl+V / Ctrl+C'], ['행·열 삭제', '오른쪽 클릭']])}
+    ${g('꺼내 쓰기', [['한 줄 찾아 붙여넣기 (앱 안)', k('palette')], ['복사 → 원래 창에 바로 붙여넣기', k('sendPaste')], ['복사 → 원래 창으로', k('sendCopy')], ['보낼 내용', '선택 > 칸 > 현재 줄 (보드: 메모 전체)'], ['메모 전체 복사 (보드)', 'Ctrl+C / 카드 복사 버튼'], ['검색한 곳으로 바로 이동', (k('switcher') || '빠른 이동') + ' → Enter']])}
     ${g('빠른 서식 (줄 맨 앞에서 입력 후 Space)', [['제목 1 / 2 / 3', '# / ## / ###'], ['글머리 목록', '-'], ['번호 목록', '1.'], ['체크리스트', '[]'], ['인용', '>'], ['코드', '```'], ['구분선', '--- 후 Enter']])}
-    </div></div><div class="dlg-foot"><span style="flex:1"></span><button class="btn primary" id="helpDone">닫기</button></div></div>`);
+    </div></div><div class="dlg-foot"><span style="flex:1"></span><button class="btn" id="helpKeys">단축키 바꾸기</button><button class="btn primary" id="helpDone">닫기</button></div></div>`);
   $('#helpDone').onclick = closeModal;
+  $('#helpKeys').onclick = () => openSettings('keys');
 }
 
 // ---------------------------------------------------------------- toasts
@@ -2886,28 +3413,16 @@ document.addEventListener('keydown', e => {
   if (!pop.hidden && e.key === 'Escape') { e.preventDefault(); closePop(); return; }
   if (modalOpen()) { if (e.key === 'Escape') { e.preventDefault(); closeModal(); } return; }
   const mod = e.ctrlKey || e.metaKey, code = e.code;
-  if (e.key === 'F1') { e.preventDefault(); showHelp(); return; }
-  if (mod && !e.altKey) {
+  const act = actionFor(e, 'app');                  // shortcuts from Settings > 단축키
+  if (act) { e.preventDefault(); act.run(); return; }
+  if (mod && !e.altKey) {                           // fixed keys
     let hit = true;
     switch (code) {
-      case 'KeyN': if (e.shiftKey) hit = false; else newNote(); break;
-      case 'KeyK': case 'KeyP': openSwitcher(); break;
       case 'KeyA': if (view === 'board' && !isTyping(e.target) && !e.shiftKey) selectAllCards(); else hit = false; break;
-      case 'Enter': if (e.shiftKey) sendOut('paste'); else hit = false; break;   // copy -> previous window -> paste
-      case 'KeyC':
-        if (e.shiftKey) sendOut('copy');                                     // copy -> previous window
-        else if (view === 'board' && !isTyping(e.target) && selId) copyNote(selId);
-        else hit = false;
-        break;
-      case 'KeyF': if (view === 'editor') openFind(); else { boardSearch.focus(); boardSearch.select(); } break;
-      case 'KeyS': if (e.shiftKey) hit = false; else { flushAll(); toast('저장했어요 · 원래 자동 저장됩니다'); } break;
-      case 'KeyW': if (view === 'editor') showBoard(); else { flushAll(); host.send('close'); } break;
-      case 'KeyQ': flushAll(); host.send('quit'); break;
-      case 'Comma': openSettings(); break;
-      case 'Equal': case 'NumpadAdd': zoom(1); break;
-      case 'Minus': case 'NumpadSubtract': zoom(-1); break;
-      case 'Digit0': case 'Numpad0': zoom(0); break;
-      case 'Tab': cycle(e.shiftKey ? -1 : 1); break;
+      case 'KeyC': if (!e.shiftKey && view === 'board' && !isTyping(e.target) && selId) copyNote(selId); else hit = false; break;
+      case 'NumpadAdd': zoom(1); break;
+      case 'NumpadSubtract': zoom(-1); break;
+      case 'Numpad0': zoom(0); break;
       default:
         if (/^Digit[1-9]$/.test(code) && !e.shiftKey) { const n = ordered()[+code.slice(5) - 1]; if (n) openNote(n.id); }
         else hit = false;
@@ -2932,11 +3447,16 @@ if (HOST) window.chrome.webview.addEventListener('message', e => {
     case 'board': closeModal(); showBoard(); break;
     case 'new': closeModal(); newNote(); break;
     case 'focus': refocus(); break;
-    case 'hidden': flushAll(); closePop(); break;
+    case 'hidden': flushAll(); closePop(); if (paletteOn && palMode !== 'pop') closeModal(); break;
     case 'winState': app.classList.toggle('maxed', arg === '1'); break;
     case 'hotkeyStatus': onHotkeyStatus(arg); break;
     case 'flush': flushAll(); host.send('flushed'); break;
     case 'toast': toast(arg); break;
+    case 'palette':                               // global "find & paste" hotkey
+      if (arg === 'close') { if (paletteOn) closeModal(); }
+      else if (arg === 'focus') { const i = $('#palIn'); if (i) i.focus(); }
+      else openPalette(arg === 'pop' ? 'pop' : 'in');
+      break;
   }
 });
 
@@ -2961,6 +3481,7 @@ document.execCommand('styleWithCSS', false, false);
 if (!HOST) app.classList.add('web');
 if (firstRun) welcome();
 applyTheme(); applyZoom(); applyFont(); updateSwatches();
+rebuildKeys(); updateKeyHints();
 app.classList.toggle('sb-off', !st.sidebar);
 $('#btnTop').classList.toggle('on', !!st.onTop);
 renderBoard();
@@ -2990,7 +3511,7 @@ setInterval(() => {                                // "3분 전" labels
     if (n && t) { const v = relTime(n.updated); if (t.textContent !== v) t.textContent = v; }
   }
 }, 60000);
-window.__ssn = { S, bodies, openNote, showBoard, newNote, applyHotkeys, saveStateSoon, doPaste, tableOp, undo, redo };   // debugging handle
+window.__ssn = { S, bodies, openNote, showBoard, newNote, applyHotkeys, saveStateSoon, doPaste, tableOp, undo, redo, searchLines, openPalette };   // debugging handle
 })();
 </script>
 </body>
