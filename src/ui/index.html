@@ -365,6 +365,22 @@ select.sel{height:32px;border-radius:9px;border:1px solid var(--line-2);backgrou
 .pal-foot .fill{flex:1}
 .pal-foot kbd{padding:1px 6px;margin-right:5px;border-radius:5px;border:1px solid var(--line-2);color:var(--ink-2)}
 @media (max-width:680px){.pal-pv{display:none}}
+/* quick memo: just a bar and the page, in a small window in the screen corner */
+#quickBar{display:none}
+body.quick #quickBar{display:flex;align-items:center;gap:7px;height:34px;flex:none;padding:0 4px 0 12px;background:var(--top);color:#fff;cursor:default}
+#quickBar>.i{width:15px;height:15px;color:#9cc0ff}
+.qb-t{font-weight:750;font-size:12.5px;letter-spacing:.02em;flex:none}
+.qb-hint{flex:1;min-width:0;font-size:11px;color:rgba(255,255,255,.5);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.qb-btn{width:30px;height:26px;border-radius:7px;display:grid;place-items:center;color:rgba(255,255,255,.82);flex:none}
+.qb-btn .i{width:15px;height:15px}
+.qb-btn:hover{background:rgba(255,255,255,.13);color:#fff}
+.qb-btn.x:hover{background:#e5484d}
+body.quick #titlebar,body.quick #board,body.quick #sidebar,body.quick #noteHead,body.quick #toolbar,body.quick #status{display:none!important}
+body.quick #pane{background:var(--paper)}
+body.quick #doc{margin:0;border:0;border-radius:0;box-shadow:none}
+body.quick #editor{padding:14px 18px 40px}
+body.quick .rz{display:block}
+body.quick .rz.t{top:0;height:3px}
 /* the search window on its own, over another program */
 body.pal-pop{background:var(--menu)}
 body.pal-pop #app{visibility:hidden;content-visibility:hidden}
@@ -387,6 +403,24 @@ body.pal-pop #toasts{bottom:56px}
 .kreset{width:26px;height:26px;border-radius:8px;color:var(--ink-3);font-size:15px}
 .kreset:hover{background:var(--hover);color:var(--ink)}
 .khint{font-size:11.5px;color:var(--ink-3);padding:8px 0 2px;line-height:1.5}
+.hero-btn{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.13);color:rgba(255,255,255,.72);flex:none}
+.hero-btn:hover{background:rgba(255,255,255,.15);color:#fff}
+.hero-btn .i{width:17px;height:17px}
+.dlg.trash{width:min(680px,calc(100vw - 32px))}
+.tr-body{padding:6px 12px 10px;min-height:110px}
+.tr-item{display:flex;align-items:center;gap:12px;padding:8px 10px;border-radius:11px}
+.tr-item:hover{background:var(--hover)}
+.tr-txt{flex:1;min-width:0}
+.tr-txt b{display:block;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tr-txt small{display:block;color:var(--ink-3);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tr-at{flex:none;font-size:11.5px;color:var(--ink-3)}
+.tr-restore{height:30px;padding:0 13px;font-size:12.5px;flex:none}
+.tr-del{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;color:var(--ink-3);flex:none}
+.tr-del .i{width:16px;height:16px}
+.tr-del:hover{background:var(--hover);color:#e5484d}
+.tr-del.arm,.btn.danger.arm{background:#e5484d;color:#fff}
+.btn.danger{color:#e5484d}
+.btn:disabled{opacity:.4;cursor:default;filter:none}
 .help{display:grid;grid-template-columns:1fr 1fr;gap:4px 26px}
 .help h4{grid-column:1/-1;margin:12px 0 4px;font-size:12px;color:var(--accent-ink);letter-spacing:.04em}
 .help div{display:flex;justify-content:space-between;gap:12px;font-size:12.5px;padding:3px 0;border-bottom:1px dashed var(--line)}
@@ -446,6 +480,8 @@ body.maxed .rz,body.web .rz{display:none}
 </svg>
 
 <div id="app">
+  <header id="quickBar" data-drag><svg class="i"><use href="#i-bolt"/></svg><span class="qb-t">빠른 메모</span><span class="qb-hint" id="qbHint">자동 저장</span>
+    <button class="qb-btn" id="qbOpen" title="앱에서 이어서 쓰기"><svg class="i"><use href="#i-open"/></svg></button><button class="qb-btn x" id="qbClose" title="닫기"><svg class="i"><use href="#i-close"/></svg></button></header>
   <header id="titlebar" data-drag>
     <div class="brand">
       <div class="wordmark">SUPER SPEED<span>NOTE</span></div>
@@ -465,6 +501,7 @@ body.maxed .rz,body.web .rz{display:none}
     <section class="hero" data-drag>
       <div class="crumb"><span class="crumb-t">전체 메모</span><span class="pill" id="noteCount">0 / 500</span><span class="pill sel-pill" id="selCount" hidden></span></div>
       <div class="hero-act">
+        <button class="hero-btn" id="btnTrash" data-k="trash" data-t="휴지통 · 지운 메모 복원" title="휴지통 · 지운 메모 복원"><svg class="i"><use href="#i-trash"/></svg></button>
         <label class="search"><svg class="i"><use href="#i-search"/></svg><input id="boardSearch" placeholder="메모 검색" spellcheck="false" autocomplete="off"><kbd data-k="find">Ctrl+F</kbd></label>
         <button class="btn-new" id="btnNew"><svg class="i"><use href="#i-plus"/></svg>새 메모</button>
       </div>
@@ -597,10 +634,10 @@ const host = {
     else devHost(parts);
   }
 };
-function devHost([cmd, a, b]) {           // browser preview: keep data in localStorage
+function devHost([cmd, a, b, c]) {        // browser preview: keep data in localStorage
   try {
     if (cmd === 'saveNote') localStorage.setItem('ssn.n.' + a, b);
-    else if (cmd === 'delNote') localStorage.removeItem('ssn.n.' + a);
+    else if (cmd === 'delNote' || cmd.startsWith('trash') || cmd === 'unTrash') devTrash(cmd, a, b, c);
     else if (cmd === 'saveState') localStorage.setItem('ssn.state', a);
   } catch (e) { /* storage unavailable */ }
 }
@@ -631,7 +668,8 @@ const firstRun = !S && !Object.keys(bodies).length;
 if (!S || !Array.isArray(S.notes)) S = { v: 1, notes: [], settings: {} };
 S.settings = Object.assign({
   theme: 'light', closeToTray: true, onTop: false, fontSize: 15, font: 'ui', sidebar: true,
-  appHotkey: { mods: 3, vk: 78, label: 'Ctrl+Alt+N' }, findHotkey: { mods: 3, vk: 70, code: 'KeyF', label: 'Ctrl+Alt+F' }, fg: '#d92d20', hl: '#fff176'
+  appHotkey: { mods: 3, vk: 78, label: 'Ctrl+Alt+N' }, findHotkey: { mods: 3, vk: 70, code: 'KeyF', label: 'Ctrl+Alt+F' },
+  quickHotkey: { mods: 3, vk: 77, code: 'KeyM', label: 'Ctrl+Alt+M' }, fg: '#d92d20', hl: '#fff176'
 }, S.settings || {});
 const st = S.settings;
 // v1.2: the first default (Ctrl+Alt+Space) is taken by other apps (e.g. Claude desktop) -> F for "find"
@@ -1054,10 +1092,10 @@ function renameInline(id) {
 }
 
 // ---------------------------------------------------------------- notes
-function newNote() {
-  if (S.notes.length >= MAX_NOTES) { toast(`메모는 ${MAX_NOTES}개까지 만들 수 있어요`); return; }
+function newNote(front) {                        // front === true: first in the list (quick memos)
+  if (S.notes.length >= MAX_NOTES) { toast(`메모는 ${MAX_NOTES}개까지 만들 수 있어요`); return false; }
   const n = { id: uid(), title: '', color: COLOR_KEYS[S.notes.length % COLOR_KEYS.length], pinned: false, hotkey: null, created: now(), updated: now(), preview: '' };
-  S.notes.push(n);
+  if (front === true) S.notes.unshift(n); else S.notes.push(n);
   bodies[n.id] = '<div><br></div>';
   host.send('saveNote', n.id, bodies[n.id]);
   saveStateSoon();
@@ -1078,7 +1116,12 @@ function deleteNotes(ids) {
   items.sort((a, b) => a.i - b.i);
   const gone = new Set(items.map(x => x.meta.id));
   S.notes = S.notes.filter(n => !gone.has(n.id));
-  for (const x of items) { const id = x.meta.id; delete bodies[id]; H.delete(id); textCache.delete(id); host.send('delNote', id); }
+  for (const x of items) {                        // empty: gone for good; else to the trash with its title, colour, place
+    const id = x.meta.id;
+    x.empty = !x.meta.title && emptyHtml(x.html);
+    delete bodies[id]; H.delete(id); textCache.delete(id); memo.delete(id);
+    host.send('delNote', id, x.empty ? 'purge' : 'trash', x.empty ? '' : JSON.stringify(Object.assign({}, x.meta, { pos: x.i })));
+  }
   multi.clear(); sbMulti.clear(); sbAnchor = null;
   stateDirty = true; flushState();
   applyHotkeys();
@@ -1091,6 +1134,7 @@ function deleteNotes(ids) {
       S.notes.splice(Math.min(x.i, S.notes.length), 0, x.meta);
       bodies[x.meta.id] = x.html;
       host.send('saveNote', x.meta.id, x.html);
+      if (!x.empty) host.send('unTrash', x.meta.id);   // no copy left behind in the trash
     }
     stateDirty = true; flushState();
     applyHotkeys();
@@ -1306,6 +1350,7 @@ $('#hMore').onclick = e => { const r = e.currentTarget.getBoundingClientRect(); 
 $('#btnBack').onclick = showBoard;
 $('#btnSbNew').onclick = newNote;
 $('#btnNew').onclick = newNote;
+$('#btnTrash').onclick = openTrash;
 
 // ---------------------------------------------------------------- selection utils
 function selRange() {
@@ -2765,7 +2810,7 @@ function lineHTML(s, terms, P, max = 220) {
   let a = 0, b = s.length;
   if (b > max) {
     const f = P ? P.a : hit.indexOf(1);
-    a = Math.max(0, (f < 0 ? 0 : f) - 50); b = Math.min(s.length, a + max);
+    a = Math.max(0, (f < 0 ? 0 : f) - (P ? 12 : 50)); b = Math.min(s.length, a + max);
   }
   const pre = a ? '…' : '', post = b < s.length ? '…' : '';
   if (!P || P.a < a || P.b > b) return pre + marked(s, hit, a, b) + post;
@@ -2784,7 +2829,8 @@ function openPalette(mode) {
   if (cur) flushNote();
   openModal(`<div class="dlg qs pal"><div class="qs-in">${ic('i-search')}<input id="palIn" placeholder="찾을 내용 (초성도 돼요) → Enter로 바로 붙여넣기" spellcheck="false" autocomplete="off"><kbd>Esc</kbd></div>` +
     `<div class="pal-body"><div class="qs-list" id="palList"></div><div class="pal-pv" id="palPv"></div></div>` +
-    `<div class="pal-foot"><span><kbd>Enter</kbd>붙여넣기</span><span><kbd>Tab</kbd>칸·단어만</span><span><kbd>Shift+Enter</kbd>복사만</span><span><kbd>Ctrl+Enter</kbd>메모 열기</span><span><kbd>Alt+1~9</kbd>바로 붙여넣기</span><span class="fill"></span><span><kbd>Esc</kbd>${mode === 'pop' ? '돌아가기' : '닫기'}</span></div></div>`,
+    (mode === 'quick' ? `<div class="pal-foot"><span><kbd>Enter</kbd>메모에 넣기</span><span><kbd>Tab</kbd>칸·단어만</span><span><kbd>Alt+1~9</kbd>바로 넣기</span><span class="fill"></span><span><kbd>Esc</kbd>닫기</span></div></div>`
+      : `<div class="pal-foot"><span><kbd>Enter</kbd>붙여넣기</span><span><kbd>Tab</kbd>칸·단어만</span><span><kbd>Shift+Enter</kbd>복사만</span><span><kbd>Ctrl+Enter</kbd>메모 열기</span><span><kbd>Alt+1~9</kbd>바로 붙여넣기</span><span class="fill"></span><span><kbd>Esc</kbd>${mode === 'pop' ? '돌아가기' : '닫기'}</span></div></div>`),
     () => { paletteOn = false; app.classList.remove('pal-pop'); host.send('palette', '0'); });
   paletteOn = true;
   host.send('palette', '1');
@@ -2794,7 +2840,7 @@ function openPalette(mode) {
   const itemHTML = (it, i) => {
     const P = it.part >= 0 ? partsOf(it.x)[it.part] : null;
     return `<div class="qs-item${i === idx ? ' on' : ''}" data-i="${i}"><span class="c-dot" style="--c:${NOTE_COLORS[it.n.color]}"></span>` +
-      `<div class="qs-txt"><b>${lineHTML(it.x.s, terms, P)}</b><small>${where(it)}${P && P.k ? ` · <em class="pal-col">${esc(P.k)}</em>` : ''}</small></div>${i < 9 ? `<kbd class="pal-n">${i + 1}</kbd>` : ''}</div>`;
+      `<div class="qs-txt"><b>${lineHTML(it.x.s, terms, P, P && innerWidth < 700 ? 40 : 220)}</b><small>${where(it)}${P && P.k ? ` · <em class="pal-col">${esc(P.k)}</em>` : ''}</small></div>${i < 9 ? `<kbd class="pal-n">${i + 1}</kbd>` : ''}</div>`;
   };
   const preview = () => {
     const it = items[idx];
@@ -2834,6 +2880,13 @@ function openPalette(mode) {
     const it = items[i];
     if (!it) return;
     const pop = palMode === 'pop';
+    if (palMode === 'quick') {                    // writing a quick memo: the line goes into the memo
+      rememberUse(it);
+      const p = payloadOf(it);
+      closeModal();                               // puts the caret back where it was
+      edit(() => exec('insertText', p.text));
+      return;
+    }
     if (how === 'open') {
       const t = terms.find(x => it.x.l.includes(x)) || it.x.s.split('\t').find(Boolean).slice(0, 40);
       const L = linesOf(it.n.id), tl = t.toLowerCase();
@@ -2883,6 +2936,153 @@ function openPalette(mode) {
   list.addEventListener('click', e => { const it = e.target.closest('.qs-item'); if (it) pick(+it.dataset.i, e.ctrlKey ? 'open' : e.shiftKey ? 'copy' : 'paste'); });
   render();
   inp.focus();
+}
+
+// ---------------------------------------------------------------- quick memo (global hotkey: a new note in the screen corner)
+// The page itself becomes the small window: just a bar and the editor on a new note. It stays put while
+// you work elsewhere. Put away (hotkey again / X): an empty memo is dropped and the app goes back to what
+// it showed before. Opening the app meanwhile carries the memo on in the app window.
+let quickOn = false, quickId = null, quickPrev = null;
+function emptyHtml(h) { return !/<(img|table|hr)\b/i.test(h || '') && !frag(h).textContent.trim(); }
+function noteEmpty(id) {
+  const n = noteById(id);
+  return !!n && !n.title && emptyHtml(id === cur ? editor.innerHTML : bodies[id]);
+}
+function dropNote(id) {                           // silent: nothing was written in it
+  if (cur === id) { clearTimeout(saveT); dirty = false; cur = null; }
+  S.notes = S.notes.filter(n => n.id !== id);
+  delete bodies[id]; H.delete(id); textCache.delete(id); memo.delete(id);
+  host.send('delNote', id, 'purge');
+  stateDirty = true; flushState();
+}
+function quickStart() {
+  if (quickOn) { host.send('quick', '1'); return; }
+  closeModal(); closePop();
+  if (S.notes.length >= MAX_NOTES) { host.send('quick', 'full'); return; }
+  quickPrev = { view, cur };
+  quickOn = true;
+  app.classList.add('quick');
+  newNote(true);
+  quickId = cur;
+  $('#qbHint').textContent = '자동 저장' + (st.quickHotkey ? ' · ' + st.quickHotkey.label + ' 닫기' : '');
+  host.send('quick', '1');
+}
+// how: 'close' = put away, 'main' = keep writing in the app window
+function quickEnd(how) {
+  if (!quickOn) return;
+  quickOn = false;
+  app.classList.remove('quick');
+  closeModal();
+  const id = quickId, here = cur === id;
+  if (here) flushNote();
+  const empty = noteEmpty(id);
+  if (!here) { if (empty) dropNote(id); renderSidebar(true); return; }      // already moved on to another note
+  if (how === 'main' && !empty) { renderSidebar(true); renderHead(); posOvSoon(); refocus(); return; }
+  if (empty) dropNote(id); else leaveNote();
+  cur = null;
+  const p = quickPrev;
+  if (p && p.view === 'editor' && p.cur && noteById(p.cur)) openNote(p.cur); else showBoard();
+}
+$('#qbClose').onclick = () => { quickEnd('close'); host.send('quick', '0'); };
+$('#qbOpen').onclick = () => { quickEnd('main'); host.send('quick', 'main'); };
+
+// ---------------------------------------------------------------- trash (휴지통)
+// Read from disk only while this dialog is open, so it costs nothing the rest of the time.
+let trashItems = null;
+function openTrash() {
+  openModal(`<div class="dlg wide trash"><div class="dlg-head">${ic('i-trash')}<h3>휴지통</h3><span class="dlg-sub" id="trSub">불러오는 중…</span></div>` +
+    `<div class="dlg-body tr-body" id="trList"></div><div class="dlg-foot"><span class="ver">지운 메모는 비우기 전까지 보관 · 빈 메모는 바로 지워져요</span><span style="flex:1"></span>` +
+    `<button class="btn ghost danger" id="trEmpty" disabled>휴지통 비우기</button><button class="btn primary" id="trDone">닫기</button></div></div>`, () => { trashItems = null; });
+  trashItems = [];
+  $('#trDone').onclick = closeModal;
+  $('#trList').onclick = e => {
+    const b = e.target.closest('button'), row = e.target.closest('.tr-item');
+    if (!b || !row || !trashItems) return;
+    const x = trashItems[+row.dataset.i];
+    if (b.dataset.act === 'restore') restoreTrash(x);
+    else if (b.classList.contains('arm')) { host.send('trashPurge', x.f); trashItems = trashItems.filter(t => t !== x); renderTrash(); }
+    else arm(b, '한 번 더 누르면 영구 삭제');
+  };
+  $('#trEmpty').onclick = e => {
+    const b = e.currentTarget;
+    if (!b.classList.contains('arm')) { arm(b, '', `정말 비울까요? ${trashItems.length}개 영구 삭제`); return; }
+    host.send('trashEmpty');
+    trashItems = []; renderTrash();
+    toast('휴지통을 비웠어요');
+  };
+  host.send('trashList');
+}
+// two-step for anything permanent: the first click arms the button for a few seconds
+function arm(b, title, text) {
+  const t0 = b.title, x0 = b.innerHTML;
+  b.classList.add('arm');
+  if (title) b.title = title;
+  if (text) b.textContent = text;
+  setTimeout(() => { if (b.isConnected) { b.classList.remove('arm'); b.title = t0; b.innerHTML = x0; } }, 3000);
+}
+function onTrash(json) {
+  if (!$('#trList')) return;
+  let list = [];
+  try { list = JSON.parse(json); } catch (e) { /* unreadable: show it empty */ }
+  trashItems = list.map(x => { let m = null; try { m = x.m ? JSON.parse(x.m) : null; } catch (e) { /* old file without info */ } return { f: x.f, at: x.at, m, p: x.p || '' }; });
+  renderTrash();
+}
+function renderTrash() {
+  const list = $('#trList');
+  if (!list || !trashItems) return;
+  const n = trashItems.length, b = $('#trEmpty');
+  $('#trSub').textContent = n ? `지운 메모 ${n}개` : '';
+  b.disabled = !n; b.classList.remove('arm'); b.textContent = '휴지통 비우기';
+  list.innerHTML = trashItems.map((x, i) => {
+    const m = x.m || {}, lines = x.p.split('\n');               // x.p: the note's first lines
+    const title = m.title || m.line1 || (lines[0] || '').slice(0, 60) || '제목 없음';
+    const pv = (m.title ? lines : lines.slice(1)).join(' ').slice(0, 90);
+    return `<div class="tr-item" data-i="${i}"><span class="c-dot" style="--c:${NOTE_COLORS[m.color] || NOTE_COLORS.navy}"></span>` +
+      `<div class="tr-txt"><b>${esc(title)}</b><small>${esc(pv) || '&nbsp;'}</small></div><span class="tr-at">${relTime(x.at)} 삭제</span>` +
+      `<button class="btn tr-restore" data-act="restore">복원</button><button class="tr-del" title="영구 삭제">${ic('i-trash')}</button></div>`;
+  }).join('') || '<div class="qs-empty">휴지통이 비어 있어요</div>';
+}
+function restoreTrash(x) {
+  if (S.notes.length >= MAX_NOTES) { toast(`메모는 ${MAX_NOTES}개까지예요 · 다른 메모를 지운 뒤 복원해 주세요`); return; }
+  const old = x.m && x.m.id;
+  const id = old && /^[A-Za-z0-9_-]{1,64}$/.test(old) && !noteById(old) ? old : uid();
+  host.send('trashRestore', x.f, id);
+}
+function onTrashRestored(arg) {                   // file name, new id, saved info, contents
+  const p = arg.split(SEP), f = p[0], id = p[1], html = p.slice(3).join(SEP);
+  if (trashItems) { trashItems = trashItems.filter(t => t.f !== f); renderTrash(); }
+  if (!id) { toast('복원하지 못했어요 · 이미 복원했거나 파일이 없어요'); return; }
+  let m = {};
+  try { m = p[2] ? JSON.parse(p[2]) : {}; } catch (e) { /* no info: defaults */ }
+  const root = frag(html);
+  const n = { id, title: m.title || '', color: NOTE_COLORS[m.color] ? m.color : 'navy', pinned: !!m.pinned, hotkey: null,
+    created: m.created || now(), updated: m.updated || now(), preview: previewOf(root), line1: firstLineOf(root) };
+  if (m.hotkey && m.hotkey.vk && !hkOwner(m.hotkey, id)) n.hotkey = m.hotkey;   // its hotkey too, unless taken since
+  S.notes.splice(Math.min(typeof m.pos === 'number' ? m.pos : 0, S.notes.length), 0, n);
+  bodies[id] = html;
+  stateDirty = true; flushState();
+  if (n.hotkey) applyHotkeys();
+  if (view === 'board') selId = id;
+  rerender();
+  toast(`‘${titleOf(n) || '제목 없음'}’ 복원했어요`, '열기', () => { closeModal(); openNote(id); });
+}
+function devTrash(cmd, a, b, c) {                 // browser preview: the trash in localStorage
+  const all = () => Object.keys(localStorage).filter(k => k.startsWith('ssn.t.'));
+  if (cmd === 'delNote') {
+    const h = localStorage.getItem('ssn.n.' + a);
+    localStorage.removeItem('ssn.n.' + a);
+    if (b !== 'purge' && h != null) localStorage.setItem('ssn.t.' + a + '_' + Date.now(), JSON.stringify({ m: c || '', h, at: Date.now() }));
+  } else if (cmd === 'trashList') {
+    const list = all().map(k => { const v = JSON.parse(localStorage.getItem(k)); return { f: k.slice(6), at: v.at, m: v.m, p: toPlain(frag(v.h)).split('\n').filter(l => l.trim()).slice(0, 6).join('\n') }; }).sort((x, y) => y.at - x.at);
+    setTimeout(() => onTrash(JSON.stringify(list)), 30);
+  } else if (cmd === 'trashRestore') {
+    const v = JSON.parse(localStorage.getItem('ssn.t.' + a) || 'null');
+    localStorage.removeItem('ssn.t.' + a);
+    if (v) localStorage.setItem('ssn.n.' + b, v.h);
+    setTimeout(() => onTrashRestored([a, v ? b : '', v ? v.m : '', v ? v.h : ''].join(SEP)), 30);
+  } else if (cmd === 'trashPurge') localStorage.removeItem('ssn.t.' + a);
+  else if (cmd === 'trashEmpty') all().forEach(k => localStorage.removeItem(k));
+  else if (cmd === 'unTrash') { const k = all().filter(k => k.startsWith('ssn.t.' + a + '_')).sort().pop(); if (k) localStorage.removeItem(k); }
 }
 
 // ---------------------------------------------------------------- quick switcher (Ctrl+K)
@@ -3008,6 +3208,7 @@ function hkConflictName(c) { const p = c && hkProblem(c); return p && p.lvl === 
 function hkOwner(c, skip) {
   if (skip !== '@app' && sameKey(st.appHotkey, c)) return '앱 부르기';
   if (skip !== '@find' && sameKey(st.findHotkey, c)) return '한 줄 찾아 붙여넣기';
+  if (skip !== '@quick' && sameKey(st.quickHotkey, c)) return '빠른 메모';
   const n = S.notes.find(x => x.id !== skip && sameKey(x.hotkey, c));
   return n ? (titleOf(n) || '제목 없음') : '';
 }
@@ -3015,6 +3216,7 @@ function applyHotkeys() {
   const parts = [];
   if (st.appHotkey) parts.push(['@app', st.appHotkey.mods, st.appHotkey.vk].join(','));
   if (st.findHotkey) parts.push(['@find', st.findHotkey.mods, st.findHotkey.vk].join(','));
+  if (st.quickHotkey) parts.push(['@quick', st.quickHotkey.mods, st.quickHotkey.vk].join(','));
   for (const n of S.notes) if (n.hotkey) parts.push([n.id, n.hotkey.mods, n.hotkey.vk].join(','));
   host.send('hotkeys', parts.join(';'));
 }
@@ -3079,6 +3281,7 @@ function takeKey(c, owner) {            // a combo lives in one place only
   if (!c) return;
   if (owner !== '@app' && sameKey(st.appHotkey, c)) st.appHotkey = null;
   if (owner !== '@find' && sameKey(st.findHotkey, c)) st.findHotkey = null;
+  if (owner !== '@quick' && sameKey(st.quickHotkey, c)) st.quickHotkey = null;
   for (const n of S.notes) if (n.id !== owner && sameKey(n.hotkey, c)) n.hotkey = null;
   // a global hotkey wins over an in-app shortcut on the same keys: free that one
   const lo = localOwner(c, null);
@@ -3097,23 +3300,27 @@ function setNoteHotkey(id, after) {
   }, after);
 }
 const hkWarned = new Set();
-function hotkeyOf(key) { return key === '@app' ? st.appHotkey : key === '@find' ? st.findHotkey : (noteById(key) || {}).hotkey; }
-// the find hotkey you never chose yourself moves on to a free combo if another program already has it
-const FIND_KEYS = [{ mods: 3, vk: 70, code: 'KeyF', label: 'Ctrl+Alt+F' }, { mods: 3, vk: 32, code: 'Space', label: 'Ctrl+Alt+Space' },
-  { mods: 7, vk: 70, code: 'KeyF', label: 'Ctrl+Alt+Shift+F' }, { mods: 3, vk: 74, code: 'KeyJ', label: 'Ctrl+Alt+J' }];
-const findTried = new Set();
+function hotkeyOf(key) { return key === '@app' ? st.appHotkey : key === '@find' ? st.findHotkey : key === '@quick' ? st.quickHotkey : (noteById(key) || {}).hotkey; }
+// a default global hotkey you never chose yourself moves on to a free combo if another program already has it
+const AUTO_KEYS = {
+  '@find': { prop: 'findHotkey', mine: 'findHotkeyMine', name: '한 줄 찾아 붙여넣기', keys: [{ mods: 3, vk: 70, code: 'KeyF', label: 'Ctrl+Alt+F' },
+    { mods: 3, vk: 32, code: 'Space', label: 'Ctrl+Alt+Space' }, { mods: 7, vk: 70, code: 'KeyF', label: 'Ctrl+Alt+Shift+F' }, { mods: 3, vk: 74, code: 'KeyJ', label: 'Ctrl+Alt+J' }] },
+  '@quick': { prop: 'quickHotkey', mine: 'quickHotkeyMine', name: '빠른 메모', keys: [{ mods: 3, vk: 77, code: 'KeyM', label: 'Ctrl+Alt+M' },
+    { mods: 7, vk: 77, code: 'KeyM', label: 'Ctrl+Alt+Shift+M' }, { mods: 3, vk: 81, code: 'KeyQ', label: 'Ctrl+Alt+Q' }, { mods: 3, vk: 186, code: 'Semicolon', label: 'Ctrl+Alt+;' }] }
+};
+const autoTried = new Set();
 function onHotkeyStatus(list) {
   hkFailed = new Set(list ? list.split(',') : []);
-  if (hkFailed.has('@find') && !st.findHotkeyMine && st.findHotkey) {
-    findTried.add(st.findHotkey.mods + ':' + st.findHotkey.vk);
-    const next = FIND_KEYS.find(c => !findTried.has(c.mods + ':' + c.vk) && !hkOwner(c, '@find') && !localOwner(c, null));
-    if (next) {
-      const was = st.findHotkey.label;
-      st.findHotkey = Object.assign({}, next);
-      saveStateSoon(); applyHotkeys();
-      toast(`${was}은(는) 다른 프로그램이 쓰고 있어서 ‘한 줄 찾아 붙여넣기’를 ${next.label}(으)로 정했어요 · 설정에서 바꿀 수 있어요`);
-      return;
-    }
+  for (const [key, A] of Object.entries(AUTO_KEYS)) {
+    const curK = st[A.prop];
+    if (!hkFailed.has(key) || st[A.mine] || !curK) continue;
+    autoTried.add(key + curK.mods + ':' + curK.vk);
+    const next = A.keys.find(c => !autoTried.has(key + c.mods + ':' + c.vk) && !hkOwner(c, key) && !localOwner(c, null));
+    if (!next) continue;
+    st[A.prop] = Object.assign({}, next);
+    saveStateSoon(); applyHotkeys();
+    toast(`${curK.label}은(는) 다른 프로그램이 쓰고 있어서 ‘${A.name}’을(를) ${next.label}(으)로 정했어요 · 설정에서 바꿀 수 있어요`);
+    return;
   }
   if (hkJustSet) {
     const c = hotkeyOf(hkJustSet), label = c && c.label, clash = hkConflictName(c);
@@ -3133,6 +3340,7 @@ function onHotkeyStatus(list) {
   if (modalOpen() && $('#setAppHk')) {
     $('#setAppHk').classList.toggle('bad', hkFailed.has('@app'));
     $('#setFindHk').classList.toggle('bad', hkFailed.has('@find'));
+    $('#setQuickHk').classList.toggle('bad', hkFailed.has('@quick'));
     for (const b of $$('[data-note]', modal)) b.classList.toggle('bad', hkFailed.has(b.dataset.note));
   }
 }
@@ -3156,8 +3364,9 @@ const ACTIONS = [
   { id: 'zoomReset', g: '앱 전체', n: '글자 크기 원래대로', k: [2, 'Digit0'], run: () => zoom(0) },
   { id: 'onTop', g: '앱 전체', n: '항상 위에 표시 켜기 / 끄기', k: null, run: () => { setOnTop(!st.onTop); toast(st.onTop ? '항상 위에 표시' : '항상 위에 표시 끔'); } },
   { id: 'theme', g: '앱 전체', n: '라이트 / 다크 바꾸기', k: null, run: () => setTheme(st.theme === 'dark' ? 'light' : 'dark') },
+  { id: 'trash', g: '앱 전체', n: '휴지통 (지운 메모 복원)', k: null, run: () => openTrash() },
   { id: 'sidebar', g: '앱 전체', n: '메모 목록 접기 / 펼치기', k: null, run: () => $('#hSide').click() },
-  { id: 'palette', g: '꺼내 쓰기', n: '한 줄 찾아 붙여넣기 (앱 안에서)', k: [6, 'KeyF'], run: () => openPalette('key') },
+  { id: 'palette', g: '꺼내 쓰기', n: '한 줄 찾아 붙여넣기 (앱 안에서)', k: [6, 'KeyF'], run: () => openPalette(quickOn ? 'quick' : 'key') },
   { id: 'sendPaste', g: '꺼내 쓰기', n: '복사 → 원래 창에 바로 붙여넣기', k: [6, 'Enter'], run: () => sendOut('paste') },
   { id: 'sendCopy', g: '꺼내 쓰기', n: '복사 → 원래 창으로', k: [6, 'KeyC'], run: () => sendOut('copy') },
   { id: 'bold', s: 'ed', g: '편집 (메모 안)', n: '굵게', k: [2, 'KeyB'], run: () => fmt('bold') },
@@ -3179,6 +3388,7 @@ const ACTIONS = [
   { id: 'para', s: 'ed', g: '편집 (메모 안)', n: '본문으로', k: null, run: () => setBlock('div') }
 ];
 const ACT = new Map(ACTIONS.map(a => [a.id, a]));
+const QUICK_OK = new Set(['find', 'save', 'zoomIn', 'zoomOut', 'zoomReset', 'help', 'theme', 'palette', 'sendPaste', 'sendCopy']);
 // keys that keep their meaning everywhere (copy, undo, open n-th note, ...): they can't be reassigned
 const FIXED_KEYS = (() => {
   const m = new Map(), C = 2, S = 4, A = 1;
@@ -3272,6 +3482,7 @@ function openSettings(tab) {
     let h = `<h4 class="kh">어디서든 · 전역 단축키 <small>다른 프로그램을 쓰다가 눌러도 동작</small></h4>` +
       krow('앱 부르기 / 원래 창으로', '', chip(st.appHotkey, 'id="setAppHk"', hkFailed.has('@app'))) +
       krow('한 줄 찾아 바로 붙여넣기', '쓰던 창 위에 검색창이 떠요', chip(st.findHotkey, 'id="setFindHk"', hkFailed.has('@find'))) +
+      krow('빠른 메모', '화면 구석에 새 메모 · 한 번 더 누르면 닫기', chip(st.quickHotkey, 'id="setQuickHk"', hkFailed.has('@quick'))) +
       hkNotes.map(n => krow(`메모 · ${esc(titleOf(n) || '제목 없음')}`, '', chip(n.hotkey, `data-note="${n.id}"`, hkFailed.has(n.id)))).join('') +
       `<div class="khint">메모마다 단축키는 메모 위쪽의 ⌨ 버튼으로 지정해요.</div>`;
     let g = '';
@@ -3284,13 +3495,14 @@ function openSettings(tab) {
     body = h;
   } else {
     body = `${row('테마', '네이비 & 화이트', `<div class="seg" id="setTheme"><button data-v="light">라이트</button><button data-v="dark">다크 네이비</button></div>`)}
-    ${row('단축키', `앱 부르기 ${esc(kl0(st.appHotkey))} · 찾아 붙여넣기 ${esc(kl0(st.findHotkey))} · 모든 단축키를 바꿀 수 있어요`, `<button class="btn" id="setGoKeys">단축키 설정</button>`)}
+    ${row('단축키', `앱 부르기 ${esc(kl0(st.appHotkey))} · 찾아 붙여넣기 ${esc(kl0(st.findHotkey))} · 빠른 메모 ${esc(kl0(st.quickHotkey))}`, `<button class="btn" id="setGoKeys">단축키 설정</button>`)}
     ${row('닫기(X) → 트레이로 숨기기', '켜 두면 다음 호출이 즉시 열립니다 (권장)', sw('closeToTray', st.closeToTray))}
     ${row('Windows 시작 시', '<span class="wrap"><b>단축키 대기</b> 꺼져 있어도 단축키로 열림 · 메모리 거의 안 씀 · 첫 호출 약 1초<br><b>트레이 상주</b> 언제나 즉시 열림 · 메모리 더 사용</span>', `<div class="seg" id="setStart"><button data-v="off">끔</button><button data-v="standby">단축키 대기</button><button data-v="tray">트레이 상주</button></div>`)}
     ${row('항상 위에 표시', '', sw('onTop', st.onTop))}
     ${row('에디터 글꼴', '', `<select class="sel" id="setFont">${Object.entries(FONTS).map(([k, v]) => `<option value="${k}"${st.font === k ? ' selected' : ''}>${v[0]}</option>`).join('')}</select>`)}
     ${row('글자 크기', 'Ctrl + 마우스 휠로도 조절', `<div class="seg"><button data-z="-1">−</button><span class="val" id="setZ">${st.fontSize}px</span><button data-z="1">+</button></div>`)}
-    ${row('데이터 폴더', esc(boot.dataDir || ''), `<div class="row-btns"><button class="btn" id="setOpen">${HOST ? '열기' : '-'}</button><button class="btn" id="setBackup">지금 백업</button></div>`)}`;
+    ${row('데이터 폴더', esc(boot.dataDir || ''), `<div class="row-btns"><button class="btn" id="setOpen">${HOST ? '열기' : '-'}</button><button class="btn" id="setBackup">지금 백업</button></div>`)}
+    ${row('휴지통', '지운 메모 복원 · 영구 삭제 · 비우기 (빈 메모는 바로 지워져요)', `<button class="btn" id="setTrash">휴지통 열기</button>`)}`;
   }
   openModal(`<div class="dlg wide set"><div class="dlg-head">${ic('i-gear')}<h3>설정</h3><span style="flex:1"></span><div class="seg" id="setTabs"><button data-v="general"${tab === 'general' ? ' class="on"' : ''}>일반</button><button data-v="keys"${tab === 'keys' ? ' class="on"' : ''}>단축키</button></div></div><div class="dlg-body" id="setBody">${body}</div>` +
     `<div class="dlg-foot">${tab === 'keys' ? '<button class="btn ghost" id="setResetKeys">앱 안 단축키 모두 기본값으로</button>' : `<span class="ver">Super Speed Note ${esc(boot.version || '')} · 자동 저장 · 매일 자동 백업(14일)</span>`}<span style="flex:1"></span><button class="btn primary" id="setDone">완료</button></div></div>`);
@@ -3301,6 +3513,7 @@ function openSettings(tab) {
     const sb = $('#setBody');
     sb.scrollTop = keysScroll;
     sb.addEventListener('scroll', () => { keysScroll = sb.scrollTop; });
+    $('#setQuickHk').onclick = () => recordHotkey('빠른 메모', st.quickHotkey, '@quick', c => { takeKey(c, '@quick'); st.quickHotkey = c; st.quickHotkeyMine = true; hkJustSet = c ? '@quick' : null; saveStateSoon(); applyHotkeys(); rerender(); }, back);
     $('#setFindHk').onclick = () => recordHotkey('한 줄 찾아 바로 붙여넣기', st.findHotkey, '@find', c => { takeKey(c, '@find'); st.findHotkey = c; st.findHotkeyMine = true; hkJustSet = c ? '@find' : null; saveStateSoon(); applyHotkeys(); rerender(); }, back);
     $('#setAppHk').onclick = () => recordHotkey('앱 부르기 / 원래 창으로', st.appHotkey, '@app', c => { takeKey(c, '@app'); st.appHotkey = c; hkJustSet = c ? '@app' : null; saveStateSoon(); applyHotkeys(); rerender(); }, back);
     for (const b of $$('[data-note]', modal)) b.onclick = () => setNoteHotkey(b.dataset.note, back);
@@ -3346,6 +3559,7 @@ function openSettings(tab) {
   $('#setOpen').onclick = () => host.send('openData');
   $('#setBackup').onclick = () => { flushAll(); host.send('backup'); if (!HOST) toast('브라우저 미리보기에서는 백업하지 않아요'); };
   $('#setGoKeys').onclick = () => openSettings('keys');
+  $('#setTrash').onclick = openTrash;
 }
 let keysScroll = 0;
 const kl0 = k => k ? k.label : '없음';
@@ -3354,9 +3568,9 @@ function showHelp() {
   const k = id => kl(id, '');
   const join = (...ids) => ids.map(k).filter(Boolean).join(' / ');
   openModal(`<div class="dlg wide"><div class="dlg-head">${ic('i-help')}<h3>단축키</h3><span class="dlg-sub">바꾸려면 설정 › 단축키</span></div><div class="dlg-body"><div class="help">
-    ${g('어디서든 (전역)', [['앱 부르기 / 원래 창으로', kl0(st.appHotkey)], ['한 줄 찾아 바로 붙여넣기', kl0(st.findHotkey)], ['메모별 단축키', '누르면 열기 · 다시 누르면 이전 창']])}
+    ${g('어디서든 (전역)', [['앱 부르기 / 원래 창으로', kl0(st.appHotkey)], ['한 줄 찾아 바로 붙여넣기', kl0(st.findHotkey)], ['빠른 메모 (화면 구석에 새 메모 / 닫기)', kl0(st.quickHotkey)], ['메모별 단축키', '누르면 열기 · 다시 누르면 이전 창']])}
     ${g('찾아 붙여넣기 검색창', [['원래 창에 바로 붙여넣기', 'Enter / 클릭'], ['N번째 결과 바로 붙여넣기', 'Alt+1~9'], ['칸 · 단어만 골라 붙여넣기', 'Tab / Shift+Tab'], ['복사만 하고 돌아가기', 'Shift+Enter'], ['그 메모 열기', 'Ctrl+Enter'], ['그냥 돌아가기', 'Esc'], ['초성으로 찾기', 'ㄱㅊㅅ → 김철수']])}
-    ${g('메모 보드', [['선택 이동', '← ↑ → ↓'], ['열기', 'Enter / 더블클릭'], ['이름 바꾸기', 'F2'], ['삭제 (되돌리기 가능)', 'Del'], ['여러 개 선택', 'Shift+클릭·방향키 / Ctrl+클릭 / Ctrl+A'], ['새 메모', k('newNote')], ['N번째 메모 열기', 'Ctrl+1~9'], ['빠른 이동', k('switcher')], ['검색', k('find')]])}
+    ${g('메모 보드', [['선택 이동', '← ↑ → ↓'], ['열기', 'Enter / 더블클릭'], ['이름 바꾸기', 'F2'], ['삭제 (되돌리기 · 휴지통에서 복원)', 'Del'], ['여러 개 선택', 'Shift+클릭·방향키 / Ctrl+클릭 / Ctrl+A'], ['새 메모', k('newNote')], ['N번째 메모 열기', 'Ctrl+1~9'], ['빠른 이동', k('switcher')], ['검색', k('find')]])}
     ${g('편집', [['굵게 / 밑줄 / 기울임', join('bold', 'underline', 'italic')], ['취소선', k('strike')], ['글자색', k('fgColor')], ['형광펜', k('hl')], ['서식 지우기', k('clearFmt')], ['글머리 / 번호 목록', join('ul', 'ol')], ['체크리스트', k('chk')], ['제목 1 / 2 / 3', join('h1', 'h2', 'h3')], ['구분선', k('hr')], ['날짜·시간', k('stamp')], ['서식 없이 붙여넣기', 'Ctrl+Shift+V'], ['찾기', k('find')], ['확대 / 축소', ['Ctrl+휠', join('zoomIn', 'zoomOut')].filter(Boolean).join(', ')], ['보드로', 'Esc'], ['다음 / 이전 메모', join('nextNote', 'prevNote')], ['실행 취소 / 다시', 'Ctrl+Z / Ctrl+Y'], ['끄기 (단축키는 대기)', k('quit')]])}
     ${g('표 (엑셀처럼)', [['칸 선택·이동', '클릭 / 방향키'], ['범위 선택', 'Shift+방향키 / 드래그'], ['선택한 칸에 바로 입력', '기존 값을 새로 씀'], ['칸 편집 (끝에 커서)', 'F2 / 더블클릭'], ['편집 취소', 'Esc'], ['칸 지우기', 'Delete'], ['아래 칸 / 마지막 행이면 행 추가', 'Enter'], ['칸 안 줄바꿈', 'Shift+Enter (편집 중)'], ['다음 / 이전 칸', 'Tab / Shift+Tab'], ['표 전체 선택', 'Ctrl+A'], ['표 넣기 / 빠져나가기', [k('table'), 'Ctrl+Enter'].filter(Boolean).join(' / ')], ['행·열 추가', '표 바깥 + 버튼'], ['엑셀 붙여넣기 · 범위 복사', 'Ctrl+V / Ctrl+C'], ['행·열 삭제', '오른쪽 클릭']])}
     ${g('꺼내 쓰기', [['한 줄 찾아 붙여넣기 (앱 안)', k('palette')], ['복사 → 원래 창에 바로 붙여넣기', k('sendPaste')], ['복사 → 원래 창으로', k('sendCopy')], ['보낼 내용', '선택 > 칸 > 현재 줄 (보드: 메모 전체)'], ['메모 전체 복사 (보드)', 'Ctrl+C / 카드 복사 버튼'], ['검색한 곳으로 바로 이동', (k('switcher') || '빠른 이동') + ' → Enter']])}
@@ -3414,6 +3628,13 @@ document.addEventListener('keydown', e => {
   if (modalOpen()) { if (e.key === 'Escape') { e.preventDefault(); closeModal(); } return; }
   const mod = e.ctrlKey || e.metaKey, code = e.code;
   const act = actionFor(e, 'app');                  // shortcuts from Settings > 단축키
+  if (quickOn) {                                    // the little memo window: no switching notes or views
+    if (act && QUICK_OK.has(act.id)) { e.preventDefault(); act.run(); return; }
+    if (act && act.id === 'closeView') { e.preventDefault(); $('#qbClose').click(); return; }
+    if (act || (mod && /^Digit[1-9]$/.test(code))) { e.preventDefault(); return; }
+    if (e.key === 'Escape') { e.preventDefault(); if (findOpen) findClose(); }
+    return;
+  }
   if (act) { e.preventDefault(); act.run(); return; }
   if (mod && !e.altKey) {                           // fixed keys
     let hit = true;
@@ -3452,10 +3673,17 @@ if (HOST) window.chrome.webview.addEventListener('message', e => {
     case 'hotkeyStatus': onHotkeyStatus(arg); break;
     case 'flush': flushAll(); host.send('flushed'); break;
     case 'toast': toast(arg); break;
+    case 'trash': onTrash(arg); break;
+    case 'trashRestored': onTrashRestored(arg); break;
+    case 'quick':                                 // global quick memo hotkey
+      if (arg === 'open') quickStart();
+      else if (arg === 'close' || arg === 'main') quickEnd(arg);
+      else if (arg === 'focus') refocus();
+      break;
     case 'palette':                               // global "find & paste" hotkey
       if (arg === 'close') { if (paletteOn) closeModal(); }
       else if (arg === 'focus') { const i = $('#palIn'); if (i) i.focus(); }
-      else openPalette(arg === 'pop' ? 'pop' : 'in');
+      else openPalette(arg === 'pop' || arg === 'quick' ? arg : 'in');
       break;
   }
 });
@@ -3511,7 +3739,7 @@ setInterval(() => {                                // "3분 전" labels
     if (n && t) { const v = relTime(n.updated); if (t.textContent !== v) t.textContent = v; }
   }
 }, 60000);
-window.__ssn = { S, bodies, openNote, showBoard, newNote, applyHotkeys, saveStateSoon, doPaste, tableOp, undo, redo, searchLines, openPalette };   // debugging handle
+window.__ssn = { S, bodies, openNote, showBoard, newNote, applyHotkeys, saveStateSoon, doPaste, tableOp, undo, redo, searchLines, openPalette, quickStart, quickEnd, deleteNotes, openTrash };   // debugging handle
 })();
 </script>
 </body>

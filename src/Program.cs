@@ -32,7 +32,7 @@ namespace SuperSpeedNote
 {
     static class Program
     {
-        public const string Version = "1.2.0";
+        public const string Version = "1.3.0";
         public const string WebView2Version = "1.0.4258.31";
         public static string DataDir, LocalDir;
         public static readonly Stopwatch Clock = Stopwatch.StartNew();
@@ -173,10 +173,18 @@ namespace SuperSpeedNote
         const string FindKey = "@find";
         string pendingPalette;            // search window to open once the page is ready ("pop" / "in")
         bool paletteOpen;                 // page reports its search window open
-        // "find & paste" over another program: a small window the WebView moves into while it is open
+        // The page lives in one WebView that moves between windows: the main window, the "find & paste"
+        // window over another program, or the quick memo in the screen corner.
+        Form webIn;
         PopForm pop;
-        bool popWanted, popShown;
-        Color popBg = Color.White;
+        bool popWanted;
+        bool popShown { get { return pop != null && webIn == pop; } }
+        Color popBg = Color.White, quickBg = Color.White;
+        const string QuickKey = "@quick";
+        QuickForm quick;
+        bool quickOpen, pendingQuick, quickHidMain;   // quickOpen: a quick memo is being written (window may be paused for "find & paste")
+        bool quickShown { get { return quick != null && webIn == quick; } }
+        IntPtr quickRet;                               // program to give the keyboard back to when the memo is put away
         static readonly uint MyPid = Native.GetCurrentProcessId();
 
         readonly bool dev;
@@ -209,6 +217,7 @@ namespace SuperSpeedNote
         string retNote;
 
         static string NotesDir { get { return Path.Combine(Program.DataDir, "notes"); } }
+        static string TrashDir { get { return Path.Combine(Program.DataDir, "trash"); } }
         static string ImagesDir { get { return Path.Combine(Program.DataDir, "images"); } }
         static string StatePath { get { return Path.Combine(Program.DataDir, "state.json"); } }
 
@@ -224,6 +233,7 @@ namespace SuperSpeedNote
             MinimumSize = new Size(460, 340);
             appIcon = LoadIcon(0);
             Icon = appIcon;
+            webIn = this;
             LoadBounds();
             saver.OnError = msg => { try { BeginInvoke(new Action(() => Post("toast", "저장 실패: " + msg))); } catch { } };
         }
@@ -286,6 +296,7 @@ namespace SuperSpeedNote
             SaveBounds();
             if (Visible) Hide();
             DetachPop();
+            DetachQuick(false);
             saver.Flush(3000);
             webReady = false;
             webStarted = false;
@@ -372,7 +383,7 @@ namespace SuperSpeedNote
         protected override void OnResize(EventArgs e)
         {
             base.OnResize(e);
-            if (ctl != null && !popShown && WindowState != FormWindowState.Minimized)
+            if (ctl != null && webIn == this && WindowState != FormWindowState.Minimized)
                 ctl.Bounds = new Rectangle(Point.Empty, ClientSize);
             UpdateWebVisibility();
             bool max = WindowState == FormWindowState.Maximized;
@@ -388,7 +399,7 @@ namespace SuperSpeedNote
         protected override void OnActivated(EventArgs e)
         {
             base.OnActivated(e);
-            if (ctl != null && !popShown) { try { ctl.MoveFocus(CoreWebView2MoveFocusReason.Programmatic); } catch { } }
+            if (ctl != null && webIn == this) { try { ctl.MoveFocus(CoreWebView2MoveFocusReason.Programmatic); } catch { } }
         }
 
         protected override void OnDeactivate(EventArgs e)
@@ -400,7 +411,7 @@ namespace SuperSpeedNote
         void UpdateWebVisibility()
         {
             if (ctl == null || wv == null) return;
-            bool vis = popShown || (Visible && WindowState != FormWindowState.Minimized);
+            bool vis = webIn != this || (Visible && WindowState != FormWindowState.Minimized);
             try
             {
                 if (ctl.IsVisible != vis) ctl.IsVisible = vis;
@@ -445,11 +456,12 @@ namespace SuperSpeedNote
 
         void BeginDrag(int hit)
         {
-            if (hit != HTCAPTION && WindowState == FormWindowState.Maximized) return;
+            IntPtr h = quickShown ? quick.Handle : Handle;   // the quick memo moves / resizes itself
+            if (h == Handle && hit != HTCAPTION && WindowState == FormWindowState.Maximized) return;
             Native.POINT p;
             Native.GetCursorPos(out p);
             Native.ReleaseCapture();
-            Native.PostMessage(Handle, WM_NCLBUTTONDOWN, (IntPtr)hit, (IntPtr)((p.Y << 16) | (p.X & 0xFFFF)));
+            Native.PostMessage(h, WM_NCLBUTTONDOWN, (IntPtr)hit, (IntPtr)((p.Y << 16) | (p.X & 0xFFFF)));
         }
 
         static int EdgeHit(string edge)
@@ -465,6 +477,8 @@ namespace SuperSpeedNote
         // ---------- show / hide / focus ----------
         void ShowApp()
         {
+            ClosePop();
+            if (quickOpen) EndQuick("main", false);       // the memo carries on in the app window
             if (ctl != null) { try { ctl.IsVisible = true; } catch { } }
             if (!Visible) { Show(); if (!webStarted) Update(); }   // from standby: paint the splash right away
             ApplyStartMaximized();
@@ -548,6 +562,11 @@ namespace SuperSpeedNote
             if (key == FindKey)                    // find a line in any note, Enter pastes it back where you were
             {
                 if (popWanted || popShown) { Post("palette", "close"); GoBack(); DetachPop(); return; }   // pressed again
+                if (quickShown && Native.GetForegroundWindow() == quick.Handle)
+                {                                  // writing a quick memo: search opens in it, Enter puts the line in the memo
+                    Post("palette", paletteOpen ? "close" : "quick");
+                    return;
+                }
                 if (front)                         // inside the app: the search box opens over the app
                 {
                     if (paletteOpen) Post("palette", "close");
@@ -556,6 +575,13 @@ namespace SuperSpeedNote
                     return;
                 }
                 OpenPop();
+                return;
+            }
+            if (key == QuickKey)                   // a new note in a small window in the screen corner
+            {
+                if (quickOpen) { EndQuick("close", true); return; }   // pressed again: put it away
+                if (front) { if (webReady) Post("new"); return; }      // already in the app: just a new note there
+                OpenQuick();
                 return;
             }
             if (front && activeNote == key) GoBack();
@@ -643,43 +669,153 @@ namespace SuperSpeedNote
         void AttachPop()
         {
             if (ctl == null || pop == null) return;
-            popShown = true;
+            if (quick != null && quick.Visible) quick.Hide();   // a quick memo waits until the search is done
             pop.Attached = true;
-            try
-            {
-                ctl.DefaultBackgroundColor = popBg;
-                ctl.ParentWindow = pop.Handle;
-                ctl.Bounds = new Rectangle(Point.Empty, pop.ClientSize);
-                ctl.IsVisible = true;
-                wv.MemoryUsageTargetLevel = CoreWebView2MemoryUsageTargetLevel.Normal;
-            }
-            catch (Exception ex) { Program.Log(ex); }
+            PutWeb(pop);
             if (!pop.Visible) pop.Show();
             ForceForeground(pop.Handle);
             try { ctl.MoveFocus(CoreWebView2MoveFocusReason.Programmatic); } catch { }
             Post("palette", "focus");
         }
 
-        // back into the main window (still hidden / where it was)
+        // back into the quick memo if one is open, else the main window (still hidden / where it was)
         void DetachPop()
         {
             popWanted = false;
             if (popShown)
             {
-                popShown = false;
-                if (ctl != null)
+                if (quickOpen && quick != null)
                 {
-                    try
-                    {
-                        ctl.ParentWindow = Handle;
-                        ctl.DefaultBackgroundColor = bg;
-                        if (WindowState != FormWindowState.Minimized) ctl.Bounds = new Rectangle(Point.Empty, ClientSize);
-                    }
-                    catch (Exception ex) { Program.Log(ex); }
+                    PutWeb(quick);
+                    Native.ShowWindow(quick.Handle, 8 /*SW_SHOWNA: back on top without taking the keyboard*/);
                 }
-                UpdateWebVisibility();
+                else PutWeb(this);
             }
             if (pop != null) { pop.Attached = false; if (pop.Visible) pop.Hide(); }
+        }
+
+        // Move the page into one of our windows (main / search / quick memo).
+        void PutWeb(Form f)
+        {
+            webIn = f;
+            if (ctl == null) return;
+            try
+            {
+                ctl.ParentWindow = f.Handle;
+                ctl.DefaultBackgroundColor = f == pop ? popBg : f == quick ? quickBg : bg;
+                if (f != this || WindowState != FormWindowState.Minimized) ctl.Bounds = new Rectangle(Point.Empty, f.ClientSize);
+                if (f != this) wv.MemoryUsageTargetLevel = CoreWebView2MemoryUsageTargetLevel.Normal;
+            }
+            catch (Exception ex) { Program.Log(ex); }
+            UpdateWebVisibility();
+        }
+
+        // ---------- quick memo ----------
+        // Each press: a new note in a small always-on-top window in the corner of the screen you are on.
+        // It stays while you work elsewhere; the hotkey again or its X puts it away (empty ones are dropped).
+        void OpenQuick()
+        {
+            ClosePop();
+            IntPtr fg = Native.GetForegroundWindow();
+            quickRet = IsExternalWindow(fg) ? fg : IsExternalWindow(lastExternal) ? lastExternal : IntPtr.Zero;
+            if (quick == null)
+            {
+                quick = new QuickForm();
+                quick.BackColor = quickBg;
+                quick.Activated += (s, e) => { if (quickShown && ctl != null) { try { ctl.MoveFocus(CoreWebView2MoveFocusReason.Programmatic); } catch { } } };
+                quick.Resize += (s, e) => { if (quickShown && ctl != null) ctl.Bounds = new Rectangle(Point.Empty, quick.ClientSize); };
+                quick.Move += (s, e) => { if (quickShown && ctl != null) { try { ctl.NotifyParentWindowPositionChanged(); } catch { } } };
+                quick.FormClosing += (s, e) =>   // Alt+F4 = X
+                {
+                    if (finished || e.CloseReason != CloseReason.UserClosing) return;
+                    e.Cancel = true;
+                    EndQuick("close", true);
+                };
+            }
+            PlaceQuick(quickRet);
+            quickOpen = true;
+            quick.Attached = false;
+            quick.Invalidate();
+            if (!quick.Visible) quick.Show();
+            ForceForeground(quick.Handle);
+            if (webReady) Post("quick", "open");
+            else { pendingQuick = true; EnsureWeb(); }   // from standby: the engine starts now (~1 s)
+        }
+
+        // bottom-right corner of the screen you are working on, at the size you last left it
+        void PlaceQuick(IntPtr anchor)
+        {
+            Native.POINT cur;
+            Native.GetCursorPos(out cur);
+            IntPtr mon = anchor != IntPtr.Zero ? Native.MonitorFromWindow(anchor, 2) : Native.MonitorFromPoint(cur, 2);
+            uint dx = 96, dy = 96;
+            try { Native.GetDpiForMonitor(mon, 0, out dx, out dy); } catch { }
+            float s = dx / 96f;
+            Rectangle wa = (anchor != IntPtr.Zero ? Screen.FromHandle(anchor) : Screen.FromPoint(new Point(cur.X, cur.Y))).WorkingArea;
+            int lw = 420, lh = 380;
+            try
+            {
+                string[] f = File.ReadAllText(Path.Combine(Program.LocalDir, "quick.txt")).Split(',');
+                lw = Math.Max(260, int.Parse(f[0])); lh = Math.Max(180, int.Parse(f[1]));
+            }
+            catch { }
+            int w = Math.Min((int)(lw * s), wa.Width - (int)(32 * s)), h = Math.Min((int)(lh * s), wa.Height - (int)(32 * s)), m = (int)(16 * s);
+            quick.Scale96 = s;
+            quick.Bounds = new Rectangle(wa.Right - w - m, wa.Bottom - h - m, w, h);
+        }
+
+        // the page has the new note ready: move the WebView in
+        void AttachQuick()
+        {
+            if (ctl == null || quick == null || !quickOpen) return;
+            quick.Attached = true;
+            PutWeb(quick);
+            if (Visible && WindowState != FormWindowState.Minimized) { quickHidMain = true; SaveBounds(); Hide(); }   // no empty app window meanwhile
+            if (!quick.Visible) quick.Show();
+            ForceForeground(quick.Handle);
+            try { ctl.MoveFocus(CoreWebView2MoveFocusReason.Programmatic); } catch { }
+            Post("quick", "focus");
+        }
+
+        // how: "close" = put away (the page drops it if empty), "main" = carry on writing in the app window
+        void EndQuick(string how, bool giveBack)
+        {
+            if (!quickOpen) return;
+            bool front = quick != null && Native.GetForegroundWindow() == quick.Handle;
+            Post("quick", how);
+            DetachQuick(how == "close");
+            if (giveBack && front) GiveBackFromQuick();
+        }
+
+        void GiveBackFromQuick()
+        {
+            if (!IsExternalWindow(quickRet)) return;
+            if (Native.IsIconic(quickRet)) Native.ShowWindow(quickRet, 9 /*SW_RESTORE*/);
+            ForceForeground(quickRet);    // back to the program (and caret) you were in
+        }
+
+        void DetachQuick(bool restoreMain)
+        {
+            quickOpen = false;
+            pendingQuick = false;
+            if (quick == null) return;
+            if (quick.Visible)
+            {
+                try
+                {
+                    float s = quick.Scale96 > 0 ? quick.Scale96 : 1f;
+                    File.WriteAllText(Path.Combine(Program.LocalDir, "quick.txt"), (int)(quick.Width / s) + "," + (int)(quick.Height / s));
+                }
+                catch { }
+                quick.Hide();
+            }
+            quick.Attached = false;
+            if (webIn == quick) PutWeb(this);
+            if (quickHidMain)
+            {
+                quickHidMain = false;
+                if (restoreMain && !Visible) Native.ShowWindow(Handle, 4 /*SW_SHOWNOACTIVATE: back where it was, behind*/);
+            }
         }
 
         void ClosePop()
@@ -831,7 +967,7 @@ namespace SuperSpeedNote
             backupTimer = new System.Windows.Forms.Timer { Interval = 60 * 60 * 1000 };
             backupTimer.Tick += (s, e) => Task.Run(() => DataBackup.Run(null));
             backupTimer.Start();
-            Task.Run(() => { Thread.Sleep(8000); DataBackup.Run(null); });
+            Task.Run(() => { Thread.Sleep(8000); DataBackup.Run(null); SweepTrash(); });
         }
 
         void BuildTrayMenu()
@@ -1026,12 +1162,29 @@ namespace SuperSpeedNote
                     if (pendingOpen != null) { Post("open", pendingOpen); pendingOpen = null; }
                     if (pendingNew) { Post("new"); pendingNew = false; }
                     if (pendingPalette != null) { if (pendingPalette != "pop" || popWanted) Post("palette", pendingPalette); pendingPalette = null; }
+                    if (pendingQuick) { pendingQuick = false; if (quickOpen) Post("quick", "open"); }
                     break;
                 case "saveNote": { string id = Cut(ref a); if (SafeId(id)) saver.Write(Path.Combine(NotesDir, id + ".html"), a); break; }
-                case "delNote":
-                    if (SafeId(a))
-                        saver.Trash(Path.Combine(NotesDir, a + ".html"),
-                            Path.Combine(Program.DataDir, "trash", a + "_" + DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".html"));
+                case "delNote":                                  // id, "trash" | "purge", note info (title, colour, place...)
+                    {
+                        string id = Cut(ref a), mode = Cut(ref a);
+                        if (!SafeId(id)) break;
+                        string file = Path.Combine(NotesDir, id + ".html");
+                        if (mode == "purge") saver.Purge(file);  // nothing was written in it: gone for good
+                        else saver.Trash(file, Path.Combine(TrashDir, id + "_" + DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".html"), a);
+                        break;
+                    }
+                case "unTrash": UnTrash(a); break;               // "되돌리기" right after deleting: no copy left in the trash
+                case "trashList":                                // read only when the trash is opened
+                    saver.Flush(2000);
+                    Task.Run(() => TrashList()).ContinueWith(t => { try { BeginInvoke(new Action(() => Post("trash", t.Result))); } catch { } });
+                    break;
+                case "trashRestore": TrashRestore(Cut(ref a), a); break;
+                case "trashPurge": if (SafeTrashName(a)) TrashDelete(a); break;
+                case "trashEmpty":
+                    saver.Flush(2000);
+                    try { if (Directory.Exists(TrashDir)) foreach (string f in Directory.GetFiles(TrashDir)) File.Delete(f); }
+                    catch (Exception ex) { Program.Log(ex); Post("toast", "휴지통을 비우지 못했어요: " + ex.Message); }
                     break;
                 case "saveState": saver.Write(StatePath, a); break;
                 case "saveImg":
@@ -1054,6 +1207,17 @@ namespace SuperSpeedNote
                     if (paletteOpen) { if (popWanted && !popShown) AttachPop(); }
                     else if (popWanted || popShown) DetachPop();
                     break;
+                case "quick":                                    // quick memo: page ready / closed by its X / "open in app"
+                    if (a == "1") { if (quickOpen && webIn != quick && !popShown) AttachQuick(); }
+                    else if (a == "main") { DetachQuick(false); ShowApp(); }
+                    else
+                    {
+                        bool qfront = quick != null && Native.GetForegroundWindow() == quick.Handle;
+                        DetachQuick(true);
+                        if (qfront) GiveBackFromQuick();
+                        if (a == "full" && tray != null) tray.ShowBalloonTip(3000, "Super Speed Note", "메모가 500개라 새 메모를 만들 수 없어요. 안 쓰는 메모를 지워 주세요.", ToolTipIcon.None);
+                    }
+                    break;
                 case "back": GoBack(); break;                    // Esc in the search window: back to where you were
                 case "show": ShowApp(); break;                   // search window -> "open this note"
                 case "drag": BeginDrag(HTCAPTION); break;
@@ -1072,9 +1236,11 @@ namespace SuperSpeedNote
                 case "theme":
                     bg = a == "dark" ? Color.FromArgb(0x05, 0x0C, 0x1F) : Color.FromArgb(0x08, 0x15, 0x36);
                     popBg = a == "dark" ? Color.FromArgb(0x12, 0x1E, 0x3B) : Color.White;   // = --menu
+                    quickBg = a == "dark" ? Color.FromArgb(0x0F, 0x1A, 0x33) : Color.White; // = --paper
                     BackColor = bg;
                     if (pop != null) pop.BackColor = popBg;
-                    if (ctl != null) ctl.DefaultBackgroundColor = popShown ? popBg : bg;
+                    if (quick != null) quick.BackColor = quickBg;
+                    if (ctl != null) ctl.DefaultBackgroundColor = webIn == pop ? popBg : webIn == quick ? quickBg : bg;
                     break;
                 case "export": { string name = Cut(ref a), body = a; BeginInvoke(new Action(() => Export(name, body))); break; }
                 case "openUrl": OpenUrl(a); break;
@@ -1112,6 +1278,7 @@ namespace SuperSpeedNote
             quitFull = full;
             int seq = ++quitSeq;
             if (!webReady) { AfterFlush(seq); return; }
+            if (quickOpen) Post("quick", "close");   // an empty quick memo is dropped, not left behind
             Post("flush");   // page sends its last edits, then "flushed"
             var t = new System.Windows.Forms.Timer { Interval = 1500 };
             t.Tick += (s, e) => { t.Stop(); t.Dispose(); AfterFlush(seq); };
@@ -1236,6 +1403,122 @@ namespace SuperSpeedNote
                 Process.Start(new ProcessStartInfo(uri.AbsoluteUri) { UseShellExecute = true });
         }
 
+        // ---------- trash ----------
+        // Deleted notes: trash\<id>_<yyyyMMdd_HHmmss>.html plus a .json with the note's title, colour, pin and
+        // place in the list, so a restore puts it back as it was. Kept until you empty the trash.
+        static bool SafeTrashName(string n) { return n.Length > 0 && n.Length <= 120 && Regex.IsMatch(n, "^[A-Za-z0-9_-]+$"); }
+
+        // nothing in it: no text, picture, table or line
+        static bool IsEmptyNote(string html)
+        {
+            if (Regex.IsMatch(html, "<(img|table|hr)\\b", RegexOptions.IgnoreCase)) return false;
+            return System.Net.WebUtility.HtmlDecode(Regex.Replace(html, "<[^>]*>", "")).Trim().Length == 0;
+        }
+
+        static string ReadHead(string file, int chars)
+        {
+            using (var r = new StreamReader(file, Encoding.UTF8))
+            {
+                var buf = new char[chars];
+                int n = r.ReadBlock(buf, 0, chars);
+                return new string(buf, 0, n);
+            }
+        }
+
+        static void TrashDelete(string name)
+        {
+            try
+            {
+                string f = Path.Combine(TrashDir, name + ".html"), j = Path.Combine(TrashDir, name + ".json");
+                if (File.Exists(f)) File.Delete(f);
+                if (File.Exists(j)) File.Delete(j);
+            }
+            catch (Exception ex) { Program.Log(ex); }
+        }
+
+        // empty notes thrown away by older versions: delete them for good (background, after start-up)
+        static void SweepTrash()
+        {
+            try
+            {
+                if (!Directory.Exists(TrashDir)) return;
+                foreach (string f in Directory.GetFiles(TrashDir, "*.html"))
+                    if (new FileInfo(f).Length <= 4096 && IsEmptyNote(File.ReadAllText(f, Encoding.UTF8)))
+                        TrashDelete(Path.GetFileNameWithoutExtension(f));
+            }
+            catch (Exception ex) { Program.Log(ex); }
+        }
+
+        // the trash as JSON, newest first: [{f: file name, at: deleted (ms), m: note info, p: first words}]
+        static string TrashList()
+        {
+            var items = new List<KeyValuePair<long, string>>();
+            try
+            {
+                if (Directory.Exists(TrashDir))
+                    foreach (string f in Directory.GetFiles(TrashDir, "*.html"))
+                    {
+                        string name = Path.GetFileNameWithoutExtension(f);
+                        if (!SafeTrashName(name)) continue;
+                        string head = ReadHead(f, 8192);
+                        if (head.Length < 4096 && IsEmptyNote(head)) { TrashDelete(name); continue; }
+                        DateTime at;
+                        int i = name.Length - 15;
+                        if (i < 2 || name[i - 1] != '_' || !DateTime.TryParseExact(name.Substring(i), "yyyyMMdd_HHmmss",
+                            System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out at))
+                            at = File.GetLastWriteTime(f);
+                        string mf = Path.Combine(TrashDir, name + ".json");
+                        string meta = File.Exists(mf) ? File.ReadAllText(mf, Encoding.UTF8) : "";
+                        // first lines as plain text (one per line: the first is the title of a note that had none)
+                        string text = Regex.Replace(head, "<(br|/div|/p|/li|/tr|/h[1-6])[^>]*>", "\n", RegexOptions.IgnoreCase);
+                        text = System.Net.WebUtility.HtmlDecode(Regex.Replace(Regex.Replace(text, "</td>", " ", RegexOptions.IgnoreCase), "<[^>]*>", ""));
+                        text = string.Join("\n", text.Split('\n').Select(l => Regex.Replace(l, "[ \\t\\u00a0]+", " ").Trim()).Where(l => l.Length > 0).Take(6));
+                        if (text.Length > 300) text = text.Substring(0, 300);
+                        long ms = (long)(at.ToUniversalTime() - new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalMilliseconds;
+                        items.Add(new KeyValuePair<long, string>(ms, "{\"f\":" + Json(name) + ",\"at\":" + ms + ",\"m\":" + Json(meta) + ",\"p\":" + Json(text) + "}"));
+                    }
+            }
+            catch (Exception ex) { Program.Log(ex); }
+            items.Sort((x, y) => y.Key.CompareTo(x.Key));
+            return "[" + string.Join(",", items.Select(x => x.Value)) + "]";
+        }
+
+        // back into notes\ under the id the page chose; the page gets the note's info and contents
+        void TrashRestore(string name, string id)
+        {
+            if (!SafeTrashName(name) || !SafeId(id)) return;
+            saver.Flush(2000);
+            string src = Path.Combine(TrashDir, name + ".html"), mf = Path.Combine(TrashDir, name + ".json"), dst = Path.Combine(NotesDir, id + ".html");
+            try
+            {
+                if (!File.Exists(src) || File.Exists(dst)) { Post("trashRestored", name + SEP + SEP + SEP); return; }
+                Directory.CreateDirectory(NotesDir);
+                File.Move(src, dst);
+                string meta = File.Exists(mf) ? File.ReadAllText(mf, Encoding.UTF8) : "";
+                if (File.Exists(mf)) File.Delete(mf);
+                Post("trashRestored", name + SEP + id + SEP + meta + SEP + File.ReadAllText(dst, Encoding.UTF8));
+            }
+            catch (Exception ex) { Program.Log(ex); Post("trashRestored", name + SEP + SEP + SEP); }
+        }
+
+        // "되돌리기" a moment after deleting: drop the copy that just went to the trash
+        void UnTrash(string id)
+        {
+            if (!SafeId(id)) return;
+            saver.Flush(2000);
+            try
+            {
+                if (!Directory.Exists(TrashDir)) return;
+                string newest = Directory.GetFiles(TrashDir, id + "_*.html").Select(Path.GetFileNameWithoutExtension).OrderBy(n => n, StringComparer.Ordinal).LastOrDefault();
+                DateTime at;
+                if (newest != null && DateTime.TryParseExact(newest.Substring(newest.Length - 15), "yyyyMMdd_HHmmss",
+                        System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out at)
+                    && (DateTime.Now - at).TotalMinutes < 3)
+                    TrashDelete(newest);
+            }
+            catch (Exception ex) { Program.Log(ex); }
+        }
+
         // ---------- helpers ----------
         static string Cut(ref string s)
         {
@@ -1328,10 +1611,11 @@ namespace SuperSpeedNote
     // Background writer: coalesces rapid saves per file, writes atomically (tmp + replace).
     sealed class Saver
     {
-        const string TrashMark = "\0trash\0";
+        const string TrashMark = "\0trash\0", PurgeMark = "\0purge\0";
         readonly object gate = new object();
         readonly Dictionary<string, string> pending = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         readonly Dictionary<string, string> trashTo = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        readonly Dictionary<string, string> trashInfo = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         readonly AutoResetEvent signal = new AutoResetEvent(false);
         static readonly Encoding Utf8 = new UTF8Encoding(false);
         bool busy;
@@ -1345,13 +1629,21 @@ namespace SuperSpeedNote
 
         public void Write(string path, string content)
         {
-            lock (gate) { pending[path] = content; trashTo.Remove(path); }
+            lock (gate) { pending[path] = content; trashTo.Remove(path); trashInfo.Remove(path); }
             signal.Set();
         }
 
-        public void Trash(string path, string target)
+        // move to the trash; info (the note's title, colour, place...) is kept next to it for restoring
+        public void Trash(string path, string target, string info)
         {
-            lock (gate) { pending[path] = TrashMark; trashTo[path] = target; }
+            lock (gate) { pending[path] = TrashMark; trashTo[path] = target; trashInfo[path] = info ?? ""; }
+            signal.Set();
+        }
+
+        // delete for good (an empty note: nothing worth keeping)
+        public void Purge(string path)
+        {
+            lock (gate) { pending[path] = PurgeMark; trashTo.Remove(path); trashInfo.Remove(path); }
             signal.Set();
         }
 
@@ -1378,21 +1670,24 @@ namespace SuperSpeedNote
                 while (true)
                 {
                     KeyValuePair<string, string>[] work;
-                    Dictionary<string, string> moves;
+                    Dictionary<string, string> moves, infos;
                     lock (gate)
                     {
                         if (pending.Count == 0) { busy = false; Monitor.PulseAll(gate); break; }
                         busy = true;
                         work = pending.ToArray();
                         moves = new Dictionary<string, string>(trashTo, StringComparer.OrdinalIgnoreCase);
+                        infos = new Dictionary<string, string>(trashInfo, StringComparer.OrdinalIgnoreCase);
                         pending.Clear();
                         trashTo.Clear();
+                        trashInfo.Clear();
                     }
                     foreach (var kv in work)
                     {
                         try
                         {
-                            if (kv.Value == TrashMark) MoveToTrash(kv.Key, moves[kv.Key]);
+                            if (kv.Value == TrashMark) MoveToTrash(kv.Key, moves[kv.Key], infos.ContainsKey(kv.Key) ? infos[kv.Key] : "");
+                            else if (kv.Value == PurgeMark) { if (File.Exists(kv.Key)) File.Delete(kv.Key); }
                             else WriteAtomic(kv.Key, kv.Value);
                         }
                         catch (Exception ex)
@@ -1423,11 +1718,12 @@ namespace SuperSpeedNote
             }
         }
 
-        static void MoveToTrash(string path, string target)
+        static void MoveToTrash(string path, string target, string info)
         {
             if (!File.Exists(path)) return;
             Directory.CreateDirectory(Path.GetDirectoryName(target));
             File.Move(path, target);
+            if (info.Length > 0) File.WriteAllText(Path.ChangeExtension(target, ".json"), info, Utf8);
         }
     }
 
@@ -1525,6 +1821,75 @@ namespace SuperSpeedNote
                 e.Graphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
                 var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
                 e.Graphics.DrawString("찾아 붙여넣기 준비 중…", f, b, ClientRectangle, sf);
+            }
+        }
+    }
+
+    // The quick memo: a small always-on-top window in the screen corner. Like the search window it borrows
+    // the app's WebView. Frameless but resizable (the page draws its own bar and edges), with the DWM shadow.
+    sealed class QuickForm : Form
+    {
+        public bool Attached;                     // false while the engine is still starting (from standby)
+        public float Scale96 = 1f;                // DPI scale it was placed with (its size is saved unscaled)
+
+        public QuickForm()
+        {
+            FormBorderStyle = FormBorderStyle.Sizable;
+            ShowInTaskbar = false;
+            StartPosition = FormStartPosition.Manual;
+            AutoScaleMode = AutoScaleMode.None;
+            MinimumSize = new Size(260, 180);
+            TopMost = true;
+            DoubleBuffered = true;
+            Text = "Super Speed Note · 빠른 메모";
+        }
+
+        protected override CreateParams CreateParams
+        {
+            get
+            {
+                CreateParams cp = base.CreateParams;
+                cp.ExStyle |= 0x80;               // WS_EX_TOOLWINDOW: no taskbar button, not in Alt+Tab
+                return cp;
+            }
+        }
+
+        protected override void OnHandleCreated(EventArgs e)
+        {
+            base.OnHandleCreated(e);
+            var m = new Native.MARGINS { Left = 1, Right = 1, Top = 1, Bottom = 1 };   // keeps the drop shadow
+            try { Native.DwmExtendFrameIntoClientArea(Handle, ref m); } catch { }
+            int round = 2;
+            try { Native.DwmSetWindowAttribute(Handle, 33 /*DWMWA_WINDOW_CORNER_PREFERENCE*/, ref round, 4); } catch { }
+            Native.SetWindowPos(Handle, IntPtr.Zero, 0, 0, 0, 0, 0x0027 /*FRAMECHANGED|NOMOVE|NOSIZE|NOZORDER*/ | 0x0010);
+        }
+
+        protected override void WndProc(ref Message m)
+        {
+            if (m.Msg == 0x0083) { m.Result = IntPtr.Zero; return; }   // WM_NCCALCSIZE: the whole window is client area
+            if (m.Msg == 0x02E0)                                        // WM_DPICHANGED: take the suggested size
+            {
+                var r = (Native.RECT)Marshal.PtrToStructure(m.LParam, typeof(Native.RECT));
+                Native.SetWindowPos(Handle, IntPtr.Zero, r.Left, r.Top, r.Right - r.Left, r.Bottom - r.Top, 0x0014 /*NOZORDER|NOACTIVATE*/);
+                Scale96 = (m.WParam.ToInt32() & 0xFFFF) / 96f;
+                m.Result = IntPtr.Zero;
+                return;
+            }
+            base.WndProc(ref m);
+        }
+
+        protected override void OnPaintBackground(PaintEventArgs e)
+        {
+            e.Graphics.Clear(BackColor);
+            if (Attached) return;
+            float scale = DeviceDpi / 96f;
+            bool dark = BackColor.GetBrightness() < 0.5f;
+            using (var f = new Font("Malgun Gothic", 13f * scale, GraphicsUnit.Pixel))
+            using (var b = new SolidBrush(dark ? Color.FromArgb(0x8F, 0x9B, 0xB8) : Color.FromArgb(0x8B, 0x96, 0xAD)))
+            {
+                e.Graphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+                var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
+                e.Graphics.DrawString("빠른 메모 준비 중…", f, b, ClientRectangle, sf);
             }
         }
     }
