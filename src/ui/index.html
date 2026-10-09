@@ -1,0 +1,2799 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Super Speed Note</title>
+<script src="boot.js"></script>
+<style>
+:root{
+  --top:#0a1532;
+  --accent:#3b6cf6;--accent-ink:#2453d6;--accent-soft:rgba(59,108,246,.10);
+  --bg:#f4f6fb;--paper:#fff;--ink:#101a30;--ink-2:#4a5672;--ink-3:#8b96ad;
+  --line:#e7ecf4;--line-2:#d6deea;--hover:#f0f4fb;--menu:#fff;
+  --th-bg:#f1f5fd;--th-ink:#15306c;--card:#fff;--card-line:rgba(16,26,48,.07);
+  --sh-1:0 1px 2px rgba(10,22,50,.04),0 6px 20px -8px rgba(10,22,50,.16);
+  --sh-2:0 2px 4px rgba(10,22,50,.05),0 20px 44px -16px rgba(10,22,50,.34);
+  --sh-pop:0 18px 50px -10px rgba(6,18,48,.30),0 2px 8px rgba(6,18,48,.08);
+  --band:radial-gradient(760px 280px at 86% -70px,rgba(110,155,255,.30),transparent 70%),radial-gradient(560px 240px at -4% -60px,rgba(70,110,235,.18),transparent 70%),linear-gradient(180deg,#0a1532 0,#0f2152 112px,#17367a 168px,#4f6fb6 194px,#c2cfeb 218px,#f4f6fb 238px);
+  --side:linear-gradient(180deg,#0a1532 0,#0e1f4c 55%,#132c68 100%);
+  --pane:linear-gradient(180deg,#e9eff9 0,#f4f6fb 220px);
+  --ui:"Pretendard Variable",Pretendard,"Segoe UI","Malgun Gothic","맑은 고딕",system-ui,sans-serif;
+  --mono:"Cascadia Code",Consolas,D2Coding,monospace;
+  --ef:var(--ui);--fs:15px;
+}
+[data-theme=dark]{
+  --top:#050c1f;
+  --accent:#5b8cff;--accent-ink:#9ab8ff;--accent-soft:rgba(91,140,255,.16);
+  --bg:#0a1226;--paper:#0f1a33;--ink:#e6ecf8;--ink-2:#a9b5cd;--ink-3:#6c7a98;
+  --line:#1d2a48;--line-2:#2b3b62;--hover:#18264a;--menu:#121e3b;
+  --th-bg:#17284f;--th-ink:#d3e0ff;--card:#111c37;--card-line:rgba(255,255,255,.06);
+  --sh-1:0 1px 2px rgba(0,0,0,.3),0 8px 22px -8px rgba(0,0,0,.5);
+  --sh-2:0 2px 6px rgba(0,0,0,.35),0 20px 44px -14px rgba(0,0,0,.6);
+  --sh-pop:0 16px 48px rgba(0,0,0,.55);
+  --band:radial-gradient(760px 280px at 86% -70px,rgba(91,140,255,.22),transparent 70%),linear-gradient(180deg,#050c1f 0,#0a1940 130px,#0e2152 186px,#0b1630 220px,#0a1226 240px);
+  --side:linear-gradient(180deg,#050c1f 0,#0a1838 60%,#0e2150 100%);
+  --pane:linear-gradient(180deg,#0d1833 0,#0a1226 220px);
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden}
+body{font:14px/1.45 var(--ui);color:var(--ink);background:var(--bg);-webkit-font-smoothing:antialiased;user-select:none;cursor:default}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
+input,select{font:inherit;color:inherit}
+svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+kbd{font:600 11px "Segoe UI",var(--ui)}
+mark{background:rgba(255,213,79,.6);color:inherit;border-radius:2px}
+::-webkit-scrollbar{width:11px;height:11px}
+::-webkit-scrollbar-thumb{background:rgba(120,140,180,.38);border-radius:8px;border:3px solid transparent;background-clip:padding-box}
+::-webkit-scrollbar-thumb:hover{background-color:rgba(120,140,180,.6)}
+::-webkit-scrollbar-track,::-webkit-scrollbar-corner{background:transparent}
+#app{position:fixed;inset:0;display:flex;flex-direction:column}
+
+/* ---------- title bar ---------- */
+#titlebar{height:40px;flex:none;display:flex;align-items:center;background:var(--top);color:#fff;position:relative;z-index:20}
+.brand{display:flex;align-items:center;gap:9px;padding:0 10px 0 14px;height:100%}
+.brand .mark{width:22px;height:22px;flex:none}
+.wordmark{font:italic 900 12.5px/1 "Segoe UI Black","Segoe UI",sans-serif;letter-spacing:.07em;white-space:nowrap}
+.wordmark span{font:300 11.5px/1 "Segoe UI",sans-serif;letter-spacing:.32em;opacity:.7;margin-left:7px;font-style:normal}
+.tb-mid{flex:1;height:100%;display:flex;align-items:center;justify-content:center;min-width:0;color:rgba(255,255,255,.55);font-size:12px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;padding:0 12px}
+.tbtn{width:34px;height:30px;border-radius:8px;display:grid;place-items:center;color:rgba(255,255,255,.75)}
+.tbtn:hover{background:rgba(255,255,255,.1);color:#fff}
+.tbtn.on{color:#a9c4ff;background:rgba(110,155,255,.2)}
+.tbtn .i{width:17px;height:17px}
+.tsep2{width:1px;height:18px;background:rgba(255,255,255,.14);margin:0 6px 0 8px}
+.wc{width:46px;height:40px;display:grid;place-items:center;color:rgba(255,255,255,.85)}
+.wc:hover{background:rgba(255,255,255,.1)}
+.wc.x:hover{background:#e81123;color:#fff}
+.wc .i{width:15px;height:15px;stroke-width:1.25}
+.wc .restore,body.maxed .wc .maxi{display:none}
+body.maxed .wc .restore{display:block}
+
+/* ---------- views ---------- */
+.view{flex:1;min-height:0;display:none}
+body[data-view=board] #board{display:flex;flex-direction:column}
+body[data-view=editor] #editorView{display:flex}
+
+/* ---------- board ---------- */
+#board{overflow:auto;position:relative;background:var(--bg)}
+.hero-bg{position:absolute;left:0;right:0;top:0;height:240px;background:var(--band);pointer-events:none}
+.hero{position:relative;display:flex;align-items:center;justify-content:space-between;gap:14px 24px;padding:22px 40px;color:#fff;flex-wrap:wrap}
+.crumb{display:flex;align-items:center;gap:10px}
+.crumb-t{font-size:17px;font-weight:700;letter-spacing:-.015em}
+.pill{display:inline-flex;align-items:center;height:22px;padding:0 9px;border-radius:999px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.12);color:rgba(255,255,255,.82);font:600 11.5px "Segoe UI",var(--ui)}
+.hero-act{display:flex;gap:10px;align-items:center}
+.search{display:flex;align-items:center;gap:9px;height:40px;width:340px;max-width:56vw;padding:0 10px 0 13px;border-radius:12px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.13);color:rgba(255,255,255,.7);transition:background .15s,border-color .15s,box-shadow .15s}
+.search .i{width:16px;height:16px}
+.search:focus-within{background:rgba(255,255,255,.13);border-color:rgba(150,185,255,.65);box-shadow:0 0 0 4px rgba(110,155,255,.15);color:#fff}
+.search input{flex:1;min-width:0;border:0;outline:0;background:transparent;color:#fff;font-size:13.5px}
+.search input::placeholder{color:rgba(222,232,255,.5)}
+.search kbd{color:rgba(222,232,255,.5);border:1px solid rgba(255,255,255,.16);border-radius:6px;padding:1px 6px}
+.btn-new{height:40px;padding:0 16px 0 12px;border-radius:12px;background:#fff;color:#0f2152;font-weight:700;font-size:13.5px;display:inline-flex;align-items:center;gap:6px;box-shadow:0 8px 20px -8px rgba(0,0,0,.55);transition:background .15s,transform .15s}
+.btn-new .i{width:17px;height:17px;stroke-width:2.2;color:var(--accent)}
+.btn-new:hover{background:#eef3ff;transform:translateY(-1px)}
+.grid{position:relative;display:grid;grid-template-columns:repeat(auto-fill,minmax(216px,1fr));gap:16px;padding:4px 40px 24px;outline:none}
+.card{position:relative;height:146px;border-radius:16px;padding:16px 17px 13px;display:flex;flex-direction:column;overflow:hidden;
+  background:radial-gradient(200px 130px at 100% 0,color-mix(in srgb,var(--c) 12%,transparent),transparent 70%),var(--card);
+  border:1px solid var(--card-line);box-shadow:var(--sh-1);transition:transform .16s cubic-bezier(.2,.8,.2,1),box-shadow .16s}
+.card:hover{transform:translateY(-2px);box-shadow:var(--sh-2)}
+.card.sel{box-shadow:0 0 0 2px var(--accent),var(--sh-2)}
+.grid:focus .card.sel{box-shadow:0 0 0 2px var(--accent),0 0 0 6px rgba(59,108,246,.16),var(--sh-2)}
+.c-head{display:flex;align-items:center;gap:9px;min-width:0}
+.c-dot{width:8px;height:8px;border-radius:50%;background:var(--c);box-shadow:0 0 0 3px color-mix(in srgb,var(--c) 18%,transparent);flex:none}
+[data-theme=dark] .c-dot,[data-theme=dark] .cdot::after,[data-theme=dark] .qs-item .c-dot{filter:brightness(1.7) saturate(1.1)}
+.c-pin{width:13px!important;height:13px!important;color:var(--accent)}
+.c-idx{flex:none;min-width:19px;height:19px;padding:0 4px;border-radius:6px;border:1px solid var(--line);display:grid;place-items:center;font:600 10.5px "Segoe UI",var(--ui);color:var(--ink-3)}
+.c-title{flex:1;min-width:0;font-size:15px;font-weight:700;letter-spacing:-.015em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.c-prev{margin-top:10px;color:var(--ink-2);font-size:13px;line-height:1.55;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;word-break:break-all}
+.c-foot{margin-top:auto;display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--ink-3);min-width:0}
+.c-copy{position:absolute;right:11px;bottom:9px;z-index:1;width:28px;height:28px;border-radius:9px;display:grid;place-items:center;color:var(--ink-2);background:var(--card);border:1px solid var(--line-2);opacity:0;transform:translateY(3px);transition:opacity .12s,transform .12s,color .12s,border-color .12s}
+.c-copy .i{width:15px;height:15px}
+.card:hover .c-copy,.card.sel .c-copy{opacity:1;transform:none}
+.card:hover .c-time,.card.sel .c-time{visibility:hidden}
+.c-copy:hover{color:var(--accent);border-color:var(--accent)}
+.c-time{margin-left:auto;white-space:nowrap}
+.ph{color:var(--ink-3)!important;font-weight:500}
+.rename{width:100%;border:0;outline:2px solid var(--accent);border-radius:6px;padding:1px 6px;background:var(--paper);color:var(--ink);font:inherit}
+.chip{display:inline-flex;align-items:center;gap:4px;height:21px;padding:0 7px;border-radius:7px;background:var(--accent-soft);color:var(--accent-ink);font:650 11px "Segoe UI",var(--ui);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:150px}
+.chip .i{width:13px;height:13px}
+.chip.bad{background:rgba(229,72,77,.12);color:#e5484d;text-decoration:line-through}
+.card.new{align-items:center;justify-content:center;gap:4px;background:var(--card);border:1.5px dashed var(--line-2);box-shadow:none;cursor:pointer}
+.card.new .plus{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent-ink);margin-bottom:6px;transition:transform .16s}
+.card.new .plus .i{width:20px;height:20px;stroke-width:2.2}
+.card.new b{font-size:13.5px;font-weight:650;color:var(--ink-2)}
+.card.new small{color:var(--ink-3);font:600 10.5px "Segoe UI",var(--ui)}
+.card.new:hover{border-color:var(--accent);box-shadow:var(--sh-1)}
+.card.new:hover .plus{transform:scale(1.08)}
+.card.dragging{opacity:.35}
+.card.drop-l{box-shadow:-5px 0 0 -1px var(--accent),var(--sh-1)}
+.card.drop-r{box-shadow:5px 0 0 -1px var(--accent),var(--sh-1)}
+.empty{grid-column:1/-1;padding:48px;text-align:center;color:var(--ink-3)}
+.board-foot{position:relative;margin-top:auto;display:flex;flex-wrap:wrap;gap:8px 20px;padding:20px 40px 18px;color:var(--ink-3);font-size:12px}
+.board-foot span{display:inline-flex;align-items:center;gap:6px}
+.board-foot kbd{padding:2px 6px;border-radius:6px;background:var(--paper);border:1px solid var(--line-2);border-bottom-width:2px;color:var(--ink-2);font:600 10.5px "Segoe UI",var(--ui)}
+
+/* ---------- editor view ---------- */
+#sidebar{width:252px;flex:none;display:flex;flex-direction:column;background:var(--side);color:#e8eefc;min-height:0}
+body.sb-off #sidebar{display:none}
+.sb-head{display:flex;align-items:center;gap:6px;padding:12px 12px 6px}
+.sb-back{flex:1;height:36px;border-radius:11px;display:flex;align-items:center;gap:8px;padding:0 10px;color:rgba(232,238,252,.85);font-weight:650;font-size:13px}
+.sb-back:hover,.sb-add:hover{background:rgba(255,255,255,.08);color:#fff}
+.sb-back kbd{margin-left:auto;color:rgba(232,238,252,.4)}
+.sb-add{width:36px;height:36px;border-radius:11px;display:grid;place-items:center;color:rgba(232,238,252,.85)}
+.sb-label{padding:8px 20px 6px;font-size:10.5px;letter-spacing:.12em;color:rgba(232,238,252,.42);font-weight:700}
+#sbList{flex:1;overflow:auto;padding:0 10px 14px}
+#sbList::-webkit-scrollbar-thumb{background:rgba(255,255,255,.16);background-clip:padding-box}
+.sb-item{position:relative;padding:9px 12px 9px 16px;border-radius:11px;margin-bottom:2px}
+.sb-item::before{content:'';position:absolute;left:6px;top:12px;bottom:12px;width:3px;border-radius:3px;background:var(--c);opacity:.35}
+.sb-item:hover{background:rgba(255,255,255,.06)}
+.sb-item.on{background:rgba(255,255,255,.13)}
+.sb-item.on::before{opacity:1}
+.sb-row{display:flex;align-items:center;gap:6px}
+.sb-item .t{flex:1;font-weight:650;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sb-item .t.ph{color:rgba(220,230,252,.5)!important}
+.sb-item .p{font-size:12px;color:rgba(220,230,252,.55);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+.sb-hk{flex:none;font:600 10px "Segoe UI",sans-serif;color:#b3cbff;background:rgba(110,155,255,.18);border-radius:5px;padding:1px 5px}
+.sb-foot{padding:10px 20px 14px;font-size:11px;color:rgba(220,230,252,.38);line-height:1.6}
+#pane{flex:1;min-width:0;display:flex;flex-direction:column;background:var(--pane);position:relative}
+#noteHead{display:flex;align-items:center;gap:6px;padding:14px 26px 12px 14px}
+.hbtn{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;color:var(--ink-2);flex:none}
+.hbtn:hover{background:var(--hover);color:var(--ink)}
+.hbtn.on{color:var(--accent)}
+.cdot{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;flex:none}
+.cdot::after{content:'';width:13px;height:13px;border-radius:50%;background:var(--c);box-shadow:0 0 0 4px color-mix(in srgb,var(--c) 22%,transparent)}
+.cdot:hover{background:var(--hover)}
+#noteTitle{flex:1;min-width:0;border:0;outline:0;background:transparent;color:var(--ink);font:750 23px/1.3 var(--ui);letter-spacing:-.025em;padding:2px 4px;user-select:text}
+#noteTitle::placeholder{color:var(--ink-3);opacity:.75}
+.hk-chip{height:32px;padding:0 12px;border-radius:10px;display:inline-flex;align-items:center;gap:6px;font:650 12.5px "Segoe UI",var(--ui);color:var(--ink-2);background:var(--paper);border:1px dashed var(--line-2);white-space:nowrap;flex:none}
+.hk-chip:hover{border-color:var(--accent);color:var(--accent-ink)}
+.hk-chip.set{border:1px solid transparent;background:var(--accent-soft);color:var(--accent-ink)}
+.hk-chip.bad{background:rgba(229,72,77,.1);color:#e5484d}
+.hk-chip .i{width:16px;height:16px}
+#doc{flex:1;min-height:0;display:flex;flex-direction:column;margin:0 20px;background:var(--paper);border:1px solid var(--line);border-bottom:0;border-radius:16px 16px 0 0;box-shadow:var(--sh-1);overflow:hidden}
+#toolbar{position:relative;display:flex;flex-wrap:wrap;align-items:center;gap:1px;padding:7px 12px;border-bottom:1px solid var(--line);background:var(--paper);z-index:4}
+.tb{height:32px;min-width:32px;padding:0 7px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;gap:3px;color:var(--ink-2);position:relative}
+.tb:hover{background:var(--hover);color:var(--ink)}
+.tb.on{background:var(--accent-soft);color:var(--accent-ink)}
+.tb .i.sm{width:12px;height:12px;opacity:.6}
+.glyph{font:700 15.5px/1 "Segoe UI",var(--ui);width:16px;text-align:center}
+.glyph.it{font:italic 600 17px/1 Georgia,serif}
+.tb .bar{position:absolute;left:8px;right:7px;bottom:4px;height:3px;border-radius:2px}
+#tbFg .glyph{margin-top:-3px}
+#tbHl .i{margin-top:-3px}
+.split{display:inline-flex;align-items:center}
+.split>.tb:first-child{border-radius:8px 0 0 8px;padding-right:5px}
+.split>.tb.arrow{border-radius:0 8px 8px 0;min-width:16px;padding:0 2px}
+.tsep{width:1px;height:18px;background:var(--line-2);margin:0 5px}
+.tb-fill{flex:1}
+#tbBlock{min-width:86px;justify-content:space-between;padding:0 8px 0 10px;font-weight:650;font-size:13px;color:var(--ink)}
+#findbar{position:absolute;right:5px;top:4px;bottom:4px;display:none;align-items:center;gap:2px;padding:0 4px 0 10px;background:var(--menu);border:1px solid var(--accent);border-radius:10px;box-shadow:var(--sh-2)}
+#findbar.show{display:flex}
+#findbar input{width:190px;border:0;outline:0;background:transparent;font-size:13px}
+#findCount{font:600 11.5px "Segoe UI",var(--ui);color:var(--ink-3);min-width:44px;text-align:right;padding-right:4px}
+#findbar .tb{height:26px;min-width:26px;padding:0}
+#scroller{flex:1;min-height:0;overflow:auto;position:relative}
+#sheet{position:relative;min-height:100%}
+#editor{position:relative;outline:none;min-height:100%;padding:30px 52px 42vh;font-family:var(--ef);font-size:var(--fs);line-height:1.75;color:var(--ink);white-space:pre-wrap;overflow-wrap:break-word;tab-size:4;user-select:text;caret-color:var(--accent);cursor:text}
+#editor.is-empty::before{content:attr(data-ph);position:absolute;left:52px;top:30px;color:var(--ink-3);opacity:.85;pointer-events:none;white-space:pre-line}
+#editor div,#editor p{margin:0}
+#editor>:first-child{margin-top:0}
+#editor h1{font-size:1.85em;line-height:1.3;font-weight:800;letter-spacing:-.02em;margin:.5em 0 .2em}
+#editor h2{font-size:1.45em;line-height:1.35;font-weight:750;letter-spacing:-.015em;margin:.5em 0 .15em}
+#editor h3{font-size:1.18em;line-height:1.4;font-weight:700;margin:.45em 0 .1em}
+#editor b,#editor strong{font-weight:750}
+#editor ul,#editor ol{margin:.15em 0;padding-left:1.7em}
+#editor ul.checklist{list-style:none;padding-left:.15em}
+#editor ul.checklist>li{position:relative;padding-left:1.85em}
+#editor ul.checklist>li::before{content:'';position:absolute;left:.1em;top:.37em;width:1.05em;height:1.05em;border:2px solid var(--line-2);border-radius:.32em;background:var(--paper);cursor:pointer;box-sizing:border-box;transition:background .12s,border-color .12s}
+#editor ul.checklist>li:hover::before{border-color:var(--accent)}
+#editor ul.checklist>li[data-checked=true]::before{border-color:var(--accent);background:var(--accent) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E") center/80% no-repeat}
+#editor ul.checklist>li[data-checked=true]{color:var(--ink-3);text-decoration:line-through}
+#editor blockquote{margin:.5em 0;padding:.35em 1em;border-left:3px solid var(--accent);background:var(--accent-soft);border-radius:0 10px 10px 0;color:var(--ink-2)}
+#editor pre{margin:.5em 0;padding:.8em 1em;border-radius:10px;background:#0d1a36;color:#dbe6ff;font:.9em/1.6 var(--mono);white-space:pre-wrap}
+[data-theme=dark] #editor pre{background:#060d20}
+#editor hr{border:0;height:2px;margin:1.1em 0;background:linear-gradient(90deg,var(--accent),transparent)}
+#editor a{color:var(--accent-ink);text-decoration:underline;text-underline-offset:2px}
+#editor img{max-width:100%;border-radius:8px;vertical-align:bottom}
+#editor table.t{border-collapse:collapse;margin:1.6em 0;display:block;width:max-content;max-width:100%;overflow-x:auto}
+#editor table.t td{border:1px solid var(--line-2);padding:.42em .8em;min-width:5.5em;vertical-align:top;line-height:1.55}
+#editor table.t.hdr tr:first-child td{background:var(--th-bg);color:var(--th-ink);font-weight:700}
+::highlight(ssn-find){background-color:rgba(255,200,40,.45)}
+::highlight(ssn-cur){background-color:#ff9f1c;color:#111}
+#status{height:30px;flex:none;display:flex;align-items:center;gap:14px;padding:0 20px;font-size:11.5px;color:var(--ink-3);border-top:1px solid var(--line)}
+#stSave{display:inline-flex;align-items:center;gap:6px}
+#stSave::before{content:'';width:7px;height:7px;border-radius:50%;background:#22c55e}
+#stSave.saving::before{background:#f59e0b}
+#status .fill{flex:1}
+#stZoom{cursor:pointer}
+
+/* table overlay (+ buttons on the four edges) */
+#tblOv{position:absolute;pointer-events:none;z-index:3;display:none}
+#tblOv.show{display:block}
+/* small round buttons sitting just outside each edge of the table */
+.tadd{position:absolute;pointer-events:auto;width:18px;height:18px;border-radius:50%;background:var(--paper);color:var(--accent);border:1.5px solid color-mix(in srgb,var(--accent) 50%,transparent);display:grid;place-items:center;box-shadow:0 2px 6px rgba(30,70,180,.16);opacity:.8;transition:transform .12s,opacity .12s,background .12s,color .12s}
+.tadd .i{width:11px;height:11px;stroke-width:3}
+.tadd:hover{transform:scale(1.15);opacity:1;background:var(--accent);border-color:var(--accent);color:#fff}
+.tadd.t{left:50%;top:-24px;margin-left:-9px}
+.tadd.b{left:50%;bottom:-24px;margin-left:-9px}
+.tadd.l{top:50%;left:-26px;margin-top:-9px}
+.tadd.r{top:50%;right:-26px;margin-top:-9px}
+.tguide{position:absolute;background:var(--accent);opacity:0;transition:opacity .1s;border-radius:2px}
+.tguide.t{left:0;right:0;top:-2px;height:3px}.tguide.b{left:0;right:0;bottom:-2px;height:3px}
+.tguide.l{top:0;bottom:0;left:-2px;width:3px}.tguide.r{top:0;bottom:0;right:-2px;width:3px}
+#tblOv.g-t .tguide.t,#tblOv.g-b .tguide.b,#tblOv.g-l .tguide.l,#tblOv.g-r .tguide.r{opacity:1}
+#cellbox{position:absolute;border:2px solid var(--accent);border-radius:3px;display:none;pointer-events:none}
+#cellbox.nav{background:rgba(59,108,246,.08)}
+#cellbox.edit{box-shadow:0 0 0 3px var(--accent-soft)}
+#editor.cellnav{caret-color:transparent}
+
+/* ---------- popovers, menus, modals ---------- */
+.pop{position:fixed;z-index:100;min-width:190px;padding:6px;border-radius:13px;background:var(--menu);border:1px solid var(--line);box-shadow:var(--sh-pop);color:var(--ink);font-size:13px;animation:pop .1s ease-out}
+@keyframes pop{from{opacity:0;transform:translateY(-4px)}}
+.mi{display:flex;align-items:center;gap:10px;width:100%;height:32px;padding:0 10px;border-radius:8px;text-align:left;white-space:nowrap}
+.mi:hover{background:var(--hover)}
+.mi .i{width:16px;height:16px;color:var(--ink-2)}
+.mi>i{width:16px;flex:none}
+.mi span{flex:1}
+.mi kbd{color:var(--ink-3)}
+.mi.danger,.mi.danger .i{color:#e5484d}
+.mi:disabled{opacity:.38;pointer-events:none}
+.mi.on{color:var(--accent-ink)}
+.msep{height:1px;background:var(--line);margin:5px 4px}
+.mlabel{padding:5px 10px 3px;font-size:11px;color:var(--ink-3);font-weight:650}
+.swatches{display:flex;gap:7px;padding:6px 10px 8px;flex-wrap:wrap;max-width:236px}
+.sw{width:22px;height:22px;border-radius:50%;box-shadow:inset 0 0 0 1px rgba(0,0,0,.12);position:relative;flex:none}
+.sw:hover{transform:scale(1.12)}
+.sw.on::after{content:'';position:absolute;inset:-4px;border-radius:50%;border:2px solid var(--accent)}
+.sw.none{background:linear-gradient(135deg,transparent 44%,#e5484d 44% 56%,transparent 56%),var(--paper)}
+.sw.txt{display:grid;place-items:center;font:800 13px "Segoe UI";background:var(--paper)}
+.bl{display:flex;align-items:center;width:100%;padding:6px 10px;border-radius:8px;text-align:left;gap:10px}
+.bl:hover{background:var(--hover)}
+.bl kbd{margin-left:auto;color:var(--ink-3)}
+.tgrid{display:grid;grid-template-columns:repeat(8,19px);gap:3px;padding:8px 8px 4px}
+.tgrid i{width:19px;height:19px;border-radius:4px;border:1px solid var(--line-2);background:var(--paper)}
+.tgrid i.on{background:var(--accent-soft);border-color:var(--accent)}
+.tglabel{text-align:center;font:650 12px "Segoe UI",var(--ui);color:var(--ink-2);padding:4px 0 2px}
+.tghint{font-size:11.5px;color:var(--ink-3);padding:4px 10px 6px;max-width:200px;line-height:1.45}
+#modal{position:fixed;inset:0;z-index:90;display:none;align-items:flex-start;justify-content:center;padding-top:11vh;background:rgba(5,12,30,.4)}
+#modal.show{display:flex}
+.dlg{width:min(520px,calc(100vw - 32px));max-height:80vh;display:flex;flex-direction:column;background:var(--menu);color:var(--ink);border-radius:18px;box-shadow:var(--sh-pop);border:1px solid var(--line);overflow:hidden;animation:pop .12s ease-out}
+.dlg.wide{width:min(600px,calc(100vw - 32px))}
+.dlg-head{display:flex;align-items:center;gap:10px;padding:18px 22px 6px}
+.dlg-head .i{color:var(--accent)}
+.dlg-head h3{margin:0;font-size:16px;font-weight:750}
+.dlg-sub{color:var(--ink-3);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dlg-body{padding:8px 22px 14px;overflow:auto}
+.dlg-foot{display:flex;align-items:center;gap:8px;padding:12px 22px 18px}
+.dlg-foot .ver{font-size:11.5px;color:var(--ink-3)}
+.btn{height:36px;padding:0 14px;border-radius:10px;background:var(--hover);font-weight:650;font-size:13px;white-space:nowrap}
+.btn:hover{filter:brightness(.97)}
+.btn.primary{background:linear-gradient(135deg,#4f7dff,#2a56e0);color:#fff}
+.btn.ghost{background:transparent;color:var(--ink-2)}
+.btn.ghost:hover{background:var(--hover)}
+.keys{display:flex;gap:8px;justify-content:center;align-items:center;min-height:72px;margin:10px 0 6px}
+.keys kbd{min-width:46px;height:46px;padding:0 13px;border-radius:11px;background:linear-gradient(180deg,var(--paper),var(--hover));border:1px solid var(--line-2);border-bottom-width:3px;display:inline-grid;place-items:center;font:700 15px "Segoe UI",var(--ui);color:var(--ink)}
+.keys kbd.ghost{color:var(--ink-3);border-style:dashed}
+.keys .plus{color:var(--ink-3);font-weight:700}
+.hint{font-size:12.5px;color:var(--ink-3);text-align:center;line-height:1.5;min-height:38px}
+.hint.warn{color:#e5484d}
+.hint.ok{color:var(--accent-ink)}
+.row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 0;border-bottom:1px solid var(--line)}
+.row:last-child{border-bottom:0}
+.row .lbl{min-width:0}
+.row .lbl b{display:block;font-weight:650;font-size:13.5px}
+.row .lbl small{display:block;color:var(--ink-3);font-size:12px;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:300px}
+.row .lbl small .wrap{display:block;white-space:normal;line-height:1.6}
+.row .lbl small .wrap b{display:inline;font-size:12px;color:var(--ink-2);margin-right:4px}
+.row-btns{display:flex;gap:6px;flex:none}
+.switch{width:42px;height:24px;border-radius:12px;background:var(--line-2);position:relative;transition:background .15s;flex:none}
+.switch::after{content:'';position:absolute;left:3px;top:3px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform .15s}
+.switch.on{background:var(--accent)}
+.switch.on::after{transform:translateX(18px)}
+.seg{display:inline-flex;background:var(--hover);border-radius:10px;padding:3px;flex:none}
+.seg button{height:28px;padding:0 12px;border-radius:8px;font-size:12.5px;color:var(--ink-2);font-weight:600}
+.seg button.on{background:var(--paper);color:var(--ink);box-shadow:var(--sh-1)}
+.seg .val{display:grid;place-items:center;min-width:48px;font:650 12.5px "Segoe UI"}
+select.sel{height:32px;border-radius:9px;border:1px solid var(--line-2);background:var(--paper);padding:0 8px;outline:none}
+.qs{width:min(620px,calc(100vw - 32px))}
+.qs-in{display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--line)}
+.qs-in .i{color:var(--ink-3)}
+.qs-in input{flex:1;border:0;outline:0;background:transparent;font-size:16px}
+.qs-in kbd{color:var(--ink-3)}
+.qs-list{overflow:auto;padding:6px;max-height:52vh}
+.qs-item{display:flex;align-items:center;gap:12px;padding:9px 12px;border-radius:11px}
+.qs-item.on{background:var(--hover)}
+.qs-item .c-dot{margin:0 2px}
+.qs-txt{flex:1;min-width:0}
+.qs-txt b{display:block;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.qs-txt small{display:block;color:var(--ink-3);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.qs-empty{padding:26px;text-align:center;color:var(--ink-3)}
+.help{display:grid;grid-template-columns:1fr 1fr;gap:4px 26px}
+.help h4{grid-column:1/-1;margin:12px 0 4px;font-size:12px;color:var(--accent-ink);letter-spacing:.04em}
+.help div{display:flex;justify-content:space-between;gap:12px;font-size:12.5px;padding:3px 0;border-bottom:1px dashed var(--line)}
+.help kbd{color:var(--ink-2);white-space:nowrap}
+#toasts{position:fixed;left:50%;bottom:46px;transform:translateX(-50%);z-index:120;display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none}
+.toast{pointer-events:auto;display:flex;align-items:center;gap:14px;padding:10px 16px;border-radius:12px;background:#0f1d40;color:#fff;font-size:13px;box-shadow:var(--sh-pop);animation:pop .14s ease-out;transition:opacity .15s}
+.toast.out{opacity:0}
+.toast button{color:#9cc0ff;font-weight:700}
+.rz{position:fixed;z-index:200}
+.rz.t{top:0;left:8px;right:8px;height:4px;cursor:ns-resize}.rz.b{bottom:0;left:8px;right:8px;height:5px;cursor:ns-resize}
+.rz.l{left:0;top:8px;bottom:8px;width:5px;cursor:ew-resize}.rz.r{right:0;top:8px;bottom:8px;width:5px;cursor:ew-resize}
+.rz.tl{left:0;top:0;width:8px;height:8px;cursor:nwse-resize}.rz.tr{right:0;top:0;width:8px;height:8px;cursor:nesw-resize}
+.rz.bl{left:0;bottom:0;width:8px;height:8px;cursor:nesw-resize}.rz.br{right:0;bottom:0;width:10px;height:10px;cursor:nwse-resize}
+body.maxed .rz,body.web .rz{display:none}
+@media (max-width:820px){#sidebar{display:none}.hero,.grid,.board-foot{padding-left:22px;padding-right:22px}}
+</style>
+</head>
+<body data-view="board" data-theme="light">
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <linearGradient id="gMark" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#071436"/><stop offset=".38" stop-color="#102a6b"/><stop offset=".52" stop-color="#3d6bd8"/><stop offset=".66" stop-color="#dde7fa"/><stop offset="1" stop-color="#fff"/></linearGradient>
+    <clipPath id="cTop"><rect width="32" height="16.6"/></clipPath><clipPath id="cBot"><rect y="16.6" width="32" height="16"/></clipPath>
+  </defs>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></symbol>
+  <symbol id="i-top" viewBox="0 0 24 24"><path d="M12 15V4M7.5 8.5 12 4l4.5 4.5"/><path d="M4 14v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5Z"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M4.6 4.6 6 6M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4 6 18M18 6l1.4-1.4"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24"><path d="M4 7h9M17 7h3M4 12h3M11 12h9M4 17h11M19 17h1"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="17" r="2"/></symbol>
+  <symbol id="i-min" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+  <symbol id="i-max" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="1.5"/></symbol>
+  <symbol id="i-restore" viewBox="0 0 24 24"><rect x="5" y="8.5" width="10.5" height="10.5" rx="1.5"/><path d="M8.5 8.5V6.5A1.5 1.5 0 0 1 10 5h7.5A1.5 1.5 0 0 1 19 6.5V14a1.5 1.5 0 0 1-1.5 1.5h-2"/></symbol>
+  <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 17v5M5 17h14v-1.8a2 2 0 0 0-1.1-1.8l-1.8-.9A2 2 0 0 1 15 10.8V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.8a2 2 0 0 1-1.1 1.7l-1.8.9A2 2 0 0 0 5 15.2Z"/></symbol>
+  <symbol id="i-key" viewBox="0 0 24 24"><rect x="2.5" y="6" width="19" height="12" rx="2.5"/><path d="M6.5 10h.01M10 10h.01M14 10h.01M17.5 10h.01M7.5 14h9"/></symbol>
+  <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/></symbol>
+  <symbol id="i-list" viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r=".9"/><circle cx="4.5" cy="12" r=".9"/><circle cx="4.5" cy="18" r=".9"/></symbol>
+  <symbol id="i-olist" viewBox="0 0 24 24"><path d="M10 6h10M10 12h10M10 18h10"/><path d="M4 4.5h1.5V9M4 9h3M4 14.6c0-.9.7-1.6 1.6-1.6s1.5.7 1.5 1.5c0 1.6-3.1 2-3.1 4h3.1"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><rect x="3" y="4" width="7" height="7" rx="1.6"/><path d="m4.9 7.6 1.3 1.3 2.2-2.4"/><rect x="3" y="14" width="7" height="7" rx="1.6"/><path d="M14 7.5h7M14 17.5h7"/></symbol>
+  <symbol id="i-table" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9.5h18M3 15h18M9 4v16M15 4v16"/></symbol>
+  <symbol id="i-hr" viewBox="0 0 24 24"><path d="M3 12h18"/><path d="M7 6.5h10M7 17.5h10" opacity=".4"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+  <symbol id="i-eraser" viewBox="0 0 24 24"><path d="m7 21-4.3-4.3a2.4 2.4 0 0 1 0-3.4l9.6-9.6a2.4 2.4 0 0 1 3.4 0l5.6 5.6a2.4 2.4 0 0 1 0 3.4L13 21"/><path d="M22 21H7M5 11l9 9"/></symbol>
+  <symbol id="i-marker" viewBox="0 0 24 24"><path d="m9 11-6 6v3h9l3-3"/><path d="m22 12-4.6 4.6a2 2 0 0 1-2.8 0l-5.2-5.2a2 2 0 0 1 0-2.8L14 4"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="i-up" viewBox="0 0 24 24"><path d="m6 15 6-6 6 6"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M5.5 7l1 12.5A2 2 0 0 0 8.5 21h7a2 2 0 0 0 2-1.5L18.5 7M9 7V4.5h6V7"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4.5A1.5 1.5 0 0 1 3 13.5v-9A1.5 1.5 0 0 1 4.5 3h9A1.5 1.5 0 0 1 15 4.5V5"/></symbol>
+  <symbol id="i-export" viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></symbol>
+  <symbol id="i-open" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-8.5 8.5M18 14v4.5A1.5 1.5 0 0 1 16.5 20h-11A1.5 1.5 0 0 1 4 18.5v-11A1.5 1.5 0 0 1 5.5 6H10"/></symbol>
+  <symbol id="i-edit" viewBox="0 0 24 24"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16Z"/><path d="m13.5 6.5 4 4"/></symbol>
+  <symbol id="i-side" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M9.5 4v16"/></symbol>
+  <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="7" height="7" rx="1.8"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.8"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.8"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.8"/></symbol>
+  <symbol id="i-cut" viewBox="0 0 24 24"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4 8.1 15.9M14.5 14.5 20 20M8.1 8.1 12 12"/></symbol>
+  <symbol id="i-paste" viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1M9 9h6M9 13h6M9 17h4"/></symbol>
+  <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7l1-8Z"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></symbol>
+  <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.4a2.5 2.5 0 1 1 3.4 2.4c-.6.3-1 .8-1 1.5v.5M12 17h.01"/></symbol>
+  <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 16-5-5-9 9"/></symbol>
+</svg>
+
+<div id="app">
+  <header id="titlebar" data-drag>
+    <div class="brand">
+      <svg class="mark" viewBox="0 0 32 32"><rect x="1" y="1" width="30" height="30" rx="7.5" fill="url(#gMark)" stroke="rgba(255,255,255,.28)"/><g font-family="Segoe UI Black,Arial Black,sans-serif" font-style="italic" font-weight="900" font-size="23" text-anchor="middle"><text x="16" y="24.4" fill="#fff" clip-path="url(#cTop)">S</text><text x="16" y="24.4" fill="#0b1d4a" clip-path="url(#cBot)">S</text></g></svg>
+      <div class="wordmark">SUPER SPEED<span>NOTE</span></div>
+    </div>
+    <div class="tb-mid" id="tbMid"></div>
+    <button class="tbtn" id="btnSwitch" title="빠른 이동 (Ctrl+K)"><svg class="i"><use href="#i-search"/></svg></button>
+    <button class="tbtn" id="btnTop" title="항상 위에 표시"><svg class="i"><use href="#i-top"/></svg></button>
+    <button class="tbtn" id="btnTheme" title="라이트 / 다크"><svg class="i"><use href="#i-moon"/></svg></button>
+    <button class="tbtn" id="btnSettings" title="설정 (Ctrl+,)"><svg class="i"><use href="#i-gear"/></svg></button>
+    <span class="tsep2"></span>
+    <button class="wc" id="wcMin" title="최소화"><svg class="i"><use href="#i-min"/></svg></button>
+    <button class="wc" id="wcMax" title="최대화"><svg class="i maxi"><use href="#i-max"/></svg><svg class="i restore"><use href="#i-restore"/></svg></button>
+    <button class="wc x" id="wcClose" title="닫기"><svg class="i"><use href="#i-close"/></svg></button>
+  </header>
+
+  <main id="board" class="view">
+    <div class="hero-bg"></div>
+    <section class="hero" data-drag>
+      <div class="crumb"><span class="crumb-t">전체 메모</span><span class="pill" id="noteCount">0 / 20</span></div>
+      <div class="hero-act">
+        <label class="search"><svg class="i"><use href="#i-search"/></svg><input id="boardSearch" placeholder="메모 검색" spellcheck="false" autocomplete="off"><kbd>Ctrl+F</kbd></label>
+        <button class="btn-new" id="btnNew"><svg class="i"><use href="#i-plus"/></svg>새 메모</button>
+      </div>
+    </section>
+    <section id="grid" class="grid" tabindex="0"></section>
+    <div class="board-foot">
+      <span><kbd>← ↑ → ↓</kbd>선택</span><span><kbd>Enter</kbd>열기 · 더블클릭</span><span><kbd>F2</kbd>이름 변경</span><span><kbd>Del</kbd>삭제</span><span><kbd>Ctrl+1~9</kbd>바로 열기</span><span><kbd>Ctrl+K</kbd>빠른 이동</span><span><kbd>F1</kbd>모든 단축키</span>
+    </div>
+  </main>
+
+  <main id="editorView" class="view">
+    <aside id="sidebar">
+      <div class="sb-head" data-drag>
+        <button class="sb-back" id="btnBack" title="보드로 (Esc)"><svg class="i"><use href="#i-grid"/></svg>메모 보드<kbd>Esc</kbd></button>
+        <button class="sb-add" id="btnSbNew" title="새 메모 (Ctrl+N)"><svg class="i"><use href="#i-plus"/></svg></button>
+      </div>
+      <div class="sb-label">NOTES</div>
+      <div id="sbList"></div>
+      <div class="sb-foot">Ctrl+Tab 다음 메모 · Ctrl+K 찾기</div>
+    </aside>
+    <section id="pane">
+      <div id="noteHead">
+        <button class="hbtn" id="hSide" title="목록 접기 / 펼치기"><svg class="i"><use href="#i-side"/></svg></button>
+        <button class="cdot" id="hColor" title="메모 색상"></button>
+        <input id="noteTitle" placeholder="제목 (비우면 첫 줄)" spellcheck="false" autocomplete="off">
+        <button class="hk-chip" id="hHotkey" title="이 메모를 어디서든 부르는 전역 단축키"></button>
+        <button class="hbtn" id="hPin" title="맨 앞에 고정"><svg class="i"><use href="#i-pin"/></svg></button>
+        <button class="hbtn" id="hMore" title="더 보기"><svg class="i"><use href="#i-more"/></svg></button>
+      </div>
+      <div id="doc">
+      <div id="toolbar">
+        <button class="tb" id="tbBlock" data-pop="block" title="문단 스타일"><span id="tbBlockLbl">본문</span><svg class="i sm"><use href="#i-chev"/></svg></button>
+        <span class="tsep"></span>
+        <button class="tb" data-cmd="bold" title="굵게 (Ctrl+B)"><b class="glyph">B</b></button>
+        <button class="tb" data-cmd="underline" title="밑줄 (Ctrl+U)"><u class="glyph">U</u></button>
+        <button class="tb" data-cmd="italic" title="기울임 (Ctrl+I)"><span class="glyph it">I</span></button>
+        <button class="tb" data-cmd="strikeThrough" title="취소선 (Ctrl+Shift+S)"><s class="glyph">S</s></button>
+        <span class="tsep"></span>
+        <span class="split"><button class="tb" id="tbFg" title="글자색 적용"><span class="glyph">A</span><i class="bar" id="fgBar"></i></button><button class="tb arrow" data-pop="fg" title="글자색 고르기"><svg class="i sm"><use href="#i-chev"/></svg></button></span>
+        <span class="split"><button class="tb" id="tbHl" title="형광펜 (Ctrl+Shift+H)"><svg class="i"><use href="#i-marker"/></svg><i class="bar" id="hlBar"></i></button><button class="tb arrow" data-pop="hl" title="형광펜 색 고르기"><svg class="i sm"><use href="#i-chev"/></svg></button></span>
+        <span class="tsep"></span>
+        <button class="tb" data-list="ul" title="글머리 목록 (Ctrl+Shift+8)"><svg class="i"><use href="#i-list"/></svg></button>
+        <button class="tb" data-list="ol" title="번호 목록 (Ctrl+Shift+7)"><svg class="i"><use href="#i-olist"/></svg></button>
+        <button class="tb" data-list="chk" title="체크리스트 (Ctrl+Shift+L)"><svg class="i"><use href="#i-check"/></svg></button>
+        <span class="tsep"></span>
+        <button class="tb" data-pop="table" title="표 넣기 (Ctrl+Shift+T) · 엑셀 붙여넣기 지원"><svg class="i"><use href="#i-table"/></svg></button>
+        <button class="tb" id="tbHr" title="구분선 (--- 입력 후 Enter)"><svg class="i"><use href="#i-hr"/></svg></button>
+        <button class="tb" id="tbStamp" title="날짜·시간 넣기 (Ctrl+;)"><svg class="i"><use href="#i-clock"/></svg></button>
+        <button class="tb" id="tbClear" title="서식 지우기 (Ctrl+\)"><svg class="i"><use href="#i-eraser"/></svg></button>
+        <span class="tb-fill"></span>
+        <button class="tb" id="tbFind" title="찾기 (Ctrl+F)"><svg class="i"><use href="#i-search"/></svg></button>
+        <div id="findbar"><input id="findIn" placeholder="메모에서 찾기" spellcheck="false"><span id="findCount"></span><button class="tb" id="findPrev" title="이전 (Shift+Enter)"><svg class="i"><use href="#i-up"/></svg></button><button class="tb" id="findNext" title="다음 (Enter)"><svg class="i"><use href="#i-chev"/></svg></button><button class="tb" id="findX" title="닫기 (Esc)"><svg class="i"><use href="#i-close"/></svg></button></div>
+      </div>
+      <div id="scroller">
+        <div id="sheet">
+          <div id="editor" contenteditable="true" spellcheck="false" data-ph="여기에 바로 입력하세요.&#10;엑셀에서 셀을 복사해 붙여넣으면 표가 됩니다 · # 제목  - 목록  [] 체크"></div>
+          <div id="tblOv">
+            <i class="tguide t"></i><i class="tguide b"></i><i class="tguide l"></i><i class="tguide r"></i>
+            <div id="cellbox"></div>
+            <button class="tadd t" data-op="rowTop" title="맨 위에 행 추가"><svg class="i"><use href="#i-plus"/></svg></button>
+            <button class="tadd b" data-op="rowBottom" title="맨 아래에 행 추가"><svg class="i"><use href="#i-plus"/></svg></button>
+            <button class="tadd l" data-op="colLeft" title="맨 왼쪽에 열 추가"><svg class="i"><use href="#i-plus"/></svg></button>
+            <button class="tadd r" data-op="colRight" title="맨 오른쪽에 열 추가"><svg class="i"><use href="#i-plus"/></svg></button>
+          </div>
+        </div>
+      </div>
+      <footer id="status"><span id="stSave">저장됨</span><span id="stCount"></span><span class="fill"></span><span id="stHint">Esc 보드 · Ctrl+K 이동</span><span id="stZoom" title="클릭하면 100%">100%</span></footer>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div class="rz t" data-edge="t"></div><div class="rz b" data-edge="b"></div><div class="rz l" data-edge="l"></div><div class="rz r" data-edge="r"></div>
+<div class="rz tl" data-edge="tl"></div><div class="rz tr" data-edge="tr"></div><div class="rz bl" data-edge="bl"></div><div class="rz br" data-edge="br"></div>
+<div id="pop" class="pop" hidden></div>
+<div id="modal"></div>
+<div id="toasts"></div>
+
+<script>
+(() => {
+'use strict';
+// ======================================================================
+//  Super Speed Note - UI. Plain JS, no framework, one file: it must start instantly.
+// ======================================================================
+const SEP = '\x1f';
+const HOST = !!(window.chrome && window.chrome.webview);
+const MAX_NOTES = 20;
+const IMG_URL = 'https://app.ssn/img/';
+const BLOCK_TAGS = /^(DIV|P|H[1-6]|LI|TR|TD|TH|BLOCKQUOTE|PRE|UL|OL|TABLE|HR)$/;
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const now = () => Date.now();
+const ic = (id, cls = '') => `<svg class="i ${cls}"><use href="#${id}"/></svg>`;
+
+const NOTE_COLORS = { navy: '#1e3a8a', blue: '#2f6bff', sky: '#0ea5e9', teal: '#0d9488', green: '#16a34a', amber: '#f59e0b', coral: '#f43f5e', violet: '#8b5cf6' };
+const COLOR_KEYS = Object.keys(NOTE_COLORS);
+// text colours chosen for contrast on white; dark theme remaps them (see injected CSS)
+const FG = [
+  { n: '기본', v: '' }, { n: '네이비', v: '#1d3a8a', d: '#a5bdff' }, { n: '블루', v: '#1d4ed8', d: '#7fa8ff' },
+  { n: '레드', v: '#d92d20', d: '#ff8f84' }, { n: '그린', v: '#067647', d: '#5ad39b' }, { n: '오렌지', v: '#c2410c', d: '#ffa56e' },
+  { n: '퍼플', v: '#6d28d9', d: '#c9a8ff' }, { n: '그레이', v: '#475467', d: '#a6b1c6' }
+];
+const HL = [
+  { n: '노랑', v: '#fff176' }, { n: '민트', v: '#a7f3d0' }, { n: '하늘', v: '#bae6fd' },
+  { n: '핑크', v: '#fbcfe8' }, { n: '살구', v: '#fed7aa' }, { n: '라벤더', v: '#ddd6fe' }
+];
+const BLOCKS = [['div', '본문', ''], ['h1', '제목 1', '# '], ['h2', '제목 2', '## '], ['h3', '제목 3', '### '], ['blockquote', '인용', '> '], ['pre', '코드', '```']];
+const FONTS = {
+  ui: ['기본 (맑은 고딕)', 'var(--ui)'],
+  nanum: ['나눔고딕', '"NanumGothic","나눔고딕",var(--ui)'],
+  square: ['나눔스퀘어', '"NanumSquare","나눔스퀘어",var(--ui)'],
+  serif: ['명조', '"NanumMyeongjo","나눔명조","Batang",serif'],
+  mono: ['고정폭', 'var(--mono)']
+};
+{
+  const st = document.createElement('style');
+  st.textContent = FG.filter(c => c.v).map(c => `[data-theme=dark] #editor font[color="${c.v}"]{color:${c.d}}`).join('') +
+    '[data-theme=dark] #editor span[style*="background-color"]{color:#101828}';
+  document.head.appendChild(st);
+}
+
+// ---------------------------------------------------------------- host bridge
+// Messages are "cmd<US>arg<US>payload"; the payload always goes last so it may contain anything.
+const host = {
+  send(...parts) {
+    if (HOST) window.chrome.webview.postMessage(parts.join(SEP));
+    else devHost(parts);
+  }
+};
+function devHost([cmd, a, b]) {           // browser preview: keep data in localStorage
+  try {
+    if (cmd === 'saveNote') localStorage.setItem('ssn.n.' + a, b);
+    else if (cmd === 'delNote') localStorage.removeItem('ssn.n.' + a);
+    else if (cmd === 'saveState') localStorage.setItem('ssn.state', a);
+  } catch (e) { /* storage unavailable */ }
+}
+function devBoot() {
+  const notes = {};
+  let state = null;
+  try {
+    state = localStorage.getItem('ssn.state');
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k.startsWith('ssn.n.')) notes[k.slice(6)] = localStorage.getItem(k);
+    }
+  } catch (e) { /* ignore */ }
+  return { state, notes, autostart: 'off', version: 'dev', dataDir: '(브라우저 미리보기)' };
+}
+// start-up mode registered with Windows: 'off' | 'standby' | 'tray' (older builds sent true/false)
+function startMode() { const a = boot.autostart; return typeof a === 'string' ? a : a ? 'tray' : 'off'; }
+
+// ---------------------------------------------------------------- state
+const boot = window.__SSN__ || devBoot();
+const bodies = boot.notes || {};           // id -> html
+let S = null, recovered = false;
+for (const src of [boot.state, boot.stateBak]) {           // state.json, then the copy kept before the last save
+  if (S || !src) continue;
+  try { const v = JSON.parse(src); if (v && Array.isArray(v.notes)) { S = v; recovered = src !== boot.state; } } catch (e) { /* try the next one */ }
+}
+const firstRun = !S && !Object.keys(bodies).length;
+if (!S || !Array.isArray(S.notes)) S = { v: 1, notes: [], settings: {} };
+S.settings = Object.assign({
+  theme: 'light', closeToTray: true, onTop: false, fontSize: 15, font: 'ui', sidebar: true,
+  appHotkey: { mods: 3, vk: 78, label: 'Ctrl+Alt+N' }, fg: '#d92d20', hl: '#fff176'
+}, S.settings || {});
+const st = S.settings;
+{ // reconcile index with note files (adopt orphans after a crash, keep titles of missing bodies)
+  S.notes = S.notes.filter(n => n && n.id);
+  const known = new Set(S.notes.map(n => n.id));
+  for (const id of Object.keys(bodies)) {
+    if (known.has(id) || S.notes.length >= MAX_NOTES) continue;
+    S.notes.push({ id, title: '', color: 'navy', pinned: false, hotkey: null, created: now(), updated: now(), preview: previewOf(frag(bodies[id])) });
+  }
+  for (const n of S.notes) {
+    if (!(n.id in bodies)) bodies[n.id] = '';
+    if (!NOTE_COLORS[n.color]) n.color = 'navy';
+    if (n.line1 === undefined) n.line1 = firstLineOf(frag(bodies[n.id]));   // notes saved by older versions
+  }
+}
+
+let view = 'board';
+let cur = null;                  // note open in the editor
+let selId = S.lastOpen || null;  // selected card
+let query = '';
+let hkFailed = new Set();
+let hkJustSet = null;
+
+// ---------------------------------------------------------------- dom
+const app = document.body;
+const grid = $('#grid'), boardSearch = $('#boardSearch'), editor = $('#editor'), sheet = $('#sheet'), scroller = $('#scroller');
+const titleIn = $('#noteTitle'), sbList = $('#sbList'), toolbar = $('#toolbar'), ov = $('#tblOv'), cellbox = $('#cellbox');
+const pop = $('#pop'), modal = $('#modal'), findIn = $('#findIn');
+
+// ---------------------------------------------------------------- helpers
+function noteById(id) { return S.notes.find(n => n.id === id); }
+function ordered() { return S.notes.slice().sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0)); }
+function frag(html) { const t = document.createElement('template'); t.innerHTML = html || ''; return t.content; }
+function previewOf(root, max = 120) {
+  let out = '';
+  const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT);
+  let n;
+  while ((n = w.nextNode()) && out.length < max * 2) {
+    if (n.nodeType === 3) out += n.nodeValue;
+    else if (n.nodeName === 'BR' || BLOCK_TAGS.test(n.nodeName)) out += ' ';
+  }
+  return out.replace(/\s+/g, ' ').trim().slice(0, max);
+}
+// readable plain text (tables become TSV) - used for search, copy and .txt export
+function toPlain(root) {
+  const out = [];
+  let line = '';
+  const flush = () => { out.push(line); line = ''; };
+  const walk = node => {
+    for (let c = node.firstChild; c; c = c.nextSibling) {
+      if (c.nodeType === 3) { line += c.nodeValue; continue; }
+      if (c.nodeType !== 1) continue;
+      const tag = c.nodeName;
+      if (tag === 'BR') { flush(); continue; }
+      if (tag === 'IMG') { line += '[이미지]'; continue; }
+      if (tag === 'HR') { if (line) flush(); out.push('────────────'); continue; }
+      if (tag === 'TABLE') {
+        if (line) flush();
+        for (const tr of c.rows) out.push(Array.from(tr.cells, td => tsvCell(toPlain(td))).join('\t'));
+        continue;
+      }
+      const block = /^(DIV|P|H[1-6]|LI|BLOCKQUOTE|PRE|UL|OL)$/.test(tag);
+      if (block && line) flush();
+      if (tag === 'LI') {
+        const p = c.parentElement;
+        line += p && p.classList.contains('checklist') ? (c.dataset.checked === 'true' ? '[x] ' : '[ ] ')
+          : p && p.nodeName === 'OL' ? (Array.prototype.indexOf.call(p.children, c) + 1) + '. ' : '• ';
+      }
+      walk(c);
+      if (block && line) flush();
+    }
+  };
+  walk(root);
+  if (line) flush();
+  return out.join('\n');
+}
+function tsvCell(s) { return /[\t\n"]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; }
+// first non-empty line of a note: shown as its title when no title was typed (write first, title later)
+function firstLineOf(root) {
+  for (const c of root.childNodes) {
+    let t = c.nodeName === 'TABLE' ? Array.from((c.rows[0] || { cells: [] }).cells, td => td.textContent.trim()).join(' ')
+      : /^(UL|OL)$/.test(c.nodeName) ? (c.firstElementChild || c).textContent : c.textContent;
+    t = (t || '').replace(/\s+/g, ' ').trim();
+    if (t) return t.slice(0, 60);
+  }
+  return '';
+}
+function titleOf(n) { return n ? (n.title || n.line1 || '') : ''; }
+function previewAfterTitle(n) {                   // don't repeat a first-line title in the preview
+  const pv = n.preview || '';
+  return !n.title && n.line1 && pv.startsWith(n.line1) ? pv.slice(n.line1.length).trim() : pv;
+}
+const textCache = new Map();
+function noteText(id) {
+  if (id === cur) flushNote();
+  const n = noteById(id);
+  const c = textCache.get(id);
+  if (c && n && c.u === n.updated) return c.t;
+  const t = toPlain(frag(bodies[id]));
+  textCache.set(id, { u: n ? n.updated : 0, t });
+  return t;
+}
+function relTime(t) {
+  if (!t) return '';
+  const d = (now() - t) / 1000;
+  if (d < 45) return '방금';
+  if (d < 3600) return Math.floor(d / 60) + '분 전';
+  if (d < 86400) return Math.floor(d / 3600) + '시간 전';
+  const a = new Date(t), b = new Date();
+  if (a >= new Date(b.getFullYear(), b.getMonth(), b.getDate() - 1)) return '어제';
+  return (a.getFullYear() !== b.getFullYear() ? a.getFullYear() + '. ' : '') + (a.getMonth() + 1) + '월 ' + a.getDate() + '일';
+}
+function isTyping(el) { return el && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.nodeName)); }
+function unwrap(el) { const p = el.parentNode; if (!p) return; while (el.firstChild) p.insertBefore(el.firstChild, el); p.removeChild(el); }
+
+// ---------------------------------------------------------------- saving
+let dirty = false, saveT = 0, stateT = 0, stateDirty = false;
+function markDirty() { dirty = true; setSave(true); clearTimeout(saveT); saveT = setTimeout(flushNote, 400); }
+function flushNote() {
+  clearTimeout(saveT); saveT = 0;
+  if (!dirty || !cur) return;
+  dirty = false;
+  const h = editor.innerHTML;
+  bodies[cur] = h;
+  const n = noteById(cur);
+  if (n) { n.preview = previewOf(editor); n.line1 = firstLineOf(editor); n.updated = now(); }
+  host.send('saveNote', cur, h);
+  saveStateSoon();
+  setSave(false);
+  renderSidebarSoon();
+}
+function saveStateSoon() { stateDirty = true; clearTimeout(stateT); stateT = setTimeout(flushState, 300); }
+function flushState() { clearTimeout(stateT); stateT = 0; if (!stateDirty) return; stateDirty = false; host.send('saveState', JSON.stringify(S)); }
+function flushAll() { flushNote(); flushState(); }
+function setSave(busy) { const el = $('#stSave'); el.classList.toggle('saving', busy); el.textContent = busy ? '저장 중…' : '저장됨'; }
+window.addEventListener('blur', flushAll);
+document.addEventListener('visibilitychange', () => { if (document.hidden) flushAll(); });
+
+// ---------------------------------------------------------------- board
+function renderBoard() {
+  const list = ordered();
+  const q = query.trim().toLowerCase();
+  const shown = q ? list.filter(n => titleOf(n).toLowerCase().includes(q) || noteText(n.id).toLowerCase().includes(q)) : list;
+  let h = '';
+  for (const n of shown) h += cardHTML(n, list.indexOf(n));
+  if (!q && S.notes.length < MAX_NOTES) h += `<div class="card new" data-new="1"><span class="plus">${ic('i-plus')}</span><b>새 메모</b><small>Ctrl+N</small></div>`;
+  if (q && !shown.length) h += `<div class="empty">‘${esc(query)}’ 와 일치하는 메모가 없어요</div>`;
+  grid.innerHTML = h;
+  $('#noteCount').textContent = S.notes.length + ' / ' + MAX_NOTES;
+  if (!shown.some(n => n.id === selId)) selId = shown.length ? shown[0].id : null;
+  markSel();
+}
+function cardHTML(n, idx) {
+  const pv = previewAfterTitle(n), title = titleOf(n);
+  return `<div class="card" data-id="${n.id}" draggable="true" style="--c:${NOTE_COLORS[n.color]}">` +
+    `<button class="c-copy" title="메모 전체 복사 (Ctrl+C)">${ic('i-copy')}</button>` +
+    `<div class="c-head"><span class="c-dot"></span><div class="c-title${title ? '' : ' ph'}">${esc(title || '제목 없음')}</div>` +
+    `${n.pinned ? ic('i-pin', 'c-pin') : ''}${idx < 9 ? `<span class="c-idx" title="Ctrl+${idx + 1}">${idx + 1}</span>` : ''}</div>` +
+    `<div class="c-prev">${pv ? esc(pv.slice(0, 20)) + (pv.length > 20 ? '…' : '') : '<span class="ph">비어 있음</span>'}</div>` +
+    `<div class="c-foot">${n.hotkey ? `<span class="chip${hkFailed.has(n.id) ? ' bad' : ''}" title="${hkFailed.has(n.id) ? '다른 프로그램이 사용 중' : '전역 단축키'}">${ic('i-key')}${esc(n.hotkey.label)}</span>` : ''}<span class="c-time">${relTime(n.updated)}</span></div></div>`;
+}
+function markSel() { for (const c of grid.children) c.classList.toggle('sel', !!selId && c.dataset.id === selId); }
+function setSel(id, scroll = true) {
+  selId = id; markSel();
+  const c = id && grid.querySelector(`.card[data-id="${id}"]`);
+  if (c && scroll) c.scrollIntoView({ block: 'nearest' });
+}
+function moveSel(dx, dy) {
+  const cards = $$('.card[data-id]', grid);
+  if (!cards.length) return;
+  let i = cards.findIndex(c => c.dataset.id === selId);
+  if (i < 0) { setSel(cards[0].dataset.id); return; }
+  const cols = Math.max(1, cards.filter(c => c.offsetTop === cards[0].offsetTop).length);
+  setSel(cards[clamp(i + dx + dy * cols, 0, cards.length - 1)].dataset.id);
+}
+grid.addEventListener('mousedown', e => {
+  const c = e.target.closest('.card[data-id]');
+  if (c && !e.target.closest('.rename')) setSel(c.dataset.id, false);
+});
+grid.addEventListener('click', e => {
+  const cp = e.target.closest('.c-copy');
+  if (cp) { copyNote(cp.closest('.card').dataset.id); return; }
+  if (e.target.closest('.card.new')) newNote();
+});
+grid.addEventListener('dblclick', e => {
+  const c = e.target.closest('.card[data-id]');
+  if (c && !e.target.closest('.rename,.c-copy')) openNote(c.dataset.id);
+});
+grid.addEventListener('contextmenu', e => {
+  e.preventDefault();
+  const c = e.target.closest('.card[data-id]');
+  if (c) { setSel(c.dataset.id, false); noteMenu(c.dataset.id, e.clientX, e.clientY); }
+});
+let dragId = null;
+grid.addEventListener('dragstart', e => {
+  const c = e.target.closest('.card[data-id]');
+  if (!c || query) { e.preventDefault(); return; }
+  dragId = c.dataset.id;
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/x-ssn', dragId);
+  c.classList.add('dragging');
+});
+grid.addEventListener('dragend', () => { dragId = null; $$('.card', grid).forEach(c => c.classList.remove('dragging', 'drop-l', 'drop-r')); });
+grid.addEventListener('dragover', e => {
+  if (!dragId) return;
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  const c = e.target.closest('.card[data-id]');
+  $$('.drop-l,.drop-r', grid).forEach(x => x.classList.remove('drop-l', 'drop-r'));
+  if (!c || c.dataset.id === dragId) return;
+  const r = c.getBoundingClientRect();
+  c.classList.add(e.clientX < r.left + r.width / 2 ? 'drop-l' : 'drop-r');
+});
+grid.addEventListener('drop', e => {
+  if (!dragId) return;
+  e.preventDefault();
+  const c = e.target.closest('.card[data-id]');
+  if (c && c.dataset.id !== dragId) {
+    const after = c.classList.contains('drop-r');
+    const [m] = S.notes.splice(S.notes.findIndex(n => n.id === dragId), 1);
+    let to = S.notes.findIndex(n => n.id === c.dataset.id);
+    if (after) to++;
+    S.notes.splice(to, 0, m);
+    saveStateSoon();
+    renderBoard();
+  }
+});
+boardSearch.addEventListener('input', () => { query = boardSearch.value; renderBoard(); });
+boardSearch.addEventListener('keydown', e => {
+  if (e.isComposing) return;
+  if (e.key === 'Enter') { e.preventDefault(); if (selId) openNote(selId); }
+  else if (e.key === 'ArrowDown') { e.preventDefault(); grid.focus(); }
+  else if (e.key === 'Escape') {
+    e.preventDefault(); e.stopPropagation();
+    if (boardSearch.value) { boardSearch.value = ''; query = ''; renderBoard(); } else grid.focus();
+  }
+});
+function boardKey(e) {
+  switch (e.key) {
+    case 'ArrowRight': moveSel(1, 0); break;
+    case 'ArrowLeft': moveSel(-1, 0); break;
+    case 'ArrowDown': moveSel(0, 1); break;
+    case 'ArrowUp': moveSel(0, -1); break;
+    case 'Home': { const c = grid.querySelector('.card[data-id]'); if (c) setSel(c.dataset.id); break; }
+    case 'End': { const c = $$('.card[data-id]', grid).pop(); if (c) setSel(c.dataset.id); break; }
+    case 'Enter': case ' ': if (selId) openNote(selId); break;
+    case 'Delete': if (selId) deleteNote(selId); break;
+    case 'F2': if (selId) renameInline(selId); break;
+    case '/': boardSearch.focus(); break;
+    default:
+      if (e.key.length === 1 && e.key !== ' ') boardSearch.focus();   // start typing = search
+      return;
+  }
+  e.preventDefault();
+}
+function renameInline(id) {
+  const card = grid.querySelector(`.card[data-id="${id}"]`);
+  const n = noteById(id);
+  if (!card || !n) return;
+  card.draggable = false;
+  const t = card.querySelector('.c-title');
+  t.classList.remove('ph');
+  t.innerHTML = `<input class="rename" placeholder="제목" spellcheck="false">`;
+  const inp = t.firstChild;
+  inp.value = n.title || '';
+  inp.focus(); inp.select();
+  let done = false;
+  const finish = ok => {
+    if (done) return;
+    done = true;
+    if (ok && inp.value.trim() !== (n.title || '')) { n.title = inp.value.trim(); n.updated = now(); saveStateSoon(); }
+    renderBoard(); grid.focus({ preventScroll: true });
+  };
+  inp.addEventListener('keydown', e => {
+    e.stopPropagation();
+    if (e.isComposing) return;
+    if (e.key === 'Enter') finish(true); else if (e.key === 'Escape') finish(false);
+  });
+  inp.addEventListener('blur', () => finish(true));
+}
+
+// ---------------------------------------------------------------- notes
+function newNote() {
+  if (S.notes.length >= MAX_NOTES) { toast(`메모는 ${MAX_NOTES}개까지 만들 수 있어요`); return; }
+  const n = { id: uid(), title: '', color: COLOR_KEYS[S.notes.length % COLOR_KEYS.length], pinned: false, hotkey: null, created: now(), updated: now(), preview: '' };
+  S.notes.push(n);
+  bodies[n.id] = '<div><br></div>';
+  host.send('saveNote', n.id, bodies[n.id]);
+  saveStateSoon();
+  query = ''; boardSearch.value = '';
+  openNote(n.id);                                  // straight into the body: write first, title later (or never)
+}
+function deleteNote(id) {
+  const i = S.notes.findIndex(n => n.id === id);
+  if (i < 0) return;
+  const meta = S.notes[i];
+  if (cur === id) { clearTimeout(saveT); dirty = false; bodies[id] = editor.innerHTML; }
+  const html = bodies[id];
+  S.notes.splice(i, 1);
+  delete bodies[id]; H.delete(id); textCache.delete(id);
+  host.send('delNote', id);
+  stateDirty = true; flushState();
+  applyHotkeys();
+  if (cur === id) { cur = null; showBoard(); } else rerender();
+  toast(`‘${titleOf(meta) || '제목 없음'}’ 삭제됨`, '되돌리기', () => {
+    if (S.notes.length >= MAX_NOTES) return;
+    S.notes.splice(Math.min(i, S.notes.length), 0, meta);
+    bodies[id] = html;
+    host.send('saveNote', id, html);
+    stateDirty = true; flushState();
+    applyHotkeys();
+    selId = id; rerender();
+  });
+}
+function duplicate(id) {
+  const n = noteById(id);
+  if (!n) return;
+  if (S.notes.length >= MAX_NOTES) { toast(`메모는 ${MAX_NOTES}개까지 만들 수 있어요`); return; }
+  if (id === cur) flushNote();
+  const c = Object.assign({}, n, { id: uid(), title: (titleOf(n) || '제목 없음') + ' 사본', hotkey: null, pinned: false, created: now(), updated: now() });
+  S.notes.splice(S.notes.indexOf(n) + 1, 0, c);
+  bodies[c.id] = bodies[id];
+  host.send('saveNote', c.id, bodies[c.id]);
+  saveStateSoon(); selId = c.id; rerender();
+  toast('메모를 복제했어요');
+}
+function togglePin(id) { const n = noteById(id); if (!n) return; n.pinned = !n.pinned; saveStateSoon(); rerender(); }
+function setColor(id, c) { const n = noteById(id); if (!n) return; n.color = c; saveStateSoon(); rerender(); }
+function rerender() { if (view === 'board') renderBoard(); else { renderSidebar(); renderHead(); } }
+function copyText(id) {
+  const t = noteText(id);
+  navigator.clipboard.writeText(t).then(() => toast('텍스트로 복사했어요'), () => toast('복사하지 못했어요'));
+}
+const EXPORT_CSS = 'body{font:15px/1.75 "Malgun Gothic",sans-serif;max-width:880px;margin:40px auto;padding:0 24px;color:#0f1b33;white-space:pre-wrap}h1.title{font-size:28px;margin:0 0 24px}table{border-collapse:collapse;white-space:normal}td{border:1px solid #cbd5e6;padding:6px 12px;vertical-align:top}table.hdr tr:first-child td{background:#edf2fd;font-weight:700}ul.checklist{list-style:none;padding-left:4px}ul.checklist li::before{content:"\\2610  "}ul.checklist li[data-checked=true]::before{content:"\\2611  "}ul.checklist li[data-checked=true]{text-decoration:line-through;color:#8a97b0}blockquote{border-left:3px solid #3b6cf6;margin:8px 0;padding:4px 14px;background:#f1f5ff}pre{background:#0d1a36;color:#dbe6ff;padding:12px;border-radius:8px}img{max-width:100%}';
+function exportNote(id, kind) {
+  const n = noteById(id);
+  if (!n) return;
+  if (id === cur) flushNote();
+  const name = (titleOf(n) || '메모').replace(/[\\/:*?"<>|]/g, '_').slice(0, 80) + '.' + kind;
+  const content = kind === 'txt'
+    ? (n.title ? n.title + '\n\n' : '') + noteText(id)
+    : `<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>${esc(titleOf(n) || '메모')}</title><style>${EXPORT_CSS}</style></head><body><h1 class="title">${esc(n.title || '')}</h1><div>${bodies[id] || ''}</div></body></html>`;
+  if (HOST) { host.send('export', name, kind === 'txt' ? content.replace(/\r?\n/g, '\r\n') : content); return; }
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([content], { type: kind === 'txt' ? 'text/plain' : 'text/html' }));
+  a.download = name; a.click();
+}
+
+// ---------------------------------------------------------------- view switching
+const memo = new Map();        // per-note caret + scroll, restored when you come back
+let lastSel = null;
+function setView(v) { view = v; app.dataset.view = v; }
+function openNote(id, o = {}) {
+  const n = noteById(id);
+  if (!n) return;
+  closePop();
+  const same = cur === id && view === 'editor';
+  if (!same) {
+    if (cur) leaveNote();
+    clearNav();
+    cur = id; selId = id;
+    editor.innerHTML = bodies[id] || '<div><br></div>';
+    if (!editor.firstChild) editor.innerHTML = '<div><br></div>';
+    histInit(id);
+    titleIn.value = n.title || '';
+    findClose(true);
+    hideOv();
+    lastSel = null;
+  }
+  setView('editor');
+  renderHead(); renderSidebar(); stats(); setSave(false);
+  S.lastOpen = id; saveStateSoon();
+  host.send('active', id);
+  if (o.focusTitle) { titleIn.focus(); titleIn.select(); return; }
+  const m = memo.get(id);
+  editor.focus({ preventScroll: true });
+  if (!same) {
+    if (m && m.sel) { selRestore(m.sel); scroller.scrollTop = m.top; }
+    else { placeCaret(editor.firstChild || editor, false); scroller.scrollTop = 0; }
+  } else if (lastSel) selRestore(lastSel);
+  updateToolbar();
+}
+function leaveNote() {
+  if (!cur) return;
+  histCommit();                    // normalizes text nodes so the caret path matches the saved html
+  flushNote();
+  memo.set(cur, { sel: selSave() || lastSel, top: scroller.scrollTop });
+}
+function showBoard() {
+  if (cur) leaveNote();
+  cur = null;
+  clearNav();
+  closePop(); hideOv(); findClose(true);
+  setView('board');
+  $('#tbMid').textContent = '';
+  renderBoard();
+  host.send('active', '');
+  grid.focus({ preventScroll: true });
+  const c = grid.querySelector('.card.sel');
+  if (c) c.scrollIntoView({ block: 'nearest' });
+}
+function cycle(d) {
+  const list = ordered();
+  if (!list.length) return;
+  const base = view === 'editor' ? cur : selId;
+  const i = list.findIndex(n => n.id === base);
+  const n = list[(i + d + list.length) % list.length];
+  if (view === 'editor') openNote(n.id); else setSel(n.id);
+}
+function refocus() {
+  if (modalOpen()) return;
+  if (view === 'editor') { if (document.activeElement !== titleIn) { editor.focus({ preventScroll: true }); if (lastSel) selRestore(lastSel); } }
+  else if (document.activeElement !== boardSearch) grid.focus({ preventScroll: true });
+}
+
+// ---------------------------------------------------------------- editor chrome
+let sbT = 0;
+function renderSidebarSoon() { clearTimeout(sbT); sbT = setTimeout(renderSidebar, 250); }
+function renderSidebar() {
+  if (view !== 'editor') return;
+  let h = '';
+  for (const n of ordered()) {
+    h += `<div class="sb-item${n.id === cur ? ' on' : ''}" data-id="${n.id}" style="--c:${NOTE_COLORS[n.color]}"><div class="sb-row"><div class="t${titleOf(n) ? '' : ' ph'}">${esc(titleOf(n) || '제목 없음')}</div>` +
+      `${n.hotkey ? `<span class="sb-hk">${esc(n.hotkey.label)}</span>` : ''}</div><div class="p">${esc(previewAfterTitle(n).slice(0, 20)) || '&nbsp;'}</div></div>`;
+  }
+  sbList.innerHTML = h;
+  const on = sbList.querySelector('.on');
+  if (on) on.scrollIntoView({ block: 'nearest' });
+}
+sbList.addEventListener('click', e => { const it = e.target.closest('.sb-item'); if (it) openNote(it.dataset.id); });
+sbList.addEventListener('contextmenu', e => { e.preventDefault(); const it = e.target.closest('.sb-item'); if (it) noteMenu(it.dataset.id, e.clientX, e.clientY); });
+function renderHead() {
+  const n = noteById(cur);
+  if (!n) return;
+  $('#hColor').style.setProperty('--c', NOTE_COLORS[n.color]);
+  const hk = $('#hHotkey');
+  hk.className = 'hk-chip' + (n.hotkey ? ' set' : '') + (n.hotkey && hkFailed.has(n.id) ? ' bad' : '');
+  hk.innerHTML = ic('i-key') + (n.hotkey ? esc(n.hotkey.label) : '단축키 지정');
+  hk.title = n.hotkey && hkFailed.has(n.id) ? '다른 프로그램이 이 단축키를 쓰고 있어요. 다른 조합을 지정해 주세요.' : '이 메모를 어디서든 부르는 전역 단축키';
+  $('#hPin').classList.toggle('on', !!n.pinned);
+  $('#tbMid').textContent = titleOf(n);
+}
+titleIn.addEventListener('input', () => {
+  const n = noteById(cur);
+  if (!n) return;
+  n.title = titleIn.value; n.updated = now();
+  $('#tbMid').textContent = titleOf(n);
+  saveStateSoon(); renderSidebarSoon();
+});
+titleIn.addEventListener('keydown', e => {
+  if (e.isComposing) return;
+  if (e.key === 'Enter' || e.key === 'ArrowDown') { e.preventDefault(); editor.focus(); placeCaret(editor.firstChild || editor, false); }
+});
+$('#hSide').onclick = () => { st.sidebar = !st.sidebar; app.classList.toggle('sb-off', !st.sidebar); saveStateSoon(); posOvSoon(); };
+$('#hColor').onclick = e => { const r = e.currentTarget.getBoundingClientRect(); colorMenu(cur, r.left, r.bottom + 6); };
+$('#hHotkey').onclick = () => setNoteHotkey(cur);
+$('#hPin').onclick = () => togglePin(cur);
+$('#hMore').onclick = e => { const r = e.currentTarget.getBoundingClientRect(); noteMenu(cur, r.right - 220, r.bottom + 6); };
+$('#btnBack').onclick = showBoard;
+$('#btnSbNew').onclick = newNote;
+$('#btnNew').onclick = newNote;
+
+// ---------------------------------------------------------------- selection utils
+function selRange() {
+  const s = getSelection();
+  if (!s.rangeCount) return null;
+  const r = s.getRangeAt(0);
+  return editor.contains(r.startContainer) ? r : null;
+}
+function selNode() {
+  const r = selRange();
+  if (!r) return null;
+  const n = r.startContainer;
+  return n.nodeType === 3 ? n.parentNode : n;
+}
+function closestSel(q) {
+  const n = selNode();
+  const c = n && n.closest(q);
+  return c && c !== editor && editor.contains(c) ? c : null;
+}
+function pathOf(n) {
+  const p = [];
+  while (n && n !== editor) {
+    let i = 0;
+    for (let c = n.previousSibling; c; c = c.previousSibling) i++;
+    p.push(i);
+    n = n.parentNode;
+  }
+  return n === editor ? p.reverse() : null;
+}
+function nodeAt(p) {
+  let n = editor;
+  for (const i of p) { if (!n.childNodes[i]) return [n, true]; n = n.childNodes[i]; }
+  return [n, false];
+}
+function selSave() {
+  const r = selRange();
+  if (!r || !editor.contains(r.endContainer)) return null;
+  const a = pathOf(r.startContainer), b = pathOf(r.endContainer);
+  return a && b ? { a, ao: r.startOffset, b, bo: r.endOffset } : null;
+}
+function selRestore(x) {
+  if (!x) return;
+  const len = n => n.nodeType === 3 ? n.nodeValue.length : n.childNodes.length;
+  const [a, fa] = nodeAt(x.a), [b, fb] = nodeAt(x.b);
+  try {
+    const r = document.createRange();
+    r.setStart(a, fa ? len(a) : Math.min(x.ao, len(a)));
+    r.setEnd(b, fb ? len(b) : Math.min(x.bo, len(b)));
+    const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+    scrollCaretIntoView();
+  } catch (e) { /* stale path */ }
+}
+function placeCaret(node, atEnd) {
+  if (!node) return;
+  if (document.activeElement !== editor) editor.focus({ preventScroll: true });
+  const r = document.createRange();
+  if (node.nodeType === 3) { r.setStart(node, atEnd ? node.nodeValue.length : 0); }
+  else { r.selectNodeContents(node); r.collapse(!atEnd); }
+  const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+  scrollCaretIntoView();
+}
+function scrollCaretIntoView() {
+  const r = selRange();
+  if (!r) return;
+  let rect = r.getBoundingClientRect();
+  if (!rect.height) { const n = selNode(); if (n) rect = n.getBoundingClientRect(); }
+  const sr = scroller.getBoundingClientRect();
+  if (rect.bottom > sr.bottom - 24) scroller.scrollTop += rect.bottom - sr.bottom + sr.height / 3;
+  else if (rect.top < sr.top + 8) scroller.scrollTop += rect.top - sr.top - sr.height / 3;
+}
+function ensureEditorFocus() {
+  if (document.activeElement === editor) return;
+  editor.focus({ preventScroll: true });
+  if (lastSel) selRestore(lastSel);
+}
+function topLevel(n) { while (n && n.parentNode !== editor) n = n.parentNode; return n; }
+// keep every top-level line inside a block element (Chrome types bare text into an empty editor)
+const loose = c => !!c && (c.nodeType === 3 || (c.nodeType === 1 && !BLOCK_TAGS.test(c.nodeName)));
+function needsRoot() {
+  if (!editor.firstChild) return true;
+  const n = selNode();
+  return loose(editor.firstChild) || (!!n && n !== editor && loose(topLevel(n)));
+}
+function ensureRoot() {
+  if (!editor.firstChild) { editor.innerHTML = '<div><br></div>'; placeCaret(editor.firstChild, false); return; }
+  const n = selNode();
+  const top = n && n !== editor ? topLevel(n) : null;
+  const bad = loose;
+  const start = bad(top) ? top : bad(editor.firstChild) ? editor.firstChild : null;
+  if (!start) return;
+  const r = selRange();
+  const keep = r && [r.startContainer, r.startOffset, r.endContainer, r.endOffset];
+  let a = start;
+  while (a.previousSibling && bad(a.previousSibling)) a = a.previousSibling;
+  const wrap = document.createElement('div');
+  editor.insertBefore(wrap, a);
+  while (wrap.nextSibling && bad(wrap.nextSibling)) {
+    const x = wrap.nextSibling;
+    wrap.appendChild(x);
+    if (x.nodeName === 'BR' && x.nextSibling && bad(x.nextSibling)) break;
+  }
+  if (!wrap.firstChild) wrap.innerHTML = '<br>';
+  if (keep) { try { const nr = document.createRange(); nr.setStart(keep[0], keep[1]); nr.setEnd(keep[2], keep[3]); const s = getSelection(); s.removeAllRanges(); s.addRange(nr); } catch (e) { /* ignore */ } }
+}
+
+// ---------------------------------------------------------------- undo history (snapshots; we own it so table edits undo too)
+const H = new Map();
+let histT = 0, burstSel = null, composing = false;
+function histInit(id) { if (!H.has(id)) H.set(id, { st: [{ h: editor.innerHTML, s: null, u: null }], i: 0 }); }
+function histSoon() { clearTimeout(histT); histT = setTimeout(histCommit, 500); }
+function histCommit() {
+  clearTimeout(histT); histT = 0;
+  const hs = H.get(cur);
+  if (!hs || composing) return;
+  editor.normalize();
+  const h = editor.innerHTML;
+  const top = hs.st[hs.i];
+  if (top.h === h) { burstSel = null; return; }
+  if (burstSel) top.u = burstSel;
+  burstSel = null;
+  hs.st.length = hs.i + 1;
+  hs.st.push({ h, s: selSave(), u: null });
+  hs.i = hs.st.length - 1;
+  let size = 0;
+  for (const e of hs.st) size += e.h.length;
+  while (hs.st.length > 2 && (hs.st.length > 200 || size > 30e6)) { size -= hs.st.shift().h.length; hs.i--; }
+}
+function undo() {
+  histCommit();
+  const hs = H.get(cur);
+  if (!hs || hs.i <= 0) return;
+  hs.i--;
+  const e = hs.st[hs.i];
+  applySnap(e.h, e.u || e.s);
+}
+function redo() {
+  histCommit();
+  const hs = H.get(cur);
+  if (!hs || hs.i >= hs.st.length - 1) return;
+  hs.i++;
+  const e = hs.st[hs.i];
+  applySnap(e.h, e.s);
+}
+function applySnap(h, sel) {
+  clearNav();
+  editor.innerHTML = h;
+  if (!editor.firstChild) editor.innerHTML = '<div><br></div>';
+  editor.focus({ preventScroll: true });
+  if (sel) selRestore(sel); else placeCaret(editor.lastChild, true);
+  markDirty(); statsSoon(); posOvSoon(); updateToolbar();
+  if (findOpen) findSoon();
+}
+// run a structural/formatting change as exactly one undo step
+function edit(fn) {
+  histCommit();
+  const hs = H.get(cur);
+  if (hs) hs.st[hs.i].u = selSave();
+  try { fn(); } finally {
+    histCommit();
+    if (editor.classList.contains('is-empty')) stats(); else statsSoon();
+    markDirty(); posOvSoon();
+    if (findOpen) findSoon();
+  }
+}
+function exec(cmd, val = null) { return document.execCommand(cmd, false, val); }
+
+// ---------------------------------------------------------------- editor events
+editor.addEventListener('beforeinput', e => {
+  if (e.inputType === 'historyUndo') { e.preventDefault(); undo(); return; }
+  if (e.inputType === 'historyRedo') { e.preventDefault(); redo(); return; }
+  if (!histT && !burstSel) burstSel = selSave();
+  if (e.inputType.startsWith('insert')) editor.classList.remove('is-empty');   // hide the hint on the first keystroke
+});
+editor.addEventListener('input', e => {
+  if (!composing && needsRoot()) ensureRoot();
+  if (editor.classList.contains('is-empty') && editor.textContent) editor.classList.remove('is-empty');
+  if (e.inputType === 'insertParagraph') {
+    const li = closestSel('ul.checklist > li');
+    if (li && li.dataset.checked === 'true' && !li.textContent) li.dataset.checked = 'false';
+  }
+  markDirty();
+  histSoon();
+  statsSoon();
+  posOvSoon();
+  if (findOpen) findSoon();
+});
+editor.addEventListener('compositionstart', () => { composing = true; editor.classList.remove('is-empty'); });
+editor.addEventListener('compositionend', () => { composing = false; if (needsRoot()) ensureRoot(); histSoon(); });
+editor.addEventListener('keydown', e => {
+  if (!e.isComposing) {                           // table cells first (Excel-style navigation / editing)
+    if (editCell) { if (!editCell.isConnected) clearNav(); else if (e.keyCode !== 229 && editKey(e)) return; }
+    else if (navLive() && navKey(e)) return;
+  }
+  if (e.isComposing || e.keyCode === 229) return;
+  const mod = e.ctrlKey || e.metaKey, code = e.code;
+  if (mod && !e.altKey) {
+    const sh = e.shiftKey;
+    let done = true;
+    if (code === 'KeyZ' && !sh) undo();
+    else if (code === 'KeyY' || (code === 'KeyZ' && sh)) redo();
+    else if (code === 'KeyB' && !sh) fmt('bold');
+    else if (code === 'KeyU' && !sh) fmt('underline');
+    else if (code === 'KeyI' && !sh) fmt('italic');
+    else if (code === 'KeyS' && sh) fmt('strikeThrough');
+    else if (code === 'KeyH' && sh) toggleHl();
+    else if (code === 'KeyL' && sh) toggleList('chk');
+    else if (code === 'Digit8' && sh) toggleList('ul');
+    else if (code === 'Digit7' && sh) toggleList('ol');
+    else if (code === 'KeyT' && sh) insertTable(3, 3);
+    else if (code === 'Backslash') clearFmt();
+    else if (code === 'Semicolon') stamp();
+    else if (code === 'Enter' && !sh) { const td = closestSel('td'); if (td) { clearNav(); exitTable(td.closest('table')); } else done = false; }
+    else { done = false; if (code === 'KeyV' && sh) plainNext = true; }
+    if (done) { e.preventDefault(); return; }
+  }
+  if (mod || e.altKey) return;
+  const td = closestSel('td');
+  if (td && (e.key === 'Enter' || e.key === 'Tab') && onTableKey(e, td)) return;
+  if (e.key === 'Tab') {
+    e.preventDefault();
+    if (closestSel('li')) edit(() => exec(e.shiftKey ? 'outdent' : 'indent'));
+    else if (!e.shiftKey) edit(() => exec('insertText', '\t'));
+    return;
+  }
+  if (e.key === ' ' && mdShortcut()) { e.preventDefault(); return; }
+  if (e.key === 'Enter' && !e.shiftKey && hrShortcut()) { e.preventDefault(); return; }
+});
+editor.addEventListener('mousedown', e => {
+  const td = e.button === 0 && e.target.closest && e.target.closest('td');
+  if (td && editor.contains(td) && td !== editCell) {
+    if (e.shiftKey && nav && nav.t === td.closest('table')) {   // Shift+click extends the cell range
+      e.preventDefault();
+      setNav(nav.t, td.parentElement.rowIndex, td.cellIndex, true);
+      return;
+    }
+    if (e.detail < 2) { nav = null; editCell = null; }          // a fresh click selects just that cell
+  }
+  const li = e.target.closest && e.target.closest('ul.checklist > li');
+  if (li && e.target === li && e.offsetX < parseFloat(getComputedStyle(li).paddingLeft)) {
+    e.preventDefault();
+    edit(() => { li.dataset.checked = li.dataset.checked === 'true' ? 'false' : 'true'; });
+  }
+});
+editor.addEventListener('click', e => {
+  const a = e.target.closest && e.target.closest('a[href]');
+  if (a && (e.ctrlKey || e.metaKey)) { e.preventDefault(); openUrl(a.getAttribute('href')); }
+});
+editor.addEventListener('mouseover', e => {
+  const a = e.target.closest && e.target.closest('a[href]');
+  if (a && !a.title) a.title = 'Ctrl+클릭으로 열기';
+});
+function openUrl(u) { if (!/^(https?:|mailto:)/i.test(u)) return; if (HOST) host.send('openUrl', u); else window.open(u, '_blank'); }
+document.addEventListener('selectionchange', () => {
+  if (view !== 'editor') return;
+  if (selRange()) { lastSel = selSave(); syncNav(); }
+  if (!tbRaf) tbRaf = requestAnimationFrame(() => { tbRaf = 0; updateToolbar(); caretTable(); });
+});
+let tbRaf = 0;
+let statsT = 0;
+function statsSoon() { clearTimeout(statsT); statsT = setTimeout(stats, 300); }
+function stats() {
+  const t = editor.textContent;
+  const noSp = t.replace(/\s+/g, '').length;
+  editor.classList.toggle('is-empty', !t && !editor.querySelector('img,table,hr,li'));
+  $('#stCount').textContent = `${t.length.toLocaleString()}자 · 공백 제외 ${noSp.toLocaleString()}자`;
+}
+
+// ---------------------------------------------------------------- formatting
+function fmt(cmd) {
+  ensureEditorFocus();
+  let on = null;                                  // on cells: follow the first cell's state so the range ends up uniform
+  if (onCells(() => { const s = document.queryCommandState(cmd); if (on === null) on = s; if (s === on) exec(cmd); })) return;
+  edit(() => exec(cmd)); updateToolbar();
+}
+function rgbOf(hex) { const v = parseInt(hex.slice(1), 16); return `rgb(${v >> 16 & 255}, ${v >> 8 & 255}, ${v & 255})`; }
+function keepSel(fn) {
+  const r = selRange();
+  const k = r && [r.startContainer, r.startOffset, r.endContainer, r.endOffset];
+  fn();
+  if (!k) return;
+  try { const nr = document.createRange(); nr.setStart(k[0], k[1]); nr.setEnd(k[2], k[3]); const s = getSelection(); s.removeAllRanges(); s.addRange(nr); } catch (e) { /* node moved */ }
+}
+function applyFg(v) {
+  ensureEditorFocus();
+  if (v) { st.fg = v; saveStateSoon(); updateSwatches(); }
+  const strip = () => keepSel(() => {
+    for (const f of $$('font[color]', editor)) if (f.getAttribute('color').toLowerCase() === '#010203') { f.removeAttribute('color'); if (!f.attributes.length) unwrap(f); }
+    for (const sp of $$('span[style*="color"]', editor)) if (sp.style.color === 'rgb(1, 2, 3)') { sp.style.removeProperty('color'); if (!sp.getAttribute('style')) unwrap(sp); }
+  });
+  // no colour = apply a sentinel colour, then strip it
+  if (onCells(() => exec('foreColor', v || '#010203'), v ? null : strip)) return;
+  edit(() => { exec('foreColor', v || '#010203'); if (!v) strip(); });
+}
+function applyHl(v) {
+  ensureEditorFocus();
+  if (v) { st.hl = v; saveStateSoon(); updateSwatches(); }
+  if (onCells(() => exec('hiliteColor', v || 'rgb(1, 2, 3)'), v ? null : () => keepSel(stripSentinelBg))) return;
+  edit(() => { exec('hiliteColor', v || 'rgb(1, 2, 3)'); if (!v) keepSel(stripSentinelBg); });
+}
+function stripSentinelBg() {
+  for (const el of $$('[style*="background"]', editor)) {
+    if (el.style.backgroundColor !== 'rgb(1, 2, 3)') continue;
+    el.style.removeProperty('background-color');
+    if (!el.getAttribute('style')) { el.removeAttribute('style'); if (el.nodeName === 'SPAN' && !el.attributes.length) unwrap(el); }
+  }
+}
+function toggleHl() {
+  ensureEditorFocus();
+  const want = rgbOf(st.hl).replace(/\s/g, '');
+  let has;
+  if (navLive()) {                                // selected cells: is the first cell already highlighted?
+    const c = cellAt(nav.t, Math.min(nav.ar, nav.fr), Math.min(nav.ac, nav.fc));
+    has = !!c && Array.from(c.querySelectorAll('[style*="background"]')).some(x => x.style.backgroundColor.replace(/\s/g, '') === want);
+  } else has = (document.queryCommandValue('backColor') || '').replace(/\s/g, '') === want;
+  applyHl(has ? null : st.hl);
+}
+function clearFmt() {
+  ensureEditorFocus();
+  if (onCells(() => { exec('removeFormat'); exec('hiliteColor', 'rgb(1, 2, 3)'); }, () => keepSel(stripSentinelBg))) return;
+  edit(() => { exec('removeFormat'); exec('hiliteColor', 'rgb(1, 2, 3)'); keepSel(stripSentinelBg); });
+  updateToolbar();
+}
+function setBlock(tag) {
+  ensureEditorFocus();
+  edit(() => {
+    const curTag = (document.queryCommandValue('formatBlock') || '').toLowerCase();
+    exec('formatBlock', curTag === tag && tag !== 'div' ? 'div' : tag);
+  });
+  updateToolbar();
+}
+function toggleList(kind) {
+  ensureEditorFocus();
+  edit(() => {
+    const li = closestSel('li');
+    const list = li && li.parentElement;
+    const isChk = list && list.classList.contains('checklist');
+    if (kind === 'chk') {
+      if (isChk) { exec('insertUnorderedList'); return; }
+      if (list && list.nodeName === 'UL') { list.classList.add('checklist'); return; }
+      exec('insertUnorderedList');
+      const l2 = closestSel('li');
+      if (l2 && l2.parentElement.nodeName === 'UL') l2.parentElement.classList.add('checklist');
+      return;
+    }
+    if (kind === 'ul' && isChk) { list.classList.remove('checklist'); if (!list.className) list.removeAttribute('class'); return; }
+    exec(kind === 'ul' ? 'insertUnorderedList' : 'insertOrderedList');
+  });
+  updateToolbar();
+}
+function stamp() {
+  ensureEditorFocus();
+  const d = new Date(), p = x => String(x).padStart(2, '0');
+  edit(() => exec('insertText', `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} (${'일월화수목금토'[d.getDay()]}) ${p(d.getHours())}:${p(d.getMinutes())}`));
+}
+function insertHr() {
+  ensureEditorFocus();
+  edit(() => { const hr = document.createElement('hr'); placeBlock(hr); placeCaret(hr.nextElementSibling, false); });
+}
+function blockOf(n) {
+  while (n && n !== editor) {
+    if (n.nodeType === 1 && /^(DIV|P|H[1-6]|LI|BLOCKQUOTE|PRE|TD)$/.test(n.nodeName)) return n;
+    n = n.parentNode;
+  }
+  return null;
+}
+// "# ", "- ", "1. ", "[] ", "> ", "``` " at the start of a line
+function mdShortcut() {
+  const r = selRange();
+  if (!r || !r.collapsed) return false;
+  const blk = blockOf(r.startContainer);
+  if (!blk || /^(LI|TD|PRE)$/.test(blk.nodeName)) return false;
+  const pre = document.createRange();
+  pre.setStart(blk, 0); pre.setEnd(r.startContainer, r.startOffset);
+  const map = { '#': 'h1', '##': 'h2', '###': 'h3', '-': 'ul', '*': 'ul', '1.': 'ol', '[]': 'chk', '[ ]': 'chk', '>': 'blockquote', '```': 'pre' };
+  const kind = map[pre.toString()];
+  if (!kind) return false;
+  edit(() => {
+    const s = getSelection(); s.removeAllRanges(); s.addRange(pre);
+    exec('delete');
+    if (kind === 'ul' || kind === 'ol') exec(kind === 'ul' ? 'insertUnorderedList' : 'insertOrderedList');
+    else if (kind === 'chk') { exec('insertUnorderedList'); const li = closestSel('li'); if (li) li.parentElement.classList.add('checklist'); }
+    else exec('formatBlock', kind);
+  });
+  updateToolbar();
+  return true;
+}
+function hrShortcut() {
+  const blk = blockOf(selNode());
+  if (!blk || blk.nodeName !== 'DIV' || blk.textContent !== '---' || blk.parentNode !== editor) return false;
+  edit(() => {
+    const hr = document.createElement('hr');
+    const d = document.createElement('div'); d.innerHTML = '<br>';
+    blk.replaceWith(hr); hr.after(d); placeCaret(d, false);
+  });
+  return true;
+}
+function updateToolbar() {
+  if (view !== 'editor' || document.activeElement !== editor) return;
+  for (const b of $$('[data-cmd]', toolbar)) b.classList.toggle('on', document.queryCommandState(b.dataset.cmd));
+  const blk = (document.queryCommandValue('formatBlock') || 'div').toLowerCase();
+  $('#tbBlockLbl').textContent = (BLOCKS.find(x => x[0] === blk) || BLOCKS[0])[1];
+  const li = closestSel('li'), L = li && li.parentElement;
+  const chk = !!(L && L.classList.contains('checklist'));
+  toolbar.querySelector('[data-list=ul]').classList.toggle('on', !!L && L.nodeName === 'UL' && !chk);
+  toolbar.querySelector('[data-list=ol]').classList.toggle('on', !!L && L.nodeName === 'OL');
+  toolbar.querySelector('[data-list=chk]').classList.toggle('on', chk);
+}
+function updateSwatches() {
+  $('#fgBar').style.background = st.fg || 'var(--ink)';
+  $('#hlBar').style.background = st.hl;
+}
+toolbar.addEventListener('mousedown', e => { if (!e.target.closest('#findbar')) e.preventDefault(); });
+toolbar.addEventListener('click', e => {
+  const b = e.target.closest('button');
+  if (!b || b.closest('#findbar')) return;
+  if (b.dataset.cmd) fmt(b.dataset.cmd);
+  else if (b.dataset.list) toggleList(b.dataset.list);
+  else if (b.dataset.pop) toolPop(b.dataset.pop, b);
+  else if (b.id === 'tbFg') applyFg(st.fg);
+  else if (b.id === 'tbHl') toggleHl();
+  else if (b.id === 'tbHr') insertHr();
+  else if (b.id === 'tbStamp') stamp();
+  else if (b.id === 'tbClear') clearFmt();
+  else if (b.id === 'tbFind') openFind();
+});
+function toolPop(kind, anchor) {
+  ensureEditorFocus();
+  const r = anchor.getBoundingClientRect();
+  if (kind === 'block') {
+    const look = { div: 'font-size:13.5px', h1: 'font-size:19px;font-weight:800', h2: 'font-size:16.5px;font-weight:750', h3: 'font-size:14.5px;font-weight:700', blockquote: 'font-size:13.5px;border-left:3px solid var(--accent);padding-left:8px', pre: 'font:12.5px var(--mono)' };
+    showPop(r.left, r.bottom + 6, BLOCKS.map(([t, l, k]) => `<button class="bl" data-v="${t}"><span style="${look[t]}">${l}</span><kbd>${esc(k.trim())}</kbd></button>`).join(''),
+      b => { setBlock(b.dataset.v); });
+  } else if (kind === 'fg') {
+    showPop(r.left, r.bottom + 6, `<div class="mlabel">글자색 · 잘 보이는 색만 골랐어요</div><div class="swatches">${FG.map(c => c.v
+      ? `<button class="sw txt${st.fg === c.v ? ' on' : ''}" data-v="${c.v}" title="${c.n}" style="color:${c.v}">A</button>`
+      : `<button class="sw none" data-v="" title="기본 색"></button>`).join('')}</div>`, b => { applyFg(b.dataset.v); });
+  } else if (kind === 'hl') {
+    showPop(r.left, r.bottom + 6, `<div class="mlabel">형광펜</div><div class="swatches">${HL.map(c => `<button class="sw${st.hl === c.v ? ' on' : ''}" data-v="${c.v}" title="${c.n}" style="background:${c.v}"></button>`).join('')}<button class="sw none" data-v="" title="형광펜 지우기"></button></div>`,
+      b => { applyHl(b.dataset.v || null); });
+  } else if (kind === 'table') {
+    let cells = '';
+    for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) cells += `<i data-x="${x}" data-y="${y}"></i>`;
+    showPop(r.left, r.bottom + 6, `<div class="tgrid">${cells}</div><div class="tglabel" id="tgl">표 크기 선택</div><div class="tghint">엑셀·구글시트에서 셀을 복사해 붙여넣으면 그대로 표가 돼요.</div>`, null);
+    const tg = pop.querySelector('.tgrid');
+    tg.addEventListener('mousemove', e => {
+      const c = e.target.closest('i');
+      if (!c) return;
+      const X = +c.dataset.x, Y = +c.dataset.y;
+      for (const i of tg.children) i.classList.toggle('on', +i.dataset.x <= X && +i.dataset.y <= Y);
+      $('#tgl').textContent = `${Y + 1}행 × ${X + 1}열`;
+    });
+    tg.addEventListener('click', e => {
+      const c = e.target.closest('i');
+      if (!c) return;
+      closePop();
+      insertTable(+c.dataset.y + 1, +c.dataset.x + 1);
+    });
+  }
+}
+
+// ---------------------------------------------------------------- tables
+function cellHTML(text) { return text ? esc(text).replace(/\n/g, '<br>') : '<br>'; }
+function buildTable(rows, header) {
+  const w = Math.max(1, ...rows.map(r => r.length));
+  const t = document.createElement('table');
+  t.className = header ? 't hdr' : 't';
+  const tb = t.createTBody();
+  for (const r of rows) {
+    const tr = tb.insertRow();
+    for (let i = 0; i < w; i++) tr.insertCell().innerHTML = cellHTML(r[i] || '');
+  }
+  return t;
+}
+function tableCols(t) { let m = 0; for (const r of t.rows) m = Math.max(m, r.cells.length); return m; }
+function newCell(tr, at) { const td = tr.insertCell(at); td.innerHTML = '<br>'; return td; }
+function addRow(t, at) {
+  const cols = tableCols(t) || 1;
+  const tr = t.insertRow(clamp(at, 0, t.rows.length));
+  for (let i = 0; i < cols; i++) newCell(tr, -1);
+  return tr;
+}
+function addCol(t, at) { for (const tr of t.rows) newCell(tr, Math.min(at, tr.cells.length)); }
+function removeTable(t) {
+  const next = t.nextElementSibling || t.previousElementSibling;
+  t.remove();
+  if (!editor.firstChild) editor.innerHTML = '<div><br></div>';
+  placeCaret(next && editor.contains(next) ? next : editor.firstChild, false);
+  hideOv();
+}
+function insertTable(rows, cols) {
+  ensureEditorFocus();
+  edit(() => {
+    const t = buildTable(Array.from({ length: rows }, () => Array(cols).fill('')), true);
+    placeBlock(t);
+    placeCaret(t.rows[0].cells[0], false);
+  });
+  showOv(closestSel('table'));
+}
+// insert a block element at the caret: replaces an empty line, otherwise splits the line
+function placeBlock(el) {
+  const r = selRange();
+  if (!r) { editor.appendChild(el); afterBlock(el); return; }
+  if (!r.collapsed) r.deleteContents();
+  const sc = r.startContainer;
+  const inTable = (sc.nodeType === 1 ? sc : sc.parentNode).closest('table');
+  if (sc === editor) { editor.insertBefore(el, editor.childNodes[r.startOffset] || null); afterBlock(el); return; }
+  const top = topLevel(inTable || sc);
+  if (!top) { editor.appendChild(el); afterBlock(el); return; }
+  if (inTable || top.nodeName === 'TABLE' || top.nodeName === 'HR') { top.after(el); afterBlock(el); return; }
+  const empty = n => !n.textContent.trim() && !(n.querySelector && n.querySelector('img,table,hr'));
+  if (top.nodeType === 1 && empty(top)) { top.replaceWith(el); afterBlock(el); return; }
+  const before = document.createRange(); before.setStart(top, 0); before.setEnd(sc, r.startOffset);
+  const after = document.createRange(); after.setStart(sc, r.startOffset); after.setEnd(top, top.nodeType === 3 ? top.nodeValue.length : top.childNodes.length);
+  if (!after.toString().trim()) { top.after(el); afterBlock(el); return; }
+  if (!before.toString().trim()) { top.before(el); return; }
+  const tail = after.extractContents();
+  const nb = document.createElement(top.nodeType === 1 && /^(DIV|P|H[1-6]|BLOCKQUOTE|PRE|UL|OL)$/.test(top.nodeName) ? top.nodeName : 'DIV');
+  nb.appendChild(tail);
+  top.after(nb);
+  top.after(el);
+}
+function afterBlock(el) {
+  const n = el.nextSibling;
+  if (!n || (n.nodeType === 1 && /^(TABLE|HR)$/.test(n.nodeName))) { const d = document.createElement('div'); d.innerHTML = '<br>'; el.after(d); }
+}
+function exitTable(t) {
+  let n = t.nextElementSibling;
+  if (!n || /^(TABLE|HR)$/.test(n.nodeName)) edit(() => { n = document.createElement('div'); n.innerHTML = '<br>'; t.after(n); });
+  placeCaret(n, false);
+}
+function onTableKey(e, td) {
+  const t = td.closest('table');
+  if (e.key === 'Enter' && !e.shiftKey) {            // Shift+Enter = line break inside the cell
+    e.preventDefault();
+    const ri = td.parentElement.rowIndex;
+    if (ri < t.rows.length - 1) {                     // not the last row: move to the cell below, like Excel
+      const next = t.rows[ri + 1];
+      placeCaret(next.cells[Math.min(td.cellIndex, next.cells.length - 1)], true);
+    } else {                                          // last row: add a new row
+      edit(() => { const tr = addRow(t, ri + 1); placeCaret(tr.cells[Math.min(td.cellIndex, tr.cells.length - 1)], false); });
+    }
+    return true;
+  }
+  if (e.key === 'Tab') {
+    e.preventDefault();
+    const cells = Array.from(t.querySelectorAll('td'));
+    const i = cells.indexOf(td) + (e.shiftKey ? -1 : 1);
+    if (i >= cells.length) edit(() => { const tr = addRow(t, t.rows.length); placeCaret(tr.cells[0], false); });
+    else if (i >= 0) placeCaret(cells[i], true);
+    return true;
+  }
+  return false;
+}
+function tableOp(op, t, cell) {
+  if (!t || !t.isConnected) return;
+  if (cell && !t.contains(cell)) cell = null;
+  edit(() => {
+    const ri = cell ? cell.parentElement.rowIndex : 0, ci = cell ? cell.cellIndex : 0;
+    let target = null;
+    switch (op) {
+      case 'rowTop': target = addRow(t, 0).cells[ci]; break;
+      case 'rowBottom': target = addRow(t, t.rows.length).cells[ci]; break;
+      case 'colLeft': addCol(t, 0); target = t.rows[ri].cells[0]; break;
+      case 'colRight': { const c = tableCols(t); addCol(t, c); target = t.rows[ri].cells[c]; break; }
+      case 'rowAbove': target = addRow(t, ri).cells[ci]; break;
+      case 'rowBelow': target = addRow(t, ri + 1).cells[ci]; break;
+      case 'colBefore': addCol(t, ci); target = t.rows[ri].cells[ci]; break;
+      case 'colAfter': addCol(t, ci + 1); target = t.rows[ri].cells[ci + 1]; break;
+      case 'delRow':
+        t.deleteRow(ri);
+        if (!t.rows.length) removeTable(t);
+        else { const row = t.rows[Math.min(ri, t.rows.length - 1)]; target = row.cells[Math.min(ci, row.cells.length - 1)]; }
+        break;
+      case 'delCol':
+        for (const tr of Array.from(t.rows)) if (tr.cells[ci]) tr.deleteCell(ci);
+        if (!tableCols(t)) removeTable(t);
+        else target = t.rows[ri].cells[Math.min(ci, t.rows[ri].cells.length - 1)];
+        break;
+      case 'header': t.classList.toggle('hdr'); target = cell; break;
+      case 'delTable': removeTable(t); break;
+    }
+    if (target) placeCaret(target, false);
+  });
+}
+
+// ---------------------------------------------------------------- table cells work like Excel
+// "nav": one cell (or a range) is selected - arrows move it, typing replaces the value, Delete clears,
+// F2 / double-click edit it with the caret at the end, Esc while editing restores the old value.
+let nav = null;                                   // { t, ar, ac, fr, fc }  anchor / focus row + column
+let editCell = null, editKind = '', editOrig = '';
+const ARROWS = { ArrowUp: [-1, 0], ArrowDown: [1, 0], ArrowLeft: [0, -1], ArrowRight: [0, 1] };
+function cellAt(t, r, c) { const tr = t.rows[r]; return tr ? tr.cells[Math.min(c, tr.cells.length - 1)] || null : null; }
+function navRect() { return { t: nav.t, r0: Math.min(nav.ar, nav.fr), r1: Math.max(nav.ar, nav.fr), c0: Math.min(nav.ac, nav.fc), c1: Math.max(nav.ac, nav.fc) }; }
+function navLive() { if (nav && !nav.t.isConnected) clearNav(); return !!nav && !editCell; }
+function rectCells(rc) { const out = []; for (let i = rc.r0; i <= rc.r1; i++) for (let j = rc.c0; j <= rc.c1; j++) { const c = rc.t.rows[i] && rc.t.rows[i].cells[j]; if (c) out.push(c); } return out; }
+function clearNav() { nav = null; editCell = null; editor.classList.remove('cellnav'); posOvSoon(); }
+function endPoint(td) {                           // just after the last character of a cell
+  const w = document.createTreeWalker(td, NodeFilter.SHOW_TEXT);
+  let n, last = null;
+  while ((n = w.nextNode())) if (n.nodeValue.length) last = n;
+  return last ? [last, last.nodeValue.length] : [td, 0];
+}
+function parkCaret(td) {
+  if (document.activeElement !== editor) editor.focus({ preventScroll: true });
+  const [n, o] = endPoint(td);
+  const r = document.createRange(); r.setStart(n, o); r.collapse(true);
+  const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+}
+function setNav(t, r, c, extend) {
+  r = clamp(r, 0, t.rows.length - 1); c = clamp(c, 0, Math.max(0, tableCols(t) - 1));
+  if (extend && nav && nav.t === t) { nav.fr = r; nav.fc = c; } else nav = { t, ar: r, ac: c, fr: r, fc: c };
+  editCell = null;
+  editor.classList.add('cellnav');
+  const td = cellAt(t, r, c);
+  if (td) { parkCaret(td); td.scrollIntoView({ block: 'nearest', inline: 'nearest' }); }
+  showOv(t); posOv(); updateToolbar();
+}
+function startEdit(kind, td, keepCaret) {
+  td = td || (nav && cellAt(nav.t, nav.fr, nav.fc));
+  if (!td) return;
+  const r = td.parentElement.rowIndex, c = td.cellIndex;
+  nav = { t: td.closest('table'), ar: r, ac: c, fr: r, fc: c };
+  editCell = td; editKind = kind; editOrig = td.innerHTML;
+  editor.classList.remove('cellnav');
+  if (!keepCaret) parkCaret(td);
+  showOv(nav.t); posOv();
+}
+function beginReplace() {                         // a key typed on a selected cell starts it over, like Excel
+  const td = cellAt(nav.t, nav.fr, nav.fc);
+  if (!td) return;
+  histCommit();
+  const hs = H.get(cur);
+  if (hs) hs.st[hs.i].u = selSave();
+  const orig = td.innerHTML;
+  td.innerHTML = '<br>';
+  startEdit('type', td);
+  editOrig = orig;
+  markDirty();
+}
+function leaveTable(t, up) {
+  clearNav();
+  let n = up ? t.previousElementSibling : t.nextElementSibling;
+  if (!n || /^(TABLE|HR)$/.test(n.nodeName)) edit(() => { n = document.createElement('div'); n.innerHTML = '<br>'; if (up) t.before(n); else t.after(n); });
+  placeCaret(n, up);
+}
+function moveNav(dr, dc, extend, jump) {
+  const t = nav.t, R = t.rows.length, C = tableCols(t);
+  let r = nav.fr + dr, c = nav.fc + dc;
+  if (jump) { if (dr) r = dr < 0 ? 0 : R - 1; if (dc) c = dc < 0 ? 0 : C - 1; }
+  setNav(t, r, c, extend);
+}
+function navDown(t) {                             // Enter: next row; on the last row a new row
+  const r = nav.fr, c = nav.fc;
+  if (r < t.rows.length - 1) { setNav(t, r + 1, c); return; }
+  edit(() => addRow(t, t.rows.length));
+  setNav(t, t.rows.length - 1, c);
+}
+function navTab(t, back) {
+  const C = tableCols(t);
+  let r = nav.fr, c = nav.fc + (back ? -1 : 1);
+  if (c >= C) { c = 0; r++; }
+  if (c < 0) { c = C - 1; r--; }
+  if (r < 0) { setNav(t, 0, 0); return; }
+  if (r >= t.rows.length) { edit(() => addRow(t, t.rows.length)); r = t.rows.length - 1; }
+  setNav(t, r, c);
+}
+function navKey(e) {
+  const t = nav.t, mod = e.ctrlKey || e.metaKey, k = e.key;
+  if (ARROWS[k] && !e.altKey) {
+    e.preventDefault();
+    const [dr, dc] = ARROWS[k];
+    if (!e.shiftKey && !mod && ((dr < 0 && nav.fr === 0) || (dr > 0 && nav.fr === t.rows.length - 1))) leaveTable(t, dr < 0);
+    else moveNav(dr, dc, e.shiftKey, mod);
+    return true;
+  }
+  if (e.altKey) return false;
+  if (k === 'Tab' && !mod) { e.preventDefault(); navTab(t, e.shiftKey); return true; }
+  if (k === 'Enter' && !mod) { e.preventDefault(); if (e.shiftKey) moveNav(-1, 0); else navDown(t); return true; }
+  if (k === 'F2') { e.preventDefault(); startEdit('f2'); return true; }
+  if (k === 'Delete' && !mod) { e.preventDefault(); const rc = navRect(); edit(() => { for (const c of rectCells(rc)) c.innerHTML = '<br>'; }); setNav(t, nav.fr, nav.fc); return true; }
+  if (k === 'Backspace' && !mod) { e.preventDefault(); beginReplace(); return true; }
+  if (k === 'Escape') { e.preventDefault(); e.stopPropagation(); leaveTable(t, false); return true; }
+  if (k === 'Home') { e.preventDefault(); setNav(t, mod ? 0 : nav.fr, 0, e.shiftKey); return true; }
+  if (k === 'End') { e.preventDefault(); setNav(t, mod ? t.rows.length - 1 : nav.fr, tableCols(t) - 1, e.shiftKey); return true; }
+  if (mod && e.code === 'KeyA' && !e.shiftKey) {  // first Ctrl+A: the whole table, second: the whole note
+    const rc = navRect();
+    if (rc.r0 || rc.c0 || rc.r1 < t.rows.length - 1 || rc.c1 < tableCols(t) - 1) {
+      e.preventDefault(); nav.ar = 0; nav.ac = 0; nav.fr = t.rows.length - 1; nav.fc = tableCols(t) - 1; posOv(); return true;
+    }
+    clearNav(); return false;
+  }
+  if (mod) return false;
+  if (k.length === 1 || e.keyCode === 229) beginReplace();   // the key itself is then typed into the emptied cell
+  return false;
+}
+function editKey(e) {
+  const td = editCell;
+  if (!td.isConnected) { clearNav(); return false; }
+  const t = td.closest('table'), r = td.parentElement.rowIndex, c = td.cellIndex;
+  const back = () => { nav = { t, ar: r, ac: c, fr: r, fc: c }; editCell = null; };
+  if (e.key === 'Escape') {                      // cancel the edit
+    e.preventDefault(); e.stopPropagation();
+    if (td.innerHTML !== editOrig) { td.innerHTML = editOrig; markDirty(); histSoon(); }
+    setNav(t, r, c);
+    return true;
+  }
+  if (e.ctrlKey || e.metaKey || e.altKey) return false;
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); back(); navDown(t); return true; }
+  if (e.key === 'Tab') { e.preventDefault(); back(); navTab(t, e.shiftKey); return true; }
+  if (ARROWS[e.key] && !e.shiftKey) {
+    let leave = editKind === 'type';             // typed straight in: arrows move to the next cell (Excel "enter" mode)
+    if (!leave && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+      // F2 mode: arrows move inside the text; up/down leave the cell only from its first / last line
+      const sr = selRange(), cr = sr && sr.getBoundingClientRect(), tr = td.getBoundingClientRect();
+      const lh = parseFloat(getComputedStyle(td).lineHeight) || 22;
+      const top = cr && cr.height ? cr.top : tr.top, bottom = cr && cr.height ? cr.bottom : tr.bottom;
+      leave = e.key === 'ArrowUp' ? top - tr.top < lh * 1.4 : tr.bottom - bottom < lh * 1.4;
+    }
+    if (!leave) return false;
+    e.preventDefault();
+    back();
+    const [dr, dc] = ARROWS[e.key];
+    if ((dr < 0 && r === 0) || (dr > 0 && r === t.rows.length - 1)) leaveTable(t, dr < 0); else moveNav(dr, dc);
+    return true;
+  }
+  return false;
+}
+// the caret landing in a cell (click, arrow from outside, Tab, paste ...) selects that cell
+function syncNav() {
+  const r = selRange();
+  if (!r) return;                                 // focus is in the title / find box: keep the state
+  const a = cellOf(r.startContainer), b = cellOf(r.endContainer);
+  if (!a && !b) { if (nav || editCell) clearNav(); return; }
+  if (a !== b) return;                            // dragging across cells: decided on mouseup
+  if (editCell === a) return;
+  if (!r.collapsed) { startEdit('f2', a, true); return; }   // text selected inside one cell = editing it
+  const t = a.closest('table'), ri = a.parentElement.rowIndex, ci = a.cellIndex;
+  if (nav && !editCell && nav.t === t && nav.fr === ri && nav.fc === ci) return;   // our own parked caret
+  nav = { t, ar: ri, ac: ci, fr: ri, fc: ci };
+  editCell = null;
+  editor.classList.add('cellnav');
+  showOv(t); posOv();
+}
+// formatting a selected cell / range applies to the whole cells (Excel-style); false if not in cell mode
+function onCells(fn, after) {
+  if (!navLive()) return false;
+  const keep = Object.assign({}, nav), cells = rectCells(navRect());
+  edit(() => {
+    const s = getSelection();
+    cells.forEach((c, i) => { const r = document.createRange(); r.selectNodeContents(c); s.removeAllRanges(); s.addRange(r); fn(c, i); });
+    if (after) after();
+  });
+  nav = keep;
+  editor.classList.add('cellnav');
+  const f = cellAt(nav.t, nav.fr, nav.fc);
+  if (f) parkCaret(f);
+  posOv(); updateToolbar();
+  return true;
+}
+editor.addEventListener('dblclick', e => {
+  const td = e.target.closest && e.target.closest('td');
+  if (!td || !editor.contains(td)) return;
+  const cr = document.caretRangeFromPoint(e.clientX, e.clientY);
+  startEdit('f2', td, true);
+  if (cr && td.contains(cr.startContainer)) { const s = getSelection(); s.removeAllRanges(); s.addRange(cr); }
+});
+document.addEventListener('mouseup', () => {
+  if (view !== 'editor' || editCell) return;
+  const rc = domCellRect();                       // a mouse drag across cells becomes a cell range
+  if (!rc) return;
+  const s = getSelection(), fa = cellOf(s.anchorNode), ff = cellOf(s.focusNode);
+  const inRect = c => c && c.closest('table') === rc.t;
+  const a = inRect(fa) ? [fa.parentElement.rowIndex, fa.cellIndex] : [rc.r0, rc.c0];
+  const f = inRect(ff) ? [ff.parentElement.rowIndex, ff.cellIndex] : [rc.r1, rc.c1];
+  nav = { t: rc.t, ar: clamp(a[0], rc.r0, rc.r1), ac: clamp(a[1], rc.c0, rc.c1), fr: clamp(f[0], rc.r0, rc.r1), fc: clamp(f[1], rc.c0, rc.c1) };
+  editCell = null;
+  editor.classList.add('cellnav');
+  parkCaret(cellAt(nav.t, nav.fr, nav.fc));
+  showOv(rc.t); posOv();
+});
+
+// + buttons on the four edges of the table under the mouse / caret
+let ovTable = null, ovHover = false, ovHideT = 0, ovRaf = 0;
+function showOv(t) {
+  if (!t || !editor.contains(t)) return;
+  clearTimeout(ovHideT);
+  ovTable = t;
+  ov.classList.add('show');
+  posOv();
+}
+function hideOv() { clearTimeout(ovHideT); ovTable = null; ov.classList.remove('show', 'g-t', 'g-b', 'g-l', 'g-r'); }
+function hideOvSoon() {
+  clearTimeout(ovHideT);
+  ovHideT = setTimeout(() => { if (!ovHover && !(nav && nav.t === ovTable) && !(closestSel('td') && ovTable && ovTable.contains(closestSel('td')))) hideOv(); }, 700);
+}
+function posOvSoon() { if (!ovRaf) ovRaf = requestAnimationFrame(() => { ovRaf = 0; posOv(); }); }
+function posOv() {
+  if (!ovTable) return;
+  if (!ovTable.isConnected) { hideOv(); return; }
+  const sr = sheet.getBoundingClientRect(), tr = ovTable.getBoundingClientRect();
+  ov.style.left = (tr.left - sr.left - sheet.clientLeft) + 'px'; ov.style.top = (tr.top - sr.top - sheet.clientTop) + 'px';
+  ov.style.width = tr.width + 'px'; ov.style.height = tr.height + 'px';
+  // selection box: the selected cell / range, or the cell being edited
+  let a = null, b = null;
+  if (nav && nav.t === ovTable) { const rc = navRect(); a = cellAt(rc.t, rc.r0, rc.c0); b = cellAt(rc.t, rc.r1, rc.c1); }
+  else { const td = closestSel('td'); if (td && ovTable.contains(td)) a = b = td; }
+  if (a && b) {
+    const ra = a.getBoundingClientRect(), rb = b.getBoundingClientRect();
+    const L = Math.min(ra.left, rb.left), T = Math.min(ra.top, rb.top), Rr = Math.max(ra.right, rb.right), B = Math.max(ra.bottom, rb.bottom);
+    cellbox.className = editCell ? 'edit' : 'nav';
+    Object.assign(cellbox.style, { display: 'block', left: (L - tr.left - 1) + 'px', top: (T - tr.top - 1) + 'px', width: (Rr - L + 2) + 'px', height: (B - T + 2) + 'px' });
+  } else cellbox.style.display = 'none';
+}
+function caretTable() {
+  const td = closestSel('td');
+  if (td) showOv(td.closest('table'));
+  else if (ovTable) { posOv(); if (!ovHover) hideOvSoon(); }
+}
+editor.addEventListener('mousemove', e => {
+  const t = e.target.closest && e.target.closest('table.t');
+  if (t && editor.contains(t)) { if (t !== ovTable) showOv(t); else clearTimeout(ovHideT); }
+  else if (ovTable && !ovHover) hideOvSoon();
+});
+editor.addEventListener('mouseleave', () => { if (ovTable && !ovHover) hideOvSoon(); });
+for (const b of $$('.tadd', ov)) {
+  const side = b.classList[1];
+  b.addEventListener('mouseenter', () => { ovHover = true; clearTimeout(ovHideT); ov.classList.add('g-' + side); });
+  b.addEventListener('mouseleave', () => { ovHover = false; ov.classList.remove('g-' + side); hideOvSoon(); });
+  b.addEventListener('mousedown', e => e.preventDefault());
+  b.addEventListener('click', () => tableOp(b.dataset.op, ovTable, closestSel('td')));
+}
+scroller.addEventListener('scroll', () => { if (ovTable) posOvSoon(); }, { passive: true });
+window.addEventListener('resize', posOvSoon);
+editor.addEventListener('scroll', posOvSoon, true);   // horizontally scrolled wide tables
+
+// ---------------------------------------------------------------- paste (Excel -> table, images, clean HTML)
+let plainNext = false;
+editor.addEventListener('paste', e => {
+  e.preventDefault();
+  const cd = e.clipboardData;
+  const files = Array.from(cd.files || []).filter(f => /^image\/(png|jpeg|gif|webp|bmp)$/.test(f.type));
+  const plain = plainNext;
+  plainNext = false;
+  doPaste(cd.getData('text/plain'), cd.getData('text/html'), files, plain);
+});
+function doPaste(text, html, files, plain) {
+  text = text || '';
+  if (files.length && !text.trim()) { files.forEach(insertImageFile); return; }
+  const g = plain ? null : (html && gridFromHtml(html)) || gridFromTSV(text);
+  if (g && (g.length > 1 || g[0].length > 1)) { pasteGrid(g); return; }
+  if (g) { text = g[0][0]; html = ''; }          // a single cell pastes as its text
+  if (navLive()) {                                // cell(s) selected: the value replaces them, like Excel
+    const val = text.replace(/\r\n?/g, '\n').replace(/\n+$/, '');
+    const keep = Object.assign({}, nav), cells = rectCells(navRect());
+    edit(() => { for (const c of cells) c.innerHTML = cellHTML(val); });
+    nav = keep; editor.classList.add('cellnav'); parkCaret(cellAt(nav.t, nav.fr, nav.fc)); posOv();
+    return;
+  }
+  edit(() => {
+    const t = text.trim();
+    if (/^https?:\/\/\S+$/i.test(t)) exec('insertHTML', `<a href="${esc(t)}">${esc(t)}</a>`);
+    else if (plain || !html) exec('insertText', text);
+    else {
+      const d = document.createElement('div');
+      d.appendChild(sanitize(html));
+      if (d.innerHTML) exec('insertHTML', d.innerHTML); else exec('insertText', text);
+    }
+  });
+}
+function gridFromHtml(html) {
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  doc.querySelectorAll('style,script,meta,link,title,colgroup,col').forEach(n => n.remove());
+  const tables = doc.body.querySelectorAll('table');
+  if (tables.length !== 1 || tables[0].querySelector('table')) return null;
+  const rest = doc.body.cloneNode(true);
+  rest.querySelector('table').remove();
+  if (rest.textContent.trim()) return null;          // a table inside other content: paste as rich HTML instead
+  const rows = [];
+  for (const tr of tables[0].rows) {
+    const row = [];
+    for (const td of tr.cells) {
+      row.push(cellText(td));
+      for (let k = 1; k < Math.min(+td.colSpan || 1, 50); k++) row.push('');
+    }
+    rows.push(row);
+  }
+  if (!rows.length) return null;
+  const w = Math.max(...rows.map(r => r.length));
+  rows.forEach(r => { while (r.length < w) r.push(''); });
+  return rows;
+}
+function cellText(td) {
+  const c = td.cloneNode(true);
+  c.querySelectorAll('br').forEach(b => b.replaceWith('\x01'));
+  c.querySelectorAll('p,div').forEach(b => b.append('\x01'));
+  return c.textContent.replace(/[ \t\r\n\xa0]+/g, ' ').replace(/ ?\x01 ?/g, '\n').replace(/^\n+|\n+$/g, '').trim();
+}
+function gridFromTSV(text) {
+  if (!text || !text.includes('\t')) return null;
+  text = text.replace(/\r\n?/g, '\n');
+  const rows = [];
+  let row = [], cell = '', q = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (q) {
+      if (ch === '"') { if (text[i + 1] === '"') { cell += '"'; i++; } else q = false; }
+      else cell += ch;
+      continue;
+    }
+    if (ch === '"' && cell === '') q = true;
+    else if (ch === '\t') { row.push(cell); cell = ''; }
+    else if (ch === '\n') { row.push(cell); rows.push(row); row = []; cell = ''; }
+    else cell += ch;
+  }
+  if (cell !== '' || row.length) { row.push(cell); rows.push(row); }
+  const w = rows.length ? rows[0].length : 0;
+  if (w < 2 || rows.some(r => r.length !== w)) return null;   // ragged text with tabs is just text
+  return rows;
+}
+// Cells covered by a selection that spans several cells of one table, as a rectangle.
+// (Chrome's own copy takes cells in document order, so B1:C2 also grabbed A2 and the paste came out shifted.)
+function cellOf(n) {
+  const el = n && (n.nodeType === 3 ? n.parentNode : n);
+  const td = el && el.closest && el.closest('td');
+  return td && editor.contains(td) ? td : null;
+}
+function selCellRect() {                          // cell mode range first, then a DOM selection spanning cells
+  if (navLive()) return navRect();
+  return domCellRect();
+}
+function domCellRect() {
+  const r = selRange();
+  if (!r || r.collapsed) return null;
+  let a = cellOf(r.startContainer), b = cellOf(r.endContainer);
+  if (!a || !b || a === b) return null;
+  const t = a.closest('table');
+  if (b.closest('table') !== t) return null;
+  const cells = Array.from(t.querySelectorAll('td'));
+  const empty = (c, s, o, fromStart) => { const x = document.createRange(); if (fromStart) { x.setStart(c, 0); x.setEnd(s, o); } else { x.setStart(s, o); x.setEnd(c, c.childNodes.length); } return !x.toString(); };
+  // a drag that begins at the very end of a cell, or ends at the very start of one, selects nothing there
+  if (a.textContent && empty(a, r.startContainer, r.startOffset, false) && cells[cells.indexOf(a) + 1]) a = cells[cells.indexOf(a) + 1];
+  if (b.textContent && empty(b, r.endContainer, r.endOffset, true) && cells.indexOf(b) > 0) b = cells[cells.indexOf(b) - 1];
+  const ra = a.parentElement.rowIndex, rb = b.parentElement.rowIndex;
+  return { t, r0: Math.min(ra, rb), r1: Math.max(ra, rb), c0: Math.min(a.cellIndex, b.cellIndex), c1: Math.max(a.cellIndex, b.cellIndex) };
+}
+function rectRows(rc) {
+  const rows = [];
+  for (let i = rc.r0; i <= rc.r1; i++) {
+    const tr = rc.t.rows[i], row = [];
+    for (let j = rc.c0; j <= rc.c1; j++) row.push(tr.cells[j] ? toPlain(tr.cells[j]) : '');
+    rows.push(row);
+  }
+  return rows;
+}
+function rowsText(rows) { return rows.map(r => r.map(tsvCell).join('\t')).join('\r\n'); }          // Excel / Sheets / Notepad
+function rowsHTML(rows) { return '<table>' + rows.map(r => '<tr>' + r.map(v => '<td>' + (v ? cellHTML(v) : '') + '</td>').join('') + '</tr>').join('') + '</table>'; }
+function gridToClipboard(cd, rows) {
+  cd.setData('text/plain', rowsText(rows));
+  cd.setData('text/html', rowsHTML(rows));
+}
+editor.addEventListener('copy', e => {
+  const rc = selCellRect();
+  if (!rc) return;
+  e.preventDefault();
+  gridToClipboard(e.clipboardData, rectRows(rc));
+});
+editor.addEventListener('cut', e => {
+  const rc = selCellRect();
+  if (!rc) return;
+  e.preventDefault();
+  gridToClipboard(e.clipboardData, rectRows(rc));
+  edit(() => { for (const c of rectCells(rc)) c.innerHTML = '<br>'; });
+  setNav(rc.t, rc.r0, rc.c0);
+});
+function pasteGrid(rows) {
+  const rc = selCellRect();                           // pasting over a multi-cell selection starts at its top-left cell
+  const td = rc ? rc.t.rows[rc.r0].cells[rc.c0] : closestSel('td');
+  const w = Math.max(...rows.map(r => r.length));
+  edit(() => {
+    if (td) {                      // fill the existing table from the caret cell, growing it as needed
+      const t = td.closest('table');
+      const r0 = td.parentElement.rowIndex, c0 = td.cellIndex;
+      while (t.rows.length < r0 + rows.length) addRow(t, t.rows.length);
+      while (tableCols(t) < c0 + w) addCol(t, tableCols(t));
+      rows.forEach((r, i) => {
+        const tr = t.rows[r0 + i];
+        r.forEach((v, j) => {
+          while (tr.cells.length <= c0 + j) newCell(tr, -1);
+          tr.cells[c0 + j].innerHTML = cellHTML(v);
+        });
+      });
+      // like Excel: the pasted block stays selected
+      nav = { t, ar: r0, ac: c0, fr: r0 + rows.length - 1, fc: c0 + w - 1 };
+      editCell = null;
+      editor.classList.add('cellnav');
+      parkCaret(cellAt(t, nav.fr, nav.fc));
+    } else {
+      const t = buildTable(rows, true);
+      placeBlock(t);
+      placeCaret(t.nextElementSibling || t.rows[0].cells[0], false);
+    }
+  });
+  toast(`표로 붙여넣기 · ${rows.length}행 × ${w}열`);
+}
+const KEEP = new Set(['B', 'I', 'U', 'S', 'BR', 'P', 'DIV', 'H1', 'H2', 'H3', 'UL', 'OL', 'LI', 'A', 'BLOCKQUOTE', 'PRE', 'CODE', 'HR', 'TABLE', 'TBODY', 'TR', 'TD', 'IMG', 'SUB', 'SUP']);
+const DROP = new Set(['SCRIPT', 'STYLE', 'META', 'LINK', 'TITLE', 'HEAD', 'IFRAME', 'OBJECT', 'EMBED', 'NOSCRIPT', 'TEMPLATE', 'SVG', 'BUTTON', 'INPUT', 'SELECT', 'TEXTAREA', 'FORM', 'CANVAS', 'VIDEO', 'AUDIO', 'COLGROUP', 'COL']);
+const RENAME = { STRONG: 'B', EM: 'I', STRIKE: 'S', DEL: 'S', INS: 'U', H4: 'H3', H5: 'H3', H6: 'H3', THEAD: 'TBODY', TFOOT: 'TBODY', TH: 'TD', SECTION: 'DIV', ARTICLE: 'DIV', HEADER: 'DIV', FOOTER: 'DIV', MAIN: 'DIV', ASIDE: 'DIV', NAV: 'DIV', FIGURE: 'DIV', DD: 'DIV', DT: 'DIV', DL: 'DIV' };
+function sanitize(html) {
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const out = document.createDocumentFragment();
+  const walk = (src, dst, pre) => {
+    for (let n = src.firstChild; n; n = n.nextSibling) {
+      if (n.nodeType === 3) {
+        const t = pre ? n.nodeValue : n.nodeValue.replace(/[ \t\r\n]+/g, ' ');
+        if (t) dst.appendChild(document.createTextNode(t));
+        continue;
+      }
+      if (n.nodeType !== 1) continue;
+      let tag = n.nodeName.toUpperCase();
+      if (DROP.has(tag)) continue;
+      tag = RENAME[tag] || tag;
+      const stl = n.style || {};
+      const fw = stl.fontWeight || '';
+      if (!KEEP.has(tag) || (tag === 'B' && (fw === 'normal' || fw === '400'))) {
+        // unknown wrapper (span, font, Google Docs <b style=normal> ...): keep only bold/italic/underline/strike from its style
+        let inner = dst;
+        const deco = (stl.textDecorationLine || stl.textDecoration || '');
+        const wraps = [[fw === 'bold' || +fw >= 600, 'b'], [stl.fontStyle === 'italic', 'i'], [deco.includes('underline'), 'u'], [deco.includes('line-through'), 's']];
+        for (const [on, t2] of wraps) if (on && tag !== 'B') { const e2 = document.createElement(t2); inner.appendChild(e2); inner = e2; }
+        walk(n, inner, pre);
+        continue;
+      }
+      const el = document.createElement(tag);
+      if (tag === 'A') {
+        const h = n.getAttribute('href') || '';
+        if (!/^(https?:|mailto:)/i.test(h)) { walk(n, dst, pre); continue; }
+        el.setAttribute('href', h);
+      }
+      if (tag === 'IMG') {
+        const s = n.getAttribute('src') || '';
+        if (/^(https?:|data:image\/(png|jpeg|gif|webp))/i.test(s)) { el.setAttribute('src', s); dst.appendChild(el); }
+        continue;
+      }
+      if (tag === 'TABLE') el.className = 't';
+      dst.appendChild(el);
+      walk(n, el, pre || tag === 'PRE');
+    }
+  };
+  walk(doc.body, out, false);
+  out.querySelectorAll('table').forEach(t => {
+    const w = tableCols(t);
+    for (const tr of t.rows) { while (tr.cells.length < w) newCell(tr, -1); }
+    for (const td of t.querySelectorAll('td')) if (!td.firstChild) td.innerHTML = '<br>';
+    if (!t.rows.length) t.remove();
+  });
+  out.querySelectorAll('tr').forEach(tr => { if (!tr.closest('table')) unwrap(tr); });
+  return out;
+}
+function insertImageFile(file) {
+  const rd = new FileReader();
+  rd.onload = () => {
+    const url = String(rd.result);
+    let src = url;
+    if (HOST) {
+      const ext = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/gif': 'gif', 'image/webp': 'webp', 'image/bmp': 'bmp' }[file.type] || 'png';
+      const name = uid() + '.' + ext;
+      host.send('saveImg', name, url.slice(url.indexOf(',') + 1));
+      src = IMG_URL + name;
+    }
+    ensureEditorFocus();
+    edit(() => exec('insertHTML', `<img src="${src}">`));
+  };
+  rd.readAsDataURL(file);
+}
+editor.addEventListener('drop', e => {
+  const files = Array.from((e.dataTransfer && e.dataTransfer.files) || []).filter(f => /^image\/(png|jpeg|gif|webp|bmp)$/.test(f.type));
+  if (!files.length) return;
+  e.preventDefault();
+  const r = document.caretRangeFromPoint(e.clientX, e.clientY);
+  if (r) { const s = getSelection(); s.removeAllRanges(); s.addRange(r); }
+  files.forEach(insertImageFile);
+});
+document.addEventListener('dragover', e => { if (e.dataTransfer && Array.from(e.dataTransfer.types).includes('Files')) e.preventDefault(); });
+document.addEventListener('drop', e => { if (!e.defaultPrevented && e.dataTransfer && Array.from(e.dataTransfer.types).includes('Files')) e.preventDefault(); });
+async function pasteFromClipboard(plain) {
+  try {
+    const items = await navigator.clipboard.read();
+    let text = '', html = '';
+    const files = [];
+    for (const it of items) {
+      if (it.types.includes('text/plain')) text = await (await it.getType('text/plain')).text();
+      if (it.types.includes('text/html')) html = await (await it.getType('text/html')).text();
+      for (const t of it.types) if (/^image\/(png|jpeg|gif|webp|bmp)$/.test(t)) files.push(new File([await it.getType(t)], 'clip', { type: t }));
+    }
+    ensureEditorFocus();
+    doPaste(text, html, files, plain);
+  } catch (err) { toast('클립보드를 읽지 못했어요. Ctrl+V를 써 주세요'); }
+}
+editor.addEventListener('contextmenu', e => {
+  e.preventDefault();
+  const s = getSelection();
+  const r = s.rangeCount ? s.getRangeAt(0) : null;
+  const inSel = r && !r.collapsed && Array.from(r.getClientRects()).some(b => e.clientX >= b.left && e.clientX <= b.right && e.clientY >= b.top && e.clientY <= b.bottom);
+  if (!inSel) { const cr = document.caretRangeFromPoint(e.clientX, e.clientY); if (cr) { s.removeAllRanges(); s.addRange(cr); } }
+  const img = e.target.closest && e.target.closest('img');
+  const td = e.target.closest && e.target.closest('td');
+  const has = !getSelection().isCollapsed;
+  const items = [];
+  if (img) {
+    const size = w => () => edit(() => { if (w) img.style.width = w; else img.removeAttribute('style'); });
+    items.push({ label: '이미지 작게 (33%)', icon: 'i-image', action: size('33%') }, { label: '이미지 중간 (66%)', action: size('66%') },
+      { label: '원래 크기', action: size('') }, { label: '이미지 삭제', icon: 'i-trash', danger: true, action: () => edit(() => img.remove()) }, { sep: true });
+  }
+  items.push(
+    { label: '잘라내기', icon: 'i-cut', kbd: 'Ctrl+X', disabled: !has, action: () => edit(() => exec('cut')) },
+    { label: '복사', icon: 'i-copy', kbd: 'Ctrl+C', disabled: !has, action: () => exec('copy') },
+    { label: '붙여넣기', icon: 'i-paste', kbd: 'Ctrl+V', action: () => pasteFromClipboard(false) },
+    { label: '서식 없이 붙여넣기', kbd: 'Ctrl+Shift+V', action: () => pasteFromClipboard(true) });
+  if (td) {
+    const t = td.closest('table');
+    items.push({ sep: true },
+      { label: '위에 행 삽입', icon: 'i-plus', action: () => tableOp('rowAbove', t, td) },
+      { label: '아래에 행 삽입', action: () => tableOp('rowBelow', t, td) },
+      { label: '왼쪽에 열 삽입', action: () => tableOp('colBefore', t, td) },
+      { label: '오른쪽에 열 삽입', action: () => tableOp('colAfter', t, td) },
+      { label: '행 삭제', action: () => tableOp('delRow', t, td) },
+      { label: '열 삭제', action: () => tableOp('delCol', t, td) },
+      { label: t.classList.contains('hdr') ? '머리글 행 끄기' : '머리글 행 켜기', action: () => tableOp('header', t, td) },
+      { label: '표 삭제', icon: 'i-trash', danger: true, action: () => tableOp('delTable', t, td) });
+  } else {
+    items.push({ sep: true },
+      { label: '굵게', kbd: 'Ctrl+B', action: () => fmt('bold') },
+      { label: '밑줄', kbd: 'Ctrl+U', action: () => fmt('underline') },
+      { label: '형광펜', icon: 'i-marker', kbd: 'Ctrl+Shift+H', action: toggleHl },
+      { label: '서식 지우기', icon: 'i-eraser', kbd: 'Ctrl+\\', action: clearFmt });
+  }
+  items.push({ sep: true }, { label: '모두 선택', kbd: 'Ctrl+A', action: () => { editor.focus(); exec('selectAll'); } });
+  showMenu(e.clientX, e.clientY, items);
+});
+
+// ---------------------------------------------------------------- find in note (CSS highlight API: no DOM changes)
+const canHL = !!(window.Highlight && window.CSS && CSS.highlights);
+const hlAll = canHL ? new Highlight() : { add() {}, clear() {} }, hlCur = canHL ? new Highlight() : { add() {}, clear() {} };
+if (canHL) { CSS.highlights.set('ssn-find', hlAll); CSS.highlights.set('ssn-cur', hlCur); }
+let findOpen = false, hits = [], hitI = -1, findT = 0;
+function openFind() {
+  if (view !== 'editor') return;
+  findOpen = true;
+  $('#findbar').classList.add('show');
+  const s = getSelection().toString();
+  if (s && s.length < 80 && !s.includes('\n')) findIn.value = s;
+  findIn.focus(); findIn.select();
+  runFind(true);
+}
+function findText(q) {                           // open the find bar on q and jump to the first match
+  findOpen = true;
+  $('#findbar').classList.add('show');
+  findIn.value = q;
+  runFind(false);
+  findIn.focus(); findIn.select();
+}
+function findSoon() { clearTimeout(findT); findT = setTimeout(() => runFind(false), 200); }
+function runFind(fromCaret) {
+  hlAll.clear(); hlCur.clear(); hits = []; hitI = -1;
+  const q = findIn.value.toLowerCase();
+  if (!q) { $('#findCount').textContent = ''; return; }
+  const w = document.createTreeWalker(editor, NodeFilter.SHOW_TEXT);
+  let n;
+  while ((n = w.nextNode()) && hits.length < 5000) {
+    const t = n.nodeValue.toLowerCase();
+    for (let i = t.indexOf(q); i >= 0 && hits.length < 5000; i = t.indexOf(q, i + q.length)) {
+      const r = new Range(); r.setStart(n, i); r.setEnd(n, i + q.length);
+      hits.push(r); hlAll.add(r);
+    }
+  }
+  if (hits.length) {
+    hitI = 0;
+    const c = fromCaret && lastSel && selRangeFrom(lastSel);
+    if (c) { const k = hits.findIndex(h => h.compareBoundaryPoints(Range.START_TO_START, c) >= 0); if (k >= 0) hitI = k; }
+  }
+  showHit(fromCaret);
+}
+function selRangeFrom(x) { const [a] = nodeAt(x.a); try { const r = document.createRange(); r.setStart(a, Math.min(x.ao, a.nodeType === 3 ? a.nodeValue.length : a.childNodes.length)); return r; } catch (e) { return null; } }
+function showHit(scroll = true) {
+  hlCur.clear();
+  if (hitI < 0) { $('#findCount').textContent = findIn.value ? '0/0' : ''; return; }
+  const r = hits[hitI];
+  hlCur.add(r);
+  $('#findCount').textContent = (hitI + 1) + '/' + hits.length;
+  if (!scroll) return;
+  const rect = r.getBoundingClientRect(), sr = scroller.getBoundingClientRect();
+  if (rect.top < sr.top + 20 || rect.bottom > sr.bottom - 20) scroller.scrollTop += rect.top - sr.top - sr.height / 3;
+}
+function findStep(d) { if (!hits.length) return; hitI = (hitI + d + hits.length) % hits.length; showHit(); }
+function findClose(silent) {
+  if (!findOpen) return;
+  findOpen = false;
+  $('#findbar').classList.remove('show');
+  const r = hits[hitI];
+  hlAll.clear(); hlCur.clear(); hits = []; hitI = -1;
+  if (silent) return;
+  editor.focus({ preventScroll: true });
+  if (r && r.startContainer.isConnected) { const s = getSelection(); s.removeAllRanges(); s.addRange(r); }
+  else if (lastSel) selRestore(lastSel);
+}
+findIn.addEventListener('input', () => runFind(false));
+findIn.addEventListener('keydown', e => {
+  if (e.isComposing) return;
+  if (e.key === 'Enter') { e.preventDefault(); findStep(e.shiftKey ? -1 : 1); }
+  else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); findClose(); }
+});
+$('#findNext').onclick = () => findStep(1);
+$('#findPrev').onclick = () => findStep(-1);
+$('#findX').onclick = () => findClose();
+
+// ---------------------------------------------------------------- popovers & menus
+let popPick = null;
+function showPop(x, y, html, onPick) {
+  pop.innerHTML = html;
+  pop.hidden = false;
+  popPick = onPick;
+  const w = pop.offsetWidth, h = pop.offsetHeight;
+  pop.style.left = clamp(x, 8, innerWidth - w - 8) + 'px';
+  pop.style.top = (y + h > innerHeight - 8 ? Math.max(8, y - h - 12) : y) + 'px';
+}
+function closePop() { if (pop.hidden) return; pop.hidden = true; pop.innerHTML = ''; popPick = null; }
+pop.addEventListener('mousedown', e => { if (!e.target.closest('input')) e.preventDefault(); });
+pop.addEventListener('click', e => {
+  const b = e.target.closest('[data-v],[data-i]');
+  if (!b || !popPick) return;
+  const f = popPick;
+  closePop();
+  f(b);
+});
+document.addEventListener('mousedown', e => { if (!pop.hidden && !pop.contains(e.target)) closePop(); }, true);
+window.addEventListener('blur', closePop);
+function showMenu(x, y, items) {
+  const html = items.map((it, i) => {
+    if (it.sep) return '<div class="msep"></div>';
+    if (it.colors) return `<div class="mlabel">색상</div><div class="swatches">${COLOR_KEYS.map(k => `<button class="sw${it.value === k ? ' on' : ''}" data-i="${i}" data-c="${k}" title="${k}" style="background:${NOTE_COLORS[k]}"></button>`).join('')}</div>`;
+    return `<button class="mi${it.danger ? ' danger' : ''}" data-i="${i}"${it.disabled ? ' disabled' : ''}>${it.icon ? ic(it.icon) : '<i></i>'}<span>${esc(it.label)}</span>${it.kbd ? `<kbd>${esc(it.kbd)}</kbd>` : ''}</button>`;
+  }).join('');
+  showPop(x, y, html, b => {
+    const it = items[+b.dataset.i];
+    if (it.colors) it.pick(b.dataset.c); else if (it.action) it.action();
+  });
+}
+function colorMenu(id, x, y) {
+  const n = noteById(id);
+  if (n) showMenu(x, y, [{ colors: true, value: n.color, pick: c => setColor(id, c) }]);
+}
+function noteMenu(id, x, y) {
+  const n = noteById(id);
+  if (!n) return;
+  showMenu(x, y, [
+    { label: '열기', icon: 'i-open', kbd: 'Enter', action: () => openNote(id) },
+    { label: '이름 바꾸기', icon: 'i-edit', kbd: 'F2', action: () => (view === 'board' ? renameInline(id) : openNote(id, { focusTitle: true })) },
+    { label: n.hotkey ? `단축키 변경 (${n.hotkey.label})` : '전역 단축키 지정…', icon: 'i-key', action: () => setNoteHotkey(id) },
+    { label: n.pinned ? '고정 해제' : '맨 앞에 고정', icon: 'i-pin', action: () => togglePin(id) },
+    { colors: true, value: n.color, pick: c => setColor(id, c) },
+    { sep: true },
+    { label: '복제', icon: 'i-copy', action: () => duplicate(id) },
+    { label: '텍스트로 복사', icon: 'i-copy', action: () => copyText(id) },
+    { label: '내보내기 (.txt)', icon: 'i-export', action: () => exportNote(id, 'txt') },
+    { label: '내보내기 (.html)', icon: 'i-export', action: () => exportNote(id, 'html') },
+    { sep: true },
+    { label: '삭제', icon: 'i-trash', kbd: 'Del', danger: true, action: () => deleteNote(id) }
+  ]);
+}
+
+// ---------------------------------------------------------------- modal
+let modalOnClose = null;
+function openModal(html, onClose) {
+  closePop();
+  if (modalOpen()) closeModal();
+  modal.innerHTML = html;
+  modal.classList.add('show');
+  modalOnClose = onClose || null;
+}
+function closeModal() {
+  if (!modalOpen()) return;
+  modal.classList.remove('show');
+  modal.innerHTML = '';
+  const f = modalOnClose;
+  modalOnClose = null;
+  if (f) f();
+  refocus();
+}
+function modalOpen() { return modal.classList.contains('show'); }
+modal.addEventListener('mousedown', e => { if (e.target === modal) closeModal(); });
+
+// ---------------------------------------------------------------- send out: copy -> back to the previous window -> paste
+// What gets taken: selected cells, else selected text, else the cell being edited, else the current line.
+// On the board (or with the title focused) it is the whole note.
+function notePayload(id) {
+  if (id === cur) flushNote();
+  const n = noteById(id);
+  return n ? { text: noteText(id), html: bodies[id] || '', what: '‘' + (titleOf(n) || '메모') + '’ 전체' } : null;
+}
+function copyPayload() {
+  if (view === 'board') return selId ? notePayload(selId) : null;
+  if (document.activeElement === titleIn) return notePayload(cur);
+  if (navLive()) {
+    const rows = rectRows(navRect());
+    return { text: rowsText(rows), html: rowsHTML(rows), what: rows.length * rows[0].length > 1 ? '선택한 칸' : '칸 값' };
+  }
+  const r = selRange();
+  if (r && !r.collapsed) {
+    const f = r.cloneContents(), d = document.createElement('div');
+    d.appendChild(f.cloneNode(true));
+    return { text: toPlain(f), html: d.innerHTML, what: '선택한 내용' };
+  }
+  if (editCell) return { text: toPlain(editCell), html: editCell.innerHTML, what: '칸 값' };
+  const blk = r && blockOf(r.startContainer);
+  if (blk && blk.textContent.trim()) return { text: toPlain(blk).replace(/\n+$/, ''), html: blk.outerHTML, what: '현재 줄' };
+  return null;
+}
+function putClip(p) {
+  if (HOST) { host.send('clip', String(p.text.length), p.text + p.html); return; }
+  try {
+    navigator.clipboard.write([new ClipboardItem({ 'text/plain': new Blob([p.text], { type: 'text/plain' }), 'text/html': new Blob([p.html], { type: 'text/html' }) })]);
+  } catch (e) { navigator.clipboard.writeText(p.text); }
+}
+function copyNote(id) {
+  const p = notePayload(id);
+  if (!p) return;
+  putClip(p);
+  toast(`복사 완료 · ${p.what} · 원하는 곳에 붙여넣으세요`);
+}
+// mode 'paste': copy, return to the window you came from and paste there; 'copy': copy and return
+function sendOut(mode) {
+  const p = copyPayload();
+  if (!p || (!p.text.trim() && !/<img/i.test(p.html))) { toast('보낼 내용이 없어요 · 글을 선택하거나 보낼 줄에 커서를 두세요'); return; }
+  flushAll();
+  if (!HOST) { putClip(p); toast(`${p.what} 복사됨 (브라우저 미리보기에서는 창 전환이 없어요)`); return; }
+  host.send('sendOut', mode, String(p.text.length), p.text + p.html);
+}
+
+// ---------------------------------------------------------------- quick switcher (Ctrl+K)
+function openSwitcher() {
+  flushNote();
+  openModal(`<div class="dlg qs"><div class="qs-in">${ic('i-search')}<input id="qsIn" placeholder="제목이나 내용으로 메모 찾기" spellcheck="false" autocomplete="off"><kbd>Esc</kbd></div><div class="qs-list" id="qsList"></div></div>`);
+  const inp = $('#qsIn'), list = $('#qsList');
+  let items = [], idx = 0;
+  const render = () => {
+    const q = inp.value.trim().toLowerCase();
+    items = ordered().map(n => ({ n, t: noteText(n.id) })).filter(x => !q || titleOf(x.n).toLowerCase().includes(q) || x.t.toLowerCase().includes(q));
+    idx = clamp(idx, 0, Math.max(0, items.length - 1));
+    list.innerHTML = items.map((x, i) => `<div class="qs-item${i === idx ? ' on' : ''}" data-i="${i}"><span class="c-dot" style="--c:${NOTE_COLORS[x.n.color]}"></span><div class="qs-txt"><b>${mark(titleOf(x.n) || '제목 없음', q)}</b><small>${snippet(x.t, q)}</small></div>${x.n.hotkey ? `<span class="chip">${esc(x.n.hotkey.label)}</span>` : ''}</div>`).join('') ||
+      '<div class="qs-empty">일치하는 메모가 없어요</div>';
+    const on = list.querySelector('.on');
+    if (on) on.scrollIntoView({ block: 'nearest' });
+  };
+  const go = i => {
+    const x = items[i];
+    if (!x) return;
+    const q = inp.value.trim();
+    closeModal();
+    openNote(x.n.id);
+    if (q && x.t.toLowerCase().includes(q.toLowerCase())) findText(q);   // land on what you searched for
+  };
+  inp.addEventListener('input', () => { idx = 0; render(); });
+  inp.addEventListener('keydown', e => {
+    if (e.isComposing) return;
+    if (e.key === 'ArrowDown') { e.preventDefault(); idx = Math.min(idx + 1, items.length - 1); render(); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); idx = Math.max(idx - 1, 0); render(); }
+    else if (e.key === 'Enter') { e.preventDefault(); go(idx); }
+  });
+  list.addEventListener('click', e => { const it = e.target.closest('.qs-item'); if (it) go(+it.dataset.i); });
+  render();
+  inp.focus();
+}
+function mark(s, q) {
+  if (!q) return esc(s);
+  const i = s.toLowerCase().indexOf(q);
+  return i < 0 ? esc(s) : esc(s.slice(0, i)) + '<mark>' + esc(s.slice(i, i + q.length)) + '</mark>' + esc(s.slice(i + q.length));
+}
+function snippet(text, q) {
+  const t = text.replace(/\s+/g, ' ').trim();
+  const i = q ? t.toLowerCase().indexOf(q) : -1;
+  if (i < 0) return esc(t.slice(0, 70)) || '<span class="ph">비어 있음</span>';
+  const s = Math.max(0, i - 24);
+  return (s ? '…' : '') + mark(t.slice(s, i + q.length + 50), q);
+}
+
+// ---------------------------------------------------------------- global hotkeys (registered by the native shell)
+const VK = { Space: 32, Enter: 13, Tab: 9, Backspace: 8, Escape: 27, Insert: 45, Delete: 46, Home: 36, End: 35, PageUp: 33, PageDown: 34, ArrowLeft: 37, ArrowUp: 38, ArrowRight: 39, ArrowDown: 40, Semicolon: 186, Equal: 187, Comma: 188, Minus: 189, Period: 190, Slash: 191, Backquote: 192, BracketLeft: 219, Backslash: 220, BracketRight: 221, Quote: 222, Pause: 19, NumpadMultiply: 106, NumpadAdd: 107, NumpadSubtract: 109, NumpadDecimal: 110, NumpadDivide: 111 };
+const KEYNAME = { Space: 'Space', Enter: 'Enter', Tab: 'Tab', Backspace: 'Backspace', Insert: 'Ins', Delete: 'Del', Home: 'Home', End: 'End', PageUp: 'PgUp', PageDown: 'PgDn', ArrowLeft: '←', ArrowUp: '↑', ArrowRight: '→', ArrowDown: '↓', Semicolon: ';', Equal: '=', Comma: ',', Minus: '-', Period: '.', Slash: '/', Backquote: '`', BracketLeft: '[', Backslash: '\\', BracketRight: ']', Quote: "'", Pause: 'Pause', NumpadMultiply: 'Num*', NumpadAdd: 'Num+', NumpadSubtract: 'Num-', NumpadDecimal: 'Num.', NumpadDivide: 'Num/' };
+function vkOf(code) {
+  let m;
+  if ((m = /^Key([A-Z])$/.exec(code))) return m[1].charCodeAt(0);
+  if ((m = /^Digit(\d)$/.exec(code))) return 48 + +m[1];
+  if ((m = /^Numpad(\d)$/.exec(code))) return 96 + +m[1];
+  if ((m = /^F(\d{1,2})$/.exec(code)) && +m[1] >= 1 && +m[1] <= 24) return 111 + +m[1];
+  return VK[code] || 0;
+}
+function keyName(code) {
+  let m;
+  if ((m = /^Key([A-Z])$/.exec(code))) return m[1];
+  if ((m = /^Digit(\d)$/.exec(code))) return m[1];
+  if ((m = /^Numpad(\d)$/.exec(code))) return 'Num' + m[1];
+  if (/^F\d{1,2}$/.test(code)) return code;
+  return KEYNAME[code] || code;
+}
+function modNames(m) { return [m & 2 && 'Ctrl', m & 1 && 'Alt', m & 4 && 'Shift', m & 8 && 'Win'].filter(Boolean); }
+const sameKey = (a, b) => a && b && a.mods === b.mods && a.vk === b.vk;
+// Windows and everyday shortcuts a global hotkey would take over. lvl 2 = refused, lvl 1 = allowed with a warning.
+const SYS_KEYS = (() => {
+  const m = new Map(), A = 1, C = 2, S = 4, W = 8;
+  const add = (mods, codes, name, lvl = 1) => { for (const code of [].concat(codes)) m.set(mods + ':' + vkOf(code), { name, lvl }); };
+  const digits = ['Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6', 'Digit7', 'Digit8', 'Digit9', 'Digit0'];
+  const arrows = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'];
+  // Win
+  [['KeyA', '빠른 설정'], ['KeyB', '알림 영역'], ['KeyC', 'Copilot'], ['KeyD', '바탕 화면 보기'], ['KeyE', '파일 탐색기'], ['KeyF', '피드백 허브'],
+   ['KeyG', 'Xbox Game Bar'], ['KeyH', '음성 입력'], ['KeyI', 'Windows 설정'], ['KeyK', '무선 디스플레이 연결'], ['KeyM', '모든 창 최소화'],
+   ['KeyN', '알림 센터'], ['KeyO', '화면 회전 잠금'], ['KeyP', '디스플레이 전환'], ['KeyQ', '검색'], ['KeyR', '실행 창'], ['KeyS', '검색'],
+   ['KeyT', '작업 표시줄 앱 순환'], ['KeyU', '접근성 설정'], ['KeyV', '클립보드 기록'], ['KeyW', '위젯'], ['KeyX', '빠른 링크 메뉴'],
+   ['KeyZ', '스냅 레이아웃'], ['Tab', '작업 보기'], ['Period', '이모지 패널'], ['Semicolon', '이모지 패널'], ['Comma', '바탕 화면 미리 보기'],
+   ['Space', '입력 언어 전환'], ['Home', '다른 창 최소화'], ['Escape', '돋보기 종료'], ['Pause', '시스템 정보'], ['Equal', '돋보기'], ['Minus', '돋보기']
+  ].forEach(([k, n]) => add(W, k, n));
+  add(W, 'KeyL', '화면 잠금', 2);
+  add(W, digits, '작업 표시줄 앱 실행'); add(W, arrows, '창 스냅(정렬)');
+  add(W | S, 'KeyS', '화면 캡처'); add(W | S, ['ArrowLeft', 'ArrowRight'], '창을 다른 모니터로'); add(W | S, 'KeyM', '최소화한 창 복원');
+  add(W | C, 'KeyD', '새 가상 데스크톱'); add(W | C, 'F4', '가상 데스크톱 닫기'); add(W | C, ['ArrowLeft', 'ArrowRight'], '가상 데스크톱 전환');
+  add(W | C, 'Enter', '내레이터'); add(W | A, 'KeyR', '화면 녹화'); add(W | A, 'KeyG', '최근 장면 녹화'); add(W | C | S, 'KeyB', '그래픽 드라이버 재시작');
+  // Alt
+  add(A, 'Tab', '창 전환', 2); add(A | S, 'Tab', '창 전환', 2); add(A, 'F4', '창 닫기', 2);
+  add(A, 'Escape', '창 순환'); add(A, 'Space', '창 메뉴'); add(A, 'Enter', '속성 / 전체 화면'); add(A, ['ArrowLeft', 'ArrowRight'], '뒤로 / 앞으로');
+  add(A, 'ArrowUp', '상위 폴더'); add(A, 'KeyD', '주소 표시줄'); add(A, 'KeyF', '파일 메뉴');
+  // Ctrl
+  [['KeyA', '모두 선택'], ['KeyC', '복사'], ['KeyV', '붙여넣기'], ['KeyX', '잘라내기'], ['KeyZ', '실행 취소'], ['KeyY', '다시 실행'], ['KeyS', '저장']].forEach(([k, n]) => add(C, k, n, 2));
+  [['KeyF', '찾기'], ['KeyP', '인쇄'], ['KeyN', '새로 만들기'], ['KeyO', '열기'], ['KeyW', '탭·창 닫기'], ['KeyT', '새 탭'], ['KeyR', '새로 고침'],
+   ['KeyH', '바꾸기 / 방문 기록'], ['KeyB', '굵게'], ['KeyI', '기울임'], ['KeyU', '밑줄'], ['KeyE', '검색 / 가운데 정렬'], ['KeyD', '즐겨찾기 / 복제'],
+   ['KeyK', '링크 넣기'], ['KeyL', '주소창'], ['KeyG', '다음 찾기'], ['KeyJ', '다운로드'], ['KeyQ', '앱 종료'], ['Tab', '다음 탭'], ['F4', '탭 닫기'],
+   ['F5', '강력 새로 고침'], ['Equal', '확대'], ['Minus', '축소'], ['Digit0', '확대 초기화'], ['Space', '한/영·입력기 전환'], ['Enter', '보내기 / 줄 삽입']
+  ].forEach(([k, n]) => add(C, k, n));
+  add(C, 'Escape', '시작 메뉴', 2); add(C | S, 'Escape', '작업 관리자', 2);
+  [['KeyN', '새 폴더 / 시크릿 창'], ['KeyT', '닫은 탭 다시 열기'], ['KeyV', '서식 없이 붙여넣기'], ['KeyZ', '다시 실행'], ['Tab', '이전 탭'],
+   ['KeyS', '다른 이름으로 저장'], ['KeyI', '개발자 도구'], ['KeyC', '요소 검사'], ['KeyE', '파일 탐색기 탐색 창']].forEach(([k, n]) => add(C | S, k, n));
+  add(C | A, 'Tab', '창 전환'); add(C | A, arrows, '화면 회전 (일부 그래픽 드라이버)');
+  // single keys
+  [['F1', '도움말'], ['F2', '이름 바꾸기'], ['F3', '검색'], ['F4', '주소 표시줄'], ['F5', '새로 고침'], ['F6', '주소창 이동'], ['F7', '맞춤법 검사'],
+   ['F10', '메뉴 표시줄'], ['F11', '전체 화면'], ['F12', '다른 이름으로 저장 / 개발자 도구']].forEach(([k, n]) => add(0, k, n));
+  add(S, 'F10', '바로 가기 메뉴'); add(S, 'Space', '한/영 전환 (일부 설정)');
+  return m;
+})();
+function hkProblem(c) {
+  const fkey = c.vk >= 112 && c.vk <= 135;
+  if (!c.mods && !fkey) return { lvl: 2, msg: 'Ctrl · Alt · Shift · Win 중 하나와 함께 눌러 주세요. (F1~F12는 단독 가능)' };
+  if (c.mods === 4 && !fkey && c.vk !== 32) return { lvl: 2, msg: 'Shift만 쓰면 글자 입력과 겹쳐요. Ctrl이나 Alt를 함께 눌러 주세요.' };
+  const sys = SYS_KEYS.get(c.mods + ':' + c.vk);
+  if (sys && sys.lvl === 2) return { lvl: 2, msg: `Windows 기본 단축키 ‘${sys.name}’(${c.label})라서 쓸 수 없어요.` };
+  if (sys) return { lvl: 1, name: sys.name, msg: `⚠ Windows 기본 단축키 ‘${sys.name}’과 겹쳐요. 저장하면 어디서 누르든 그 기능 대신 이 메모가 열려요.` };
+  if (c.mods & 8) return { lvl: 1, name: 'Win 키 조합', msg: '⚠ Win 키 조합은 Windows가 예약해 둔 경우가 많아 겹치거나 등록이 안 될 수 있어요.' };
+  return null;
+}
+function hkConflictName(c) { const p = c && hkProblem(c); return p && p.lvl === 1 ? p.name : ''; }
+function hkOwner(c, skip) {
+  if (skip !== '@app' && sameKey(st.appHotkey, c)) return '앱 호출';
+  const n = S.notes.find(x => x.id !== skip && sameKey(x.hotkey, c));
+  return n ? (titleOf(n) || '제목 없음') : '';
+}
+function applyHotkeys() {
+  const parts = [];
+  if (st.appHotkey) parts.push(['@app', st.appHotkey.mods, st.appHotkey.vk].join(','));
+  for (const n of S.notes) if (n.hotkey) parts.push([n.id, n.hotkey.mods, n.hotkey.vk].join(','));
+  host.send('hotkeys', parts.join(';'));
+}
+let recording = false;
+function recordHotkey(title, current, owner, onSave, after) {
+  recording = true;
+  host.send('hkSuspend', '1');                 // so pressing an existing combo can be re-recorded
+  let combo = current || null;
+  const onKey = e => {
+    e.preventDefault(); e.stopPropagation();
+    if (e.isComposing) return;
+    const plainKey = !e.ctrlKey && !e.altKey && !e.shiftKey && !e.metaKey;
+    if (e.key === 'Escape' && plainKey) { closeModal(); return; }
+    if (e.key === 'Enter' && plainKey) { save(); return; }
+    const mods = (e.altKey ? 1 : 0) | (e.ctrlKey ? 2 : 0) | (e.shiftKey ? 4 : 0) | (e.metaKey ? 8 : 0);
+    const vk = vkOf(e.code);
+    if (!vk || /^(Control|Alt|Shift|Meta|OS|Hangul|Hanja|Lang)/.test(e.code)) {
+      keys.innerHTML = modNames(mods).map(k => `<kbd>${k}</kbd><span class="plus">+</span>`).join('') + '<kbd class="ghost">?</kbd>';
+      return;
+    }
+    const c = { mods, vk, label: [...modNames(mods), keyName(e.code)].join('+') };
+    show(c);
+    const p = hkProblem(c);
+    if (p && p.lvl === 2) { combo = null; hint.className = 'hint warn'; hint.textContent = p.msg; return; }
+    combo = c;
+    const who = hkOwner(c, owner);
+    hint.className = p ? 'hint warn' : 'hint ok';
+    hint.textContent = [p && p.msg, who && `‘${who}’에 쓰던 단축키예요. 저장하면 이쪽으로 옮겨집니다.`].filter(Boolean).join(' ') || 'Enter 또는 [저장]을 누르면 바로 적용돼요.';
+  };
+  const done = () => { recording = false; document.removeEventListener('keydown', onKey, true); host.send('hkSuspend', '0'); if (after) after(); };
+  openModal(`<div class="dlg"><div class="dlg-head">${ic('i-key')}<h3>전역 단축키</h3><span class="dlg-sub">${esc(title)}</span></div>
+    <div class="dlg-body"><div class="keys" id="hkKeys"></div><div class="hint" id="hkHint">원하는 키 조합을 누르세요 · 예) Ctrl+Alt+1, Ctrl+Shift+M, F8<br>누르면 앞으로 나오고, 한 번 더 누르면 직전 창으로 돌아갑니다.</div></div>
+    <div class="dlg-foot">${current ? '<button class="btn ghost" id="hkClear">단축키 해제</button>' : ''}<span style="flex:1"></span><button class="btn" id="hkCancel">취소</button><button class="btn primary" id="hkSave">저장</button></div></div>`, done);
+  const keys = $('#hkKeys'), hint = $('#hkHint');
+  const show = c => { keys.innerHTML = c ? c.label.split('+').map(k => `<kbd>${esc(k || '+')}</kbd>`).join('<span class="plus">+</span>') : '<kbd class="ghost">?</kbd>'; };
+  const save = () => { const c = combo; if (c && !sameKey(c, current)) onSave(c); closeModal(); };
+  show(combo);
+  document.addEventListener('keydown', onKey, true);
+  $('#hkCancel').onclick = closeModal;
+  $('#hkSave').onclick = save;
+  if (current) $('#hkClear').onclick = () => { onSave(null); closeModal(); };
+}
+function takeKey(c, owner) {            // a combo lives in one place only
+  if (!c) return;
+  if (owner !== '@app' && sameKey(st.appHotkey, c)) st.appHotkey = null;
+  for (const n of S.notes) if (n.id !== owner && sameKey(n.hotkey, c)) n.hotkey = null;
+}
+function setNoteHotkey(id) {
+  const n = noteById(id);
+  if (!n) return;
+  recordHotkey(titleOf(n) || '제목 없음', n.hotkey, id, c => {
+    takeKey(c, id);
+    n.hotkey = c;
+    hkJustSet = c ? id : null;
+    saveStateSoon(); applyHotkeys(); rerender();
+    if (!c) toast('단축키를 해제했어요');
+    else if (!HOST) toast(`‘${c.label}’ 지정됨 (브라우저 미리보기에서는 전역 단축키가 동작하지 않아요)`);
+  });
+}
+const hkWarned = new Set();
+function hotkeyOf(key) { return key === '@app' ? st.appHotkey : (noteById(key) || {}).hotkey; }
+function onHotkeyStatus(list) {
+  hkFailed = new Set(list ? list.split(',') : []);
+  if (hkJustSet) {
+    const c = hotkeyOf(hkJustSet), label = c && c.label, clash = hkConflictName(c);
+    if (hkFailed.has(hkJustSet)) toast(`‘${label}’은(는) Windows나 다른 프로그램이 이미 쓰고 있어 등록되지 않았어요. 다른 조합을 골라 주세요.`);
+    else if (clash) toast(`‘${label}’ 지정 완료 · ⚠ Windows 기본 단축키 ‘${clash}’과 겹쳐요`);
+    else if (label) toast(`‘${label}’ 지정 완료 · 어디서든 눌러 보세요`);
+    hkWarned.add(hkJustSet + ':' + label);
+    hkJustSet = null;
+  }
+  // hotkeys that stopped registering (another program grabbed them since): say so once
+  const lost = [...hkFailed].map(k => ({ k, c: hotkeyOf(k) })).filter(x => x.c && !hkWarned.has(x.k + ':' + x.c.label));
+  if (lost.length) {
+    lost.forEach(x => hkWarned.add(x.k + ':' + x.c.label));
+    toast(`단축키 ${lost.map(x => x.c.label).join(', ')}을(를) 다른 프로그램이 쓰고 있어 등록되지 않았어요 (빨간 표시)`);
+  }
+  rerender();
+  if (modalOpen() && $('#setAppHk')) $('#setAppHk').classList.toggle('bad', hkFailed.has('@app'));
+}
+
+// ---------------------------------------------------------------- settings / help
+function applyTheme() {
+  app.dataset.theme = st.theme;
+  $('#btnTheme').innerHTML = ic(st.theme === 'dark' ? 'i-sun' : 'i-moon');
+}
+function applyZoom() { document.documentElement.style.setProperty('--fs', st.fontSize + 'px'); $('#stZoom').textContent = Math.round(st.fontSize / 15 * 100) + '%'; posOvSoon(); }
+function applyFont() { document.documentElement.style.setProperty('--ef', (FONTS[st.font] || FONTS.ui)[1]); }
+function zoom(d) { st.fontSize = d === 0 ? 15 : clamp(st.fontSize + d, 10, 36); applyZoom(); saveStateSoon(); }
+function setTheme(t) { st.theme = t; applyTheme(); host.send('theme', t); saveStateSoon(); }
+function setOnTop(on) { st.onTop = on; $('#btnTop').classList.toggle('on', on); host.send('top', on ? '1' : '0'); saveStateSoon(); }
+function openSettings() {
+  const sw = (k, on) => `<button class="switch${on ? ' on' : ''}" data-sw="${k}"></button>`;
+  const row = (b, s, c) => `<div class="row"><div class="lbl"><b>${b}</b>${s ? `<small>${s}</small>` : ''}</div>${c}</div>`;
+  const ak = st.appHotkey;
+  openModal(`<div class="dlg wide"><div class="dlg-head">${ic('i-gear')}<h3>설정</h3></div><div class="dlg-body">
+    ${row('테마', '네이비 & 화이트', `<div class="seg" id="setTheme"><button data-v="light">라이트</button><button data-v="dark">다크 네이비</button></div>`)}
+    ${row('앱 호출 단축키', '어디서든 열고, 한 번 더 누르면 원래 창으로', `<button class="hk-chip${ak ? ' set' : ''}${hkFailed.has('@app') ? ' bad' : ''}" id="setAppHk">${ic('i-key')}${ak ? esc(ak.label) : '지정 안 함'}</button>`)}
+    ${row('닫기(X) → 트레이로 숨기기', '켜 두면 다음 호출이 즉시 열립니다 (권장)', sw('closeToTray', st.closeToTray))}
+    ${row('Windows 시작 시', '<span class="wrap"><b>단축키 대기</b> 꺼져 있어도 단축키로 열림 · 메모리 거의 안 씀 · 첫 호출 약 1초<br><b>트레이 상주</b> 언제나 즉시 열림 · 메모리 더 사용</span>', `<div class="seg" id="setStart"><button data-v="off">끔</button><button data-v="standby">단축키 대기</button><button data-v="tray">트레이 상주</button></div>`)}
+    ${row('항상 위에 표시', '', sw('onTop', st.onTop))}
+    ${row('에디터 글꼴', '', `<select class="sel" id="setFont">${Object.entries(FONTS).map(([k, v]) => `<option value="${k}"${st.font === k ? ' selected' : ''}>${v[0]}</option>`).join('')}</select>`)}
+    ${row('글자 크기', 'Ctrl + 마우스 휠로도 조절', `<div class="seg"><button data-z="-1">−</button><span class="val" id="setZ">${st.fontSize}px</span><button data-z="1">+</button></div>`)}
+    ${row('데이터 폴더', esc(boot.dataDir || ''), `<div class="row-btns"><button class="btn" id="setOpen">${HOST ? '열기' : '-'}</button><button class="btn" id="setBackup">지금 백업</button></div>`)}
+    </div><div class="dlg-foot"><span class="ver">Super Speed Note ${esc(boot.version || '')} · 자동 저장 · 매일 자동 백업(14일)</span><span style="flex:1"></span><button class="btn" id="setHelp">단축키 (F1)</button><button class="btn primary" id="setDone">완료</button></div></div>`);
+  const segT = $('#setTheme');
+  const paintSeg = () => { for (const b of segT.children) b.classList.toggle('on', b.dataset.v === st.theme); };
+  paintSeg();
+  segT.onclick = e => { const b = e.target.closest('button'); if (b) { setTheme(b.dataset.v); paintSeg(); } };
+  for (const b of $$('[data-sw]', modal)) b.onclick = () => {
+    const k = b.dataset.sw, on = !b.classList.contains('on');
+    b.classList.toggle('on', on);
+    if (k === 'closeToTray') { st.closeToTray = on; host.send('closeToTray', on ? '1' : '0'); saveStateSoon(); }
+    else if (k === 'onTop') setOnTop(on);
+  };
+  const segS = $('#setStart');
+  const paintStart = () => { for (const b of segS.children) b.classList.toggle('on', b.dataset.v === startMode()); };
+  paintStart();
+  segS.onclick = e => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    boot.autostart = b.dataset.v; host.send('autostart', b.dataset.v); paintStart();
+    if (!HOST) toast('브라우저 미리보기에서는 적용되지 않아요');
+  };
+  $('#setFont').onchange = e => { st.font = e.target.value; applyFont(); saveStateSoon(); };
+  for (const b of $$('[data-z]', modal)) b.onclick = () => { zoom(+b.dataset.z); $('#setZ').textContent = st.fontSize + 'px'; };
+  $('#setOpen').onclick = () => host.send('openData');
+  $('#setBackup').onclick = () => { flushAll(); host.send('backup'); if (!HOST) toast('브라우저 미리보기에서는 백업하지 않아요'); };
+  $('#setHelp').onclick = showHelp;
+  $('#setDone').onclick = closeModal;
+  $('#setAppHk').onclick = () => {
+    recordHotkey('앱 호출 (보이기 / 숨기기)', st.appHotkey, '@app', c => { takeKey(c, '@app'); st.appHotkey = c; hkJustSet = c ? '@app' : null; saveStateSoon(); applyHotkeys(); rerender(); }, openSettings);
+  };
+}
+function showHelp() {
+  const g = (title, rows) => `<h4>${title}</h4>` + rows.map(([a, b]) => `<div><span>${a}</span><kbd>${esc(b)}</kbd></div>`).join('');
+  const ak = st.appHotkey ? st.appHotkey.label : '설정에서 지정';
+  openModal(`<div class="dlg wide"><div class="dlg-head">${ic('i-help')}<h3>단축키</h3></div><div class="dlg-body"><div class="help">
+    ${g('어디서든 (전역)', [['앱 보이기 / 숨기기', ak], ['메모별 단축키', '누르면 열기 · 다시 누르면 이전 창']])}
+    ${g('메모 보드', [['선택 이동', '← ↑ → ↓'], ['열기', 'Enter / 더블클릭'], ['이름 바꾸기', 'F2'], ['삭제 (되돌리기 가능)', 'Del'], ['새 메모', 'Ctrl+N'], ['N번째 메모 열기', 'Ctrl+1~9'], ['빠른 이동', 'Ctrl+K'], ['검색', 'Ctrl+F']])}
+    ${g('편집', [['굵게 / 밑줄 / 기울임', 'Ctrl+B / U / I'], ['취소선', 'Ctrl+Shift+S'], ['형광펜', 'Ctrl+Shift+H'], ['서식 지우기', 'Ctrl+\\'], ['글머리 / 번호 목록', 'Ctrl+Shift+8 / 7'], ['체크리스트', 'Ctrl+Shift+L'], ['날짜·시간', 'Ctrl+;'], ['서식 없이 붙여넣기', 'Ctrl+Shift+V'], ['찾기', 'Ctrl+F'], ['확대 / 축소', 'Ctrl+휠, Ctrl+= / -'], ['보드로', 'Esc'], ['다음 / 이전 메모', 'Ctrl+Tab / Ctrl+Shift+Tab'], ['실행 취소 / 다시', 'Ctrl+Z / Ctrl+Y'], ['끄기 (단축키는 대기)', 'Ctrl+Q']])}
+    ${g('표 (엑셀처럼)', [['칸 선택·이동', '클릭 / 방향키'], ['범위 선택', 'Shift+방향키 / 드래그'], ['선택한 칸에 바로 입력', '기존 값을 새로 씀'], ['칸 편집 (끝에 커서)', 'F2 / 더블클릭'], ['편집 취소', 'Esc'], ['칸 지우기', 'Delete'], ['아래 칸 / 마지막 행이면 행 추가', 'Enter'], ['칸 안 줄바꿈', 'Shift+Enter (편집 중)'], ['다음 / 이전 칸', 'Tab / Shift+Tab'], ['표 전체 선택', 'Ctrl+A'], ['표 넣기 / 빠져나가기', 'Ctrl+Shift+T / Ctrl+Enter'], ['행·열 추가', '표 바깥 + 버튼'], ['엑셀 붙여넣기 · 범위 복사', 'Ctrl+V / Ctrl+C'], ['행·열 삭제', '오른쪽 클릭']])}
+    ${g('꺼내 쓰기', [['복사 → 원래 창에 바로 붙여넣기', 'Ctrl+Shift+Enter'], ['복사 → 원래 창으로', 'Ctrl+Shift+C'], ['보낼 내용', '선택 > 칸 > 현재 줄 (보드: 메모 전체)'], ['메모 전체 복사 (보드)', 'Ctrl+C / 카드 복사 버튼'], ['검색한 곳으로 바로 이동', 'Ctrl+K → Enter']])}
+    ${g('빠른 서식 (줄 맨 앞에서 입력 후 Space)', [['제목 1 / 2 / 3', '# / ## / ###'], ['글머리 목록', '-'], ['번호 목록', '1.'], ['체크리스트', '[]'], ['인용', '>'], ['코드', '```'], ['구분선', '--- 후 Enter']])}
+    </div></div><div class="dlg-foot"><span style="flex:1"></span><button class="btn primary" id="helpDone">닫기</button></div></div>`);
+  $('#helpDone').onclick = closeModal;
+}
+
+// ---------------------------------------------------------------- toasts
+function toast(msg, actLabel, act) {
+  const box = $('#toasts');
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.innerHTML = `<span>${esc(msg)}</span>${actLabel ? `<button>${esc(actLabel)}</button>` : ''}`;
+  box.appendChild(el);
+  const kill = () => { el.classList.add('out'); setTimeout(() => el.remove(), 160); };
+  const t = setTimeout(kill, actLabel ? 6500 : 2800);
+  if (actLabel) el.querySelector('button').onclick = () => { clearTimeout(t); kill(); act(); };
+  while (box.children.length > 3) box.firstChild.remove();
+}
+
+// ---------------------------------------------------------------- window chrome (frameless window driven by the shell)
+let dragArm = null;
+document.addEventListener('mousedown', e => {
+  if (e.button !== 0) return;
+  const rz = e.target.closest('.rz');
+  if (rz) { e.preventDefault(); host.send('resize', rz.dataset.edge); return; }
+  const d = e.target.closest('[data-drag]');
+  if (!d || e.target.closest('button,input,select,a,label,.search')) return;
+  if (e.detail === 2 && d.id === 'titlebar') { host.send('max'); return; }
+  dragArm = { x: e.screenX, y: e.screenY };
+});
+document.addEventListener('mousemove', e => {
+  if (!dragArm) return;
+  if (!(e.buttons & 1)) { dragArm = null; return; }
+  if (Math.abs(e.screenX - dragArm.x) + Math.abs(e.screenY - dragArm.y) > 3) { dragArm = null; host.send('drag'); }
+});
+document.addEventListener('mouseup', () => { dragArm = null; });
+$('#wcMin').onclick = () => host.send('min');
+$('#wcMax').onclick = () => host.send('max');
+$('#wcClose').onclick = () => { flushAll(); host.send('close'); };
+$('#btnSwitch').onclick = openSwitcher;
+$('#btnTop').onclick = () => setOnTop(!st.onTop);
+$('#btnTheme').onclick = () => setTheme(st.theme === 'dark' ? 'light' : 'dark');
+$('#btnSettings').onclick = openSettings;
+$('#stZoom').onclick = () => zoom(0);
+scroller.addEventListener('wheel', e => { if (e.ctrlKey) { e.preventDefault(); zoom(e.deltaY < 0 ? 1 : -1); } }, { passive: false });
+document.addEventListener('contextmenu', e => { if (!e.defaultPrevented && !isTyping(e.target)) e.preventDefault(); });
+
+// ---------------------------------------------------------------- app-wide keys
+document.addEventListener('keydown', e => {
+  if (recording || e.isComposing || e.keyCode === 229) return;
+  if (!pop.hidden && e.key === 'Escape') { e.preventDefault(); closePop(); return; }
+  if (modalOpen()) { if (e.key === 'Escape') { e.preventDefault(); closeModal(); } return; }
+  const mod = e.ctrlKey || e.metaKey, code = e.code;
+  if (e.key === 'F1') { e.preventDefault(); showHelp(); return; }
+  if (mod && !e.altKey) {
+    let hit = true;
+    switch (code) {
+      case 'KeyN': if (e.shiftKey) hit = false; else newNote(); break;
+      case 'KeyK': case 'KeyP': openSwitcher(); break;
+      case 'Enter': if (e.shiftKey) sendOut('paste'); else hit = false; break;   // copy -> previous window -> paste
+      case 'KeyC':
+        if (e.shiftKey) sendOut('copy');                                     // copy -> previous window
+        else if (view === 'board' && !isTyping(e.target) && selId) copyNote(selId);
+        else hit = false;
+        break;
+      case 'KeyF': if (view === 'editor') openFind(); else { boardSearch.focus(); boardSearch.select(); } break;
+      case 'KeyS': if (e.shiftKey) hit = false; else { flushAll(); toast('저장했어요 · 원래 자동 저장됩니다'); } break;
+      case 'KeyW': if (view === 'editor') showBoard(); else { flushAll(); host.send('close'); } break;
+      case 'KeyQ': flushAll(); host.send('quit'); break;
+      case 'Comma': openSettings(); break;
+      case 'Equal': case 'NumpadAdd': zoom(1); break;
+      case 'Minus': case 'NumpadSubtract': zoom(-1); break;
+      case 'Digit0': case 'Numpad0': zoom(0); break;
+      case 'Tab': cycle(e.shiftKey ? -1 : 1); break;
+      default:
+        if (/^Digit[1-9]$/.test(code) && !e.shiftKey) { const n = ordered()[+code.slice(5) - 1]; if (n) openNote(n.id); }
+        else hit = false;
+    }
+    if (hit) { e.preventDefault(); return; }
+  }
+  if (e.key === 'Escape') {
+    if (view === 'editor') { e.preventDefault(); if (findOpen) findClose(); else showBoard(); }
+    return;
+  }
+  if (view === 'board' && !isTyping(e.target) && !mod && !e.altKey) boardKey(e);
+});
+
+// ---------------------------------------------------------------- messages from the shell
+if (HOST) window.chrome.webview.addEventListener('message', e => {
+  const m = String(e.data);
+  const i = m.indexOf(SEP);
+  const cmd = i < 0 ? m : m.slice(0, i), arg = i < 0 ? '' : m.slice(i + 1);
+  switch (cmd) {
+    case 'open': if (noteById(arg)) { closeModal(); closePop(); openNote(arg); } break;
+    case 'board': closeModal(); showBoard(); break;
+    case 'new': closeModal(); newNote(); break;
+    case 'focus': refocus(); break;
+    case 'hidden': flushAll(); closePop(); break;
+    case 'winState': app.classList.toggle('maxed', arg === '1'); break;
+    case 'hotkeyStatus': onHotkeyStatus(arg); break;
+    case 'flush': flushAll(); host.send('flushed'); break;
+    case 'toast': toast(arg); break;
+  }
+});
+
+// ---------------------------------------------------------------- first run
+function welcome() {
+  const html = '<h2>⚡ 메모장보다 빠른 메모</h2>' +
+    '<div>메모마다 <b>전역 단축키</b>를 지정하면 어떤 프로그램을 쓰고 있든 그 메모가 바로 앞으로 나옵니다. 같은 단축키를 <u>한 번 더 누르면 방금 쓰던 창으로</u> 돌아가요.</div><div><br></div>' +
+    '<ul class="checklist"><li data-checked="true">카드를 더블클릭하거나 Enter로 열기</li><li data-checked="false">위쪽 <b>⌨ 단축키 지정</b>으로 Ctrl+Alt+1 같은 키 붙이기</li><li data-checked="false">엑셀에서 셀을 복사해 여기에 붙여넣기 → 표로 변환</li></ul><div><br></div>' +
+    '<table class="t hdr"><tbody><tr><td>하고 싶은 것</td><td>방법</td></tr><tr><td>행 추가</td><td>마지막 행에서 Enter · 표 바깥 + 버튼</td></tr><tr><td>열 추가</td><td>표 왼쪽 / 오른쪽 + 버튼</td></tr><tr><td>빠른 이동</td><td>Ctrl+K</td></tr><tr><td>앱 부르기</td><td>Ctrl+Alt+N</td></tr></tbody></table>' +
+    '<div><span style="background-color: rgb(255, 241, 118);">형광펜</span>, <font color="#d92d20">잘 보이는 글자색</font>, <b>굵게</b>, <u>밑줄</u>을 지원합니다. 모든 단축키는 F1.</div>';
+  const n = { id: uid(), title: 'Super Speed Note 시작하기', color: 'navy', pinned: true, hotkey: null, created: now(), updated: now(), preview: previewOf(frag(html)) };
+  S.notes.push(n);
+  bodies[n.id] = html;
+  host.send('saveNote', n.id, html);
+  selId = n.id;
+  saveStateSoon();
+}
+
+// ---------------------------------------------------------------- start
+document.execCommand('defaultParagraphSeparator', false, 'div');
+document.execCommand('styleWithCSS', false, false);
+if (!HOST) app.classList.add('web');
+if (firstRun) welcome();
+applyTheme(); applyZoom(); applyFont(); updateSwatches();
+app.classList.toggle('sb-off', !st.sidebar);
+$('#btnTop').classList.toggle('on', !!st.onTop);
+renderBoard();
+grid.focus({ preventScroll: true });
+host.send('ready');
+host.send('closeToTray', st.closeToTray ? '1' : '0');
+host.send('theme', st.theme);
+if (st.onTop) host.send('top', '1');
+applyHotkeys();
+// v1.1: hotkeys should work even when the app is off -> register the light "standby" start-up once
+if (HOST && !st.startupChosen) {
+  st.startupChosen = true;
+  saveStateSoon();
+  if (startMode() === 'off') {
+    boot.autostart = 'standby';
+    host.send('autostart', 'standby');
+    setTimeout(() => toast('앱이 꺼져 있어도 메모 단축키로 열리도록 ‘단축키 대기’를 켰어요 · 설정(Ctrl+,)에서 변경'), 1200);
+  }
+}
+if (recovered) { stateDirty = true; flushState(); setTimeout(() => toast('메모 목록 파일이 손상돼 직전 사본으로 복구했어요'), 600); }
+setInterval(() => { if (view === 'board' && !document.hidden) for (const c of grid.querySelectorAll('.card[data-id]')) { const n = noteById(c.dataset.id); const t = c.querySelector('.c-time'); if (n && t) t.textContent = relTime(n.updated); } }, 60000);
+window.__ssn = { S, bodies, openNote, showBoard, newNote, applyHotkeys, saveStateSoon, doPaste, tableOp, undo, redo };   // debugging handle
+})();
+</script>
+</body>
+</html>
