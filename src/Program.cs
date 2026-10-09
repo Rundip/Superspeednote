@@ -540,22 +540,29 @@ namespace SuperSpeedNote
             else Summon(key);
         }
 
-        // Bring the app (and optionally a note) to the front, remembering where we came from.
+        // Bring the app (and optionally a note) to the front, remembering the *other program* we came from.
+        // Switching notes inside the app never changes that target: the second press always goes back to
+        // the program you were in before entering the app (focus - and so its caret - is restored there).
         void Summon(string noteId)
         {
+            retNote = null;
             if (IsFront())
             {
-                retNote = activeNote;
-                retHwnd = IntPtr.Zero;
+                if (!(hasReturn && IsExternalWindow(retHwnd)))
+                {
+                    retHwnd = IsExternalWindow(lastExternal) ? lastExternal : IntPtr.Zero;
+                    retHidden = false;
+                    retMinimized = false;
+                }
             }
             else
             {
-                retNote = null;
-                retHwnd = Native.GetForegroundWindow();
+                IntPtr fg = Native.GetForegroundWindow();
+                retHwnd = IsExternalWindow(fg) ? fg : IsExternalWindow(lastExternal) ? lastExternal : IntPtr.Zero;
                 retHidden = !Visible;
                 retMinimized = Visible && WindowState == FormWindowState.Minimized;
             }
-            hasReturn = true;
+            hasReturn = retHwnd != IntPtr.Zero;
             ShowApp();
             if (noteId != null)
             {
@@ -564,17 +571,16 @@ namespace SuperSpeedNote
             }
         }
 
-        // Second press: give focus back to whatever was selected before.
+        // Second press: give focus back to the program used right before entering the app.
         void GoBack()
         {
-            if (!hasReturn) { DismissApp(); return; }
-            hasReturn = false;
-            if (retNote != null)
+            if (!hasReturn)
             {
-                if (retNote.Length == 0) Post("board"); else Post("open", retNote);
+                if (IsExternalWindow(lastExternal)) ForceForeground(lastExternal); else DismissApp();
                 return;
             }
-            if (retHwnd != IntPtr.Zero && Native.IsWindow(retHwnd) && Native.IsWindowVisible(retHwnd))
+            hasReturn = false;
+            if (IsExternalWindow(retHwnd))
             {
                 if (Native.IsIconic(retHwnd)) Native.ShowWindow(retHwnd, 9 /*SW_RESTORE*/);
                 ForceForeground(retHwnd);
@@ -596,6 +602,12 @@ namespace SuperSpeedNote
             };
             // out-of-context, skipping our own process: we only hear about other programs coming to the front
             Native.SetWinEventHook(3 /*EVENT_SYSTEM_FOREGROUND*/, 3, IntPtr.Zero, fgHook, 0, 0, 0x0002 /*SKIPOWNPROCESS*/);
+        }
+
+        bool IsExternalWindow(IntPtr h)
+        {
+            return h != IntPtr.Zero && Native.IsWindow(h) && Native.IsWindowVisible(h) && !IsShellWindow(h)
+                && h != Handle && Native.GetAncestor(h, 3 /*GA_ROOTOWNER*/) != Handle;
         }
 
         static bool IsShellWindow(IntPtr h)
