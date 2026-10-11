@@ -11,7 +11,7 @@
   <Identity Name="{{NAME}}" Publisher="{{PUBLISHER}}" Version="{{VERSION}}" ProcessorArchitecture="x64" />
 
   <Properties>
-    <DisplayName>Super Speed Note</DisplayName>
+    <DisplayName>{{DISPLAY_NAME}}</DisplayName>
     <PublisherDisplayName>{{PUBLISHER_DISPLAY}}</PublisherDisplayName>
     <Logo>Assets\StoreLogo.png</Logo>
     <Description>메모장보다 빠른 메모. 단축키로 불러오고, 찾아서 바로 붙여넣는 로컬 메모 앱</Description>
@@ -32,17 +32,17 @@
   <Applications>
     <Application Id="SuperSpeedNote" Executable="SuperSpeedNote.exe" EntryPoint="Windows.FullTrustApplication">
       <uap:VisualElements
-        DisplayName="Super Speed Note"
+        DisplayName="{{DISPLAY_NAME}}"
         Description="메모장보다 빠른 메모. 단축키로 불러오고, 찾아서 바로 붙여넣기"
         BackgroundColor="transparent"
         Square150x150Logo="Assets\Square150x150Logo.png"
         Square44x44Logo="Assets\Square44x44Logo.png">
-        <uap:DefaultTile Wide310x150Logo="Assets\Wide310x150Logo.png" ShortName="Super Speed Note" />
+        <uap:DefaultTile Wide310x150Logo="Assets\Wide310x150Logo.png" ShortName="{{DISPLAY_NAME}}" />
       </uap:VisualElements>
       <Extensions>
         <!-- log on: start in "standby" (hotkeys only). Users turn it off in Task Manager > Startup apps. -->
         <desktop:Extension Category="windows.startupTask" Executable="SuperSpeedNoteStartup.exe" EntryPoint="Windows.FullTrustApplication">
-          <desktop:StartupTask TaskId="SuperSpeedNoteStandby" Enabled="true" DisplayName="Super Speed Note (단축키 대기)" />
+          <desktop:StartupTask TaskId="SuperSpeedNoteStandby" Enabled="true" DisplayName="{{DISPLAY_NAME}} (단축키 대기)" />
         </desktop:Extension>
       </Extensions>
     </Application>

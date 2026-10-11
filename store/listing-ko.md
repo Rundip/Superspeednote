@@ -4,12 +4,12 @@
 
 | 항목 | 값 |
 |---|---|
-| 앱 이름 | Super Speed Note |
+| 앱 이름 (예약한 이름과 똑같이) | Super speed note |
 | 카테고리 | 생산성 (Productivity) |
 | 가격 | 무료 |
 | 개인정보 처리방침 URL | https://github.com/Rundip/Superspeednote/blob/main/PRIVACY.md |
 | 지원 연락처 / 웹사이트 | https://github.com/Rundip/Superspeednote/issues |
-| 저작권 | © 2026 Rundip |
+| 저작권 | © 2026 Mukhodeveloper |
 | 시스템 요구 사항 | Windows 10 버전 2004 이상, Windows 11 · Microsoft Edge WebView2 런타임(Windows 11과 최신 Windows 10에 기본 포함) |
 | 연령 등급 설문 | 사용자 간 공유·채팅·구매·위치·개인정보 수집 모두 "아니요" → 3세 이상 예상 |
 

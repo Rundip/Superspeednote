@@ -66,6 +66,8 @@ if ($LASTEXITCODE) { throw 'store logos failed' }
 $xml = (Get-Content (Join-Path $root 'store\AppxManifest.template.xml') -Raw -Encoding UTF8).
     Replace('{{NAME}}', $cfg.IdentityName).Replace('{{PUBLISHER}}', [Security.SecurityElement]::Escape($cfg.Publisher)).
     Replace('{{PUBLISHER_DISPLAY}}', [Security.SecurityElement]::Escape($cfg.PublisherDisplayName)).Replace('{{VERSION}}', $version)
+$display = if ($cfg.DisplayName) { $cfg.DisplayName } else { 'Super Speed Note' }
+$xml = $xml.Replace('{{DISPLAY_NAME}}', [Security.SecurityElement]::Escape($display))
 [IO.File]::WriteAllText((Join-Path $layout 'AppxManifest.xml'), $xml, (New-Object Text.UTF8Encoding($false)))
 
 $pricfg = Join-Path $obj 'priconfig.xml'

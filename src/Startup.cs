@@ -6,8 +6,8 @@ using System.Reflection;
 
 [assembly: AssemblyTitle("Super Speed Note startup")]
 [assembly: AssemblyProduct("Super Speed Note")]
-[assembly: AssemblyCompany("Rundip")]
-[assembly: AssemblyCopyright("© 2026 Rundip")]
+[assembly: AssemblyCompany("Mukhodeveloper")]
+[assembly: AssemblyCopyright("© 2026 Mukhodeveloper")]
 
 static class Startup
 {
