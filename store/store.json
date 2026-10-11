@@ -1,0 +1,6 @@
+{
+  "_comment": "Paste the three values from Partner Center > (your app) > Product management > Product identity. Until then the dev values below are used for local testing only.",
+  "IdentityName": "SuperSpeedNote.Dev",
+  "Publisher": "CN=SuperSpeedNote Dev",
+  "PublisherDisplayName": "Rundip"
+}

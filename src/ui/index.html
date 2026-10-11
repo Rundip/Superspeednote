@@ -3497,7 +3497,9 @@ function openSettings(tab) {
     body = `${row('테마', '네이비 & 화이트', `<div class="seg" id="setTheme"><button data-v="light">라이트</button><button data-v="dark">다크 네이비</button></div>`)}
     ${row('단축키', `앱 부르기 ${esc(kl0(st.appHotkey))} · 찾아 붙여넣기 ${esc(kl0(st.findHotkey))} · 빠른 메모 ${esc(kl0(st.quickHotkey))}`, `<button class="btn" id="setGoKeys">단축키 설정</button>`)}
     ${row('닫기(X) → 트레이로 숨기기', '켜 두면 다음 호출이 즉시 열립니다 (권장)', sw('closeToTray', st.closeToTray))}
-    ${row('Windows 시작 시', '<span class="wrap"><b>단축키 대기</b> 꺼져 있어도 단축키로 열림 · 메모리 거의 안 씀 · 첫 호출 약 1초<br><b>트레이 상주</b> 언제나 즉시 열림 · 메모리 더 사용</span>', `<div class="seg" id="setStart"><button data-v="off">끔</button><button data-v="standby">단축키 대기</button><button data-v="tray">트레이 상주</button></div>`)}
+    ${startMode() === 'package'
+      ? row('Windows 시작 시', '<span class="wrap">로그인하면 <b>단축키 대기</b>로 켜져서 꺼져 있어도 단축키가 동작해요.<br>끄려면 작업 관리자 › 시작 앱(또는 설정 › 앱 › 시작 프로그램)에서 Super Speed Note를 끄세요.</span>', '')
+      : row('Windows 시작 시', '<span class="wrap"><b>단축키 대기</b> 꺼져 있어도 단축키로 열림 · 메모리 거의 안 씀 · 첫 호출 약 1초<br><b>트레이 상주</b> 언제나 즉시 열림 · 메모리 더 사용</span>', `<div class="seg" id="setStart"><button data-v="off">끔</button><button data-v="standby">단축키 대기</button><button data-v="tray">트레이 상주</button></div>`)}
     ${row('항상 위에 표시', '', sw('onTop', st.onTop))}
     ${row('에디터 글꼴', '', `<select class="sel" id="setFont">${Object.entries(FONTS).map(([k, v]) => `<option value="${k}"${st.font === k ? ' selected' : ''}>${v[0]}</option>`).join('')}</select>`)}
     ${row('글자 크기', 'Ctrl + 마우스 휠로도 조절', `<div class="seg"><button data-z="-1">−</button><span class="val" id="setZ">${st.fontSize}px</span><button data-z="1">+</button></div>`)}
@@ -3546,14 +3548,16 @@ function openSettings(tab) {
     else if (k === 'onTop') setOnTop(on);
   };
   const segS = $('#setStart');
-  const paintStart = () => { for (const b of segS.children) b.classList.toggle('on', b.dataset.v === startMode()); };
-  paintStart();
-  segS.onclick = e => {
-    const b = e.target.closest('button');
-    if (!b) return;
-    boot.autostart = b.dataset.v; host.send('autostart', b.dataset.v); paintStart();
-    if (!HOST) toast('브라우저 미리보기에서는 적용되지 않아요');
-  };
+  if (segS) {                                     // not in the Store version (Windows handles its startup)
+    const paintStart = () => { for (const b of segS.children) b.classList.toggle('on', b.dataset.v === startMode()); };
+    paintStart();
+    segS.onclick = e => {
+      const b = e.target.closest('button');
+      if (!b) return;
+      boot.autostart = b.dataset.v; host.send('autostart', b.dataset.v); paintStart();
+      if (!HOST) toast('브라우저 미리보기에서는 적용되지 않아요');
+    };
+  }
   $('#setFont').onchange = e => { st.font = e.target.value; applyFont(); saveStateSoon(); };
   for (const b of $$('[data-z]', modal)) b.onclick = () => { zoom(+b.dataset.z); $('#setZ').textContent = st.fontSize + 'px'; };
   $('#setOpen').onclick = () => host.send('openData');

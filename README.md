@@ -145,13 +145,41 @@ powershell -ExecutionPolicy Bypass -File build.ps1
 - WebView2 DLL과 화면(`src/ui/index.html`)은 exe 안에 포함됩니다. 아이콘을 다시 만들려면 `-Icon` 옵션을 붙이세요.
 - 화면만 브라우저에서 미리 보려면 `node tools/devserver.js` → http://127.0.0.1:5178 (데이터는 localStorage에 저장).
 
+## Microsoft Store 버전 (MSIX)
+
+```
+powershell -ExecutionPolicy Bypass -File package.ps1
+```
+
+- `dist\store\SuperSpeedNote_<버전>_x64.msix`를 만듭니다. Partner Center에 이 파일을 올리면 **Store가 무료로 서명**합니다(인증서 구입 필요 없음).
+- 첫 실행 때 nuget.org에서 Microsoft Windows SDK 빌드 도구(약 21MB, makeappx·makepri)를 한 번 받아 `packages\`에 둡니다.
+- Store 버전도 메모를 `%APPDATA%\SuperSpeedNote`에 저장합니다. exe 버전과 같은 메모를 쓰고, 앱을 삭제해도 메모는 남습니다.
+- Windows 시작 시 '단축키 대기'로 켜지는 것은 Store의 시작 작업이 맡습니다(작업 관리자 › 시작 앱에서 켜고 끄기). Store 버전이 처음 실행되면 exe 버전이 등록해 둔 시작 항목은 지웁니다(둘 다 켜지지 않게).
+- 로컬 테스트: `package.ps1 -Register`(개발자 모드 필요) → 시작 메뉴에서 실행, 끝나면 `package.ps1 -Unregister`.
+
+**등록 순서**
+1. https://storedeveloper.microsoft.com 에서 개인 개발자로 가입(무료, Microsoft 계정·본인 확인).
+2. Partner Center에서 앱 이름 `Super Speed Note` 예약 → **제품 관리 › 제품 ID**의 `Package/Identity/Name`, `Package/Identity/Publisher`, `Package/Properties/PublisherDisplayName` 세 값을 `store\store.json`에 붙여넣기.
+3. `package.ps1` 다시 실행 → 새 `.msix`를 **패키지** 단계에 업로드.
+4. **스토어 등록 정보**: `store\listing-ko.md`의 설명·기능·키워드를 붙여넣고 `store\screenshots\`의 이미지 업로드. 개인정보 처리방침 URL은 `PRIVACY.md`의 GitHub 주소.
+5. **제출 옵션**: `runFullTrust`, `unvirtualizedResources` 사용 이유(영문)를 `store\listing-ko.md`에서 붙여넣기 → 제출. 심사는 보통 며칠 걸립니다.
+
+## 라이선스 · 개인정보 · 보안 검토
+
+- 라이선스: [MIT](LICENSE)
+- 개인정보 처리방침: [PRIVACY.md](PRIVACY.md) — 수집하는 정보 없음, 통신 없음
+- 회사 IT·보안 검토용 자료: [docs/security-review.md](docs/security-review.md)
+
 ## 구조
 
 ```
 src/Program.cs        네이티브 셸: 프레임리스 창, 전역 단축키, 포커스 전환, 트레이, 파일 저장
 src/ui/index.html     화면 전체: 보드, 에디터, 표, 서식, 검색, 설정 (HTML/CSS/JS 한 파일)
+src/Startup.cs        Store 버전 전용: 로그인 시 '단축키 대기'로 앱을 켜는 작은 도우미
 src/app.manifest      DPI(모니터별), Windows 10/11 호환 선언
-tools/IconGen.cs      앱 아이콘 생성기 (네이비 → 화이트 그라데이션 + SUPER SPEED 로고)
+tools/IconGen.cs      앱 아이콘 · Store 로고 생성기 (네이비 → 화이트 그라데이션 + SUPER SPEED 로고)
+store/                Store 패키지 설정(store.json, 매니페스트 템플릿), 등록 정보, 스크린샷
 build.ps1             빌드 스크립트
+package.ps1           Microsoft Store 패키지(MSIX) 만들기
 install.ps1           현재 사용자용 설치(시작 메뉴 바로가기)
 ```
