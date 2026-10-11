@@ -33,7 +33,7 @@ namespace SuperSpeedNote
 {
     static class Program
     {
-        public const string Version = "1.3.0";
+        public const string Version = "1.3.1";
         public const string WebView2Version = "1.0.4258.31";
         public static string DataDir, LocalDir;
 
