@@ -84,9 +84,14 @@ body[data-view=editor] #editorView{display:flex}
 .crumb{display:flex;align-items:center;gap:10px}
 .crumb-t{font-size:17px;font-weight:700;letter-spacing:-.015em}
 .pill{display:inline-flex;align-items:center;height:22px;padding:0 9px;border-radius:999px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.12);color:rgba(255,255,255,.82);font:600 11.5px "Segoe UI",var(--ui)}
+.pill.warn{background:rgba(245,158,11,.22);color:#ffd28a}
 .hero-act{display:flex;gap:10px;align-items:center}
 .search{display:flex;align-items:center;gap:9px;height:40px;width:340px;max-width:56vw;padding:0 10px 0 13px;border-radius:12px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.13);color:rgba(255,255,255,.7);transition:background .15s,border-color .15s,box-shadow .15s}
 .search .i{width:16px;height:16px}
+.search .s-clear{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;flex:none;background:rgba(255,255,255,.12);color:rgba(255,255,255,.85)}
+.search .s-clear:hover{background:rgba(255,255,255,.22);color:#fff}
+.search .s-clear .i{width:12px;height:12px;stroke-width:2.4}
+.search .s-clear:not([hidden])+kbd{display:none}
 .search:focus-within{background:rgba(255,255,255,.13);border-color:rgba(150,185,255,.65);box-shadow:0 0 0 4px rgba(110,155,255,.15);color:#fff}
 .search input{flex:1;min-width:0;border:0;outline:0;background:transparent;color:#fff;font-size:13.5px}
 .search input::placeholder{color:rgba(222,232,255,.5)}
@@ -105,7 +110,7 @@ body[data-view=editor] #editorView{display:flex}
 .card.msel::after{content:'';position:absolute;inset:0;background:rgba(59,108,246,.08);pointer-events:none}
 .card.msel .c-dot{background:var(--accent) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E") center/80% no-repeat;width:14px;height:14px;box-shadow:none}
 .sel-pill{background:#fff;color:#1d3a8a;border-color:transparent}
-.grid:focus .card.sel{box-shadow:0 0 0 2px var(--accent),0 0 0 6px rgba(59,108,246,.16),var(--sh-2)}
+#board:focus-within .card.sel{box-shadow:0 0 0 2px var(--accent),0 0 0 6px rgba(59,108,246,.16),var(--sh-2)}
 .c-head{display:flex;align-items:center;gap:9px;min-width:0}
 .c-dot{width:8px;height:8px;border-radius:50%;background:var(--c);box-shadow:0 0 0 3px color-mix(in srgb,var(--c) 18%,transparent);flex:none}
 [data-theme=dark] .c-dot,[data-theme=dark] .cdot::after,[data-theme=dark] .qs-item .c-dot{filter:brightness(1.7) saturate(1.1)}
@@ -136,6 +141,10 @@ body[data-view=editor] #editorView{display:flex}
 .card.drop-l{box-shadow:-5px 0 0 -1px var(--accent),var(--sh-1)}
 .card.drop-r{box-shadow:5px 0 0 -1px var(--accent),var(--sh-1)}
 .empty{grid-column:1/-1;padding:48px;text-align:center;color:rgba(225,234,255,.85)}
+.empty.zero{order:-1;padding:6px 2px 2px;text-align:left}   /* no notes at all: a heading above the new-note card */
+.empty b{display:block;font-size:15px;font-weight:700}
+.empty small{display:block;margin-top:6px;font-size:12.5px;opacity:.75}
+.empty kbd{padding:1px 6px;border-radius:6px;border:1px solid rgba(255,255,255,.3)}
 .board-foot{position:relative;margin-top:auto;display:flex;flex-wrap:wrap;gap:8px 20px;padding:20px 40px 18px;color:var(--ink-3);font-size:12px}
 .board-foot span{display:inline-flex;align-items:center;gap:6px}
 .board-foot kbd{padding:2px 6px;border-radius:6px;background:var(--paper);border:1px solid var(--line-2);border-bottom-width:2px;color:var(--ink-2);font:600 10.5px "Segoe UI",var(--ui)}
@@ -370,6 +379,7 @@ select.sel{height:32px;border-radius:9px;border:1px solid var(--line-2);backgrou
 .qs-txt b{display:block;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .qs-txt small{display:block;color:var(--ink-3);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .qs-empty{padding:26px;text-align:center;color:var(--ink-3)}
+.qs-new>.i{color:var(--accent-ink);margin:0 -2px}
 .pal{width:min(920px,calc(100vw - 32px))}
 .pal-body{display:flex;min-height:0}
 .pal-body .qs-list{flex:1;min-width:0;max-height:58vh}
@@ -434,9 +444,11 @@ body.pal-pop #toasts{bottom:56px}
 .kreset{width:26px;height:26px;border-radius:8px;color:var(--ink-3);font-size:15px}
 .kreset:hover{background:var(--hover);color:var(--ink)}
 .khint{font-size:11.5px;color:var(--ink-3);padding:8px 0 2px;line-height:1.5}
-.hero-btn{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.13);color:rgba(255,255,255,.72);flex:none}
+.hero-btn{min-width:40px;height:40px;padding:0 12px;gap:6px;border-radius:12px;display:inline-flex;align-items:center;justify-content:center;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.13);color:rgba(255,255,255,.72);flex:none}
 .hero-btn:hover{background:rgba(255,255,255,.15);color:#fff}
 .hero-btn .i{width:17px;height:17px}
+.hb-l{font-size:13px;font-weight:650}   /* "휴지통" in words: a bare bin next to a selected card read as "delete it" */
+@media (max-width:899px){.hb-l{display:none}.hero-btn{padding:0}}
 .dlg.trash{width:min(680px,calc(100vw - 32px))}
 .tr-body{padding:6px 12px 10px;min-height:110px}
 .tr-item{display:flex;align-items:center;gap:12px;padding:8px 10px;border-radius:11px}
@@ -538,9 +550,9 @@ body.maxed:not(.quick) .rz,body.web .rz{display:none}
     <section class="hero" data-drag>
       <div class="crumb"><span class="crumb-t">전체 메모</span><span class="pill" id="noteCount">0 / 500</span><span class="pill sel-pill" id="selCount" hidden></span></div>
       <div class="hero-act">
-        <button class="hero-btn" id="btnTrash" data-k="trash" data-t="휴지통 · 지운 메모 복원" title="휴지통 · 지운 메모 복원"><svg class="i"><use href="#i-trash"/></svg></button>
-        <label class="search"><svg class="i"><use href="#i-search"/></svg><input id="boardSearch" placeholder="메모 검색" spellcheck="false" autocomplete="off"><kbd data-k="find">Ctrl+F</kbd></label>
-        <button class="btn-new" id="btnNew"><svg class="i"><use href="#i-plus"/></svg>새 메모</button>
+        <button class="hero-btn" id="btnTrash" data-k="trash" data-t="휴지통 · 지운 메모 복원" title="휴지통 · 지운 메모 복원"><svg class="i"><use href="#i-trash"/></svg><span class="hb-l">휴지통</span></button>
+        <label class="search"><svg class="i"><use href="#i-search"/></svg><input id="boardSearch" placeholder="바로 입력해서 찾기 (초성도 돼요)" spellcheck="false" autocomplete="off"><button class="s-clear" id="sClear" title="검색 지우기 (Esc)" hidden><svg class="i"><use href="#i-close"/></svg></button><kbd data-k="find">Ctrl+F</kbd></label>
+        <button class="btn-new" id="btnNew" data-k="newNote" data-t="새 메모"><svg class="i"><use href="#i-plus"/></svg>새 메모</button>
       </div>
     </section>
     <section id="grid" class="grid" tabindex="0"></section>
@@ -935,7 +947,7 @@ function renderBoard(force) {
     staleCards.clear();
     let h = '';
     list.forEach((n, i) => { h += cardHTML(n, i); });
-    if (S.notes.length < MAX_NOTES) h += `<div class="card new" data-new="1"><span class="plus">${ic('i-plus')}</span><b>새 메모</b><small>Ctrl+N</small></div>`;
+    if (S.notes.length < MAX_NOTES) h += `<div class="card new" data-new="1"><span class="plus">${ic('i-plus')}</span><b>새 메모</b><small data-k="newNote">${esc(kl('newNote'))}</small></div>`;
     h += '<div class="empty" hidden></div>';
     grid.innerHTML = h;
   } else if (staleCards.size) {
@@ -945,13 +957,12 @@ function renderBoard(force) {
     }
     staleCards.clear();
   }
-  $('#noteCount').textContent = S.notes.length + ' / ' + MAX_NOTES;
   filterBoard();
 }
 function filterBoard() {
   const q = query.trim().toLowerCase();
   const byId = new Map(S.notes.map(n => [n.id, n]));
-  let first = null, selShown = false;
+  let first = null, selShown = false, shown = 0;
   for (const c of grid.children) {
     const id = c.dataset.id;
     if (!id) { if (c.classList.contains('new')) c.hidden = !!q; continue; }
@@ -959,12 +970,26 @@ function filterBoard() {
     const ok = !q || (n && (titleOf(n).toLowerCase().includes(q) || noteTextLower(id).includes(q)));
     c.hidden = !ok;
     if (!ok) multi.delete(id);
-    if (ok) { if (!first) first = id; if (id === selId) selShown = true; }
+    if (ok) { shown++; if (!first) first = id; if (id === selId) selShown = true; }
   }
-  const empty = grid.querySelector('.empty');
-  if (empty) { empty.hidden = !q || !!first; empty.textContent = `‘${query}’ 와 일치하는 메모가 없어요`; }
   if (!selShown) selId = first;
   markSel();
+  boardStatus(shown);
+}
+// the hero count, the search box's ×, and a next step when no card is shown
+function boardStatus(shown) {
+  const q = query.trim(), n = S.notes.length, pill = $('#noteCount');
+  pill.textContent = q ? `${shown}개 찾음` : `메모 ${n}개${n >= 450 ? ` / ${MAX_NOTES}` : ''}`;
+  pill.classList.toggle('warn', !q && n >= 450);
+  $('#sClear').hidden = !boardSearch.value;
+  const empty = grid.querySelector('.empty');
+  if (!empty) return;
+  empty.hidden = shown > 0;
+  if (shown) return;
+  const k = kl('newNote');
+  empty.classList.toggle('zero', !q);
+  empty.innerHTML = q ? `<b>‘${esc(q)}’ 검색 결과가 없어요</b><small><kbd>Enter</kbd> 이 제목으로 새 메모 · <kbd>Esc</kbd> 검색 지우기</small>`
+    : `<b>아직 메모가 없어요</b><small><kbd>Enter</kbd>${k ? ` 또는 <kbd>${esc(k)}</kbd>` : ''} 새 메모 · 삭제한 메모는 휴지통에서 복원</small>`;
 }
 function cardHTML(n, idx) {
   const pv = previewAfterTitle(n), title = titleOf(n), empty = !pv && !n.line1;
@@ -1033,6 +1058,15 @@ grid.addEventListener('click', e => {
   if (e.target.closest('.card.new')) newNote();
   else if (!e.target.closest('.card[data-id]') && e.target === grid) clearMulti();       // click on empty space
 });
+// Clicks leave the keyboard in the search box: at once on the board's background, and on a card when the
+// button is released (stopping a card's mousedown would also stop it being dragged).
+$('#board').addEventListener('mousedown', e => {
+  const t = e.target, bd = e.currentTarget;
+  if (e.button === 1 || t.closest('input,.card[data-id]') || (t === bd && e.offsetX >= bd.clientWidth) || grid.querySelector('.rename')) return;
+  e.preventDefault();
+  boardSearch.focus({ preventScroll: true });
+});
+grid.addEventListener('mouseup', () => { if (!grid.querySelector('.rename')) boardSearch.focus({ preventScroll: true }); });
 grid.addEventListener('dblclick', e => {
   const c = e.target.closest('.card[data-id]');
   if (c && !e.target.closest('.rename,.c-copy')) openNote(c.dataset.id);
@@ -1060,7 +1094,7 @@ grid.addEventListener('dragstart', e => {
   e.dataTransfer.setData('text/x-ssn', dragId);
   c.classList.add('dragging');
 });
-grid.addEventListener('dragend', () => { dragId = null; $$('.card', grid).forEach(c => c.classList.remove('dragging', 'drop-l', 'drop-r')); });
+grid.addEventListener('dragend', () => { dragId = null; $$('.card', grid).forEach(c => c.classList.remove('dragging', 'drop-l', 'drop-r')); boardSearch.focus({ preventScroll: true }); });
 grid.addEventListener('dragover', e => {
   if (!dragId) return;
   e.preventDefault();
@@ -1085,16 +1119,31 @@ grid.addEventListener('drop', e => {
     renderBoard();
   }
 });
-boardSearch.addEventListener('input', () => { query = boardSearch.value; filterBoard(); });
+// The search box is where the keyboard rests on the board: Windows' Korean IME only composes in an editable
+// field, so a first syllable typed on the grid came out as a Latin letter. The box passes the board keys on.
+let qAuto = false;                                // the text was selected for you on return: typing replaces it, Ctrl+C copies the card
+boardSearch.addEventListener('input', () => { qAuto = false; query = boardSearch.value; filterBoard(); });
+boardSearch.addEventListener('mousedown', () => { qAuto = false; });
+boardSearch.addEventListener('compositionstart', () => { if (menuOn) closePop(); });   // Korean typing over an open card menu
 boardSearch.addEventListener('keydown', e => {
   if (e.isComposing) return;
-  if (e.key === 'Enter') { e.preventDefault(); if (selId) openNote(selId); }
-  else if (e.key === 'ArrowDown') { e.preventDefault(); grid.focus(); }
-  else if (e.key === 'Escape') {
-    e.preventDefault(); e.stopPropagation();
-    if (boardSearch.value) { boardSearch.value = ''; query = ''; filterBoard(); } else grid.focus();
-  }
+  const k = e.key, typed = !!boardSearch.value, plain = !e.ctrlKey && !e.metaKey && !e.altKey, ctl = (e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey;
+  if (k === 'Enter' && plain) { e.preventDefault(); boardEnter(); }
+  else if (k === 'Escape') { e.preventDefault(); e.stopPropagation(); if (typed) clearSearch(); else clearMulti(); }
+  else if ((k === 'ArrowDown' || k === 'ArrowUp') && plain) { e.preventDefault(); moveSel(0, k === 'ArrowDown' ? 1 : -1, e.shiftKey); }
+  else if (plain && (k === 'F2' || (!typed && /^(ArrowLeft|ArrowRight|Home|End|Delete| )$/.test(k)))) boardKey(e);
+  else if (ctl && e.code === 'KeyC' && (qAuto || boardSearch.selectionStart === boardSearch.selectionEnd)) { e.preventDefault(); copyNote(selId); }
+  else if (ctl && e.code === 'KeyA' && !typed) { e.preventDefault(); selectAllCards(); }
+  else if (/^(Arrow|Home|End|Page)/.test(k) || (ctl && e.code === 'KeyA')) qAuto = false;   // selecting the text yourself
 });
+$('#sClear').addEventListener('mousedown', e => e.preventDefault());   // the box keeps the keyboard
+$('#sClear').onclick = () => { clearSearch(); boardSearch.focus(); };
+function clearSearch() { boardSearch.value = ''; query = ''; qAuto = false; filterBoard(); }
+// Enter: open the selected card; nothing shown -> a new note, named after the search if there is one
+function boardEnter() {
+  const t = boardSearch.value.trim();
+  if (selId) openNote(selId); else if (t) newNoteTitled(t); else newNote();
+}
 function boardKey(e) {
   switch (e.key) {
     case 'ArrowRight': moveSel(1, 0, e.shiftKey); break;
@@ -1103,7 +1152,8 @@ function boardKey(e) {
     case 'ArrowUp': moveSel(0, -1, e.shiftKey); break;
     case 'Home': { const c = grid.querySelector('.card[data-id]:not([hidden])'); if (c) setSel(c.dataset.id, true, e.shiftKey ? 'range' : 'single'); break; }
     case 'End': { const c = $$('.card[data-id]:not([hidden])', grid).pop(); if (c) setSel(c.dataset.id, true, e.shiftKey ? 'range' : 'single'); break; }
-    case 'Enter': case ' ': if (selId) openNote(selId); break;
+    case 'Enter': boardEnter(); break;
+    case ' ': if (selId) openNote(selId); break;
     case 'Delete': if (multi.size > 1) askDeleteNotes([...multi]); else if (selId) deleteNote(selId); break;
     case 'F2': if (selId) renameInline(selId); break;
     case '/': boardSearch.focus(); break;
@@ -1129,7 +1179,7 @@ function renameInline(id) {
     if (done) return;
     done = true;
     if (ok && inp.value.trim() !== (n.title || '')) { n.title = inp.value.trim(); n.updated = now(); saveStateSoon(); }
-    staleCards.add(id); renderBoard(); grid.focus({ preventScroll: true });
+    staleCards.add(id); renderBoard(); boardSearch.focus({ preventScroll: true });
   };
   inp.addEventListener('keydown', e => {
     e.stopPropagation();
@@ -1150,6 +1200,12 @@ function newNote(front) {                        // front === true: first in the
   saveStateSoon();
   query = ''; boardSearch.value = '';
   openNote(n.id);                                  // straight into the body: write first, title later (or never)
+}
+function newNoteTitled(t) {                       // searched for a note that isn't there yet: make it, caret in the body
+  if (newNote() === false) return;
+  const n = noteById(cur);
+  n.title = t; titleIn.value = t; staleRows.add(n.id);
+  renderHead(); renderSidebar(); saveStateSoon();
 }
 function deleteNote(id) { deleteNotes([id]); }
 // Several notes at once: ask first, so a stray Ctrl+A → Del can't clear the board. One note goes straight to
@@ -1330,7 +1386,8 @@ function showBoard() {
   $('#tbMid').textContent = '';
   renderBoard();
   host.send('active', '');
-  grid.focus({ preventScroll: true });
+  boardSearch.focus({ preventScroll: true });
+  if (boardSearch.value) { boardSearch.select(); qAuto = true; }   // back from a search: typing starts a new one
   const c = grid.querySelector('.card.sel');
   if (c) c.scrollIntoView({ block: 'nearest' });
 }
@@ -1345,7 +1402,7 @@ function cycle(d) {
 function refocus() {
   if (modalOpen()) return;
   if (view === 'editor') { if (document.activeElement !== titleIn) { editor.focus({ preventScroll: true }); if (lastSel) selRestore(lastSel); } }
-  else if (document.activeElement !== boardSearch) grid.focus({ preventScroll: true });
+  else if (!isTyping(document.activeElement)) boardSearch.focus({ preventScroll: true });   // (a card being renamed keeps it)
 }
 
 // ---------------------------------------------------------------- editor chrome
@@ -3777,10 +3834,12 @@ function openSwitcher() {
     idx = clamp(idx, 0, Math.max(0, items.length - 1));
     list.innerHTML = items.map((x, i) => `<div class="qs-item${i === idx ? ' on' : ''}" data-i="${i}"><span class="c-dot" style="--c:${NOTE_COLORS[x.n.color]}"></span><div class="qs-txt"><b>${mark(titleOf(x.n) || '제목 없음', q)}</b><small>${snippet(x.t, q)}</small></div>${x.n.hotkey ? `<span class="chip">${esc(x.n.hotkey.label)}</span>` : ''}</div>`).join('') ||
       '<div class="qs-empty">일치하는 메모가 없어요</div>';
+    if (!items.length && q) list.innerHTML = `<div class="qs-item qs-new on" data-i="0">${ic('i-plus')}<div class="qs-txt"><b>새 메모 만들기</b><small>‘${esc(inp.value.trim())}’ 제목으로</small></div></div>`;
     const on = list.querySelector('.on');
     if (on) on.scrollIntoView({ block: 'nearest' });
   };
   const go = i => {
+    if (!items.length) { const t = inp.value.trim(); if (t) { closeModal(); newNoteTitled(t); } return; }   // nothing found: make it
     const x = items[i];
     if (!x) return;
     const q = inp.value.trim();
@@ -4348,7 +4407,7 @@ document.addEventListener('keydown', e => {
   }
   if (e.key === 'Escape') {
     if (view === 'editor') { e.preventDefault(); if (findOpen) findClose(); else showBoard(); }
-    else if (!isTyping(e.target) && clearMulti()) e.preventDefault();   // board: drop a multi-selection
+    else if (!isTyping(e.target)) { if (clearMulti()) e.preventDefault(); else if (query) { e.preventDefault(); clearSearch(); } }   // board: one Esc at a time back to all cards
     return;
   }
   if (view === 'board' && !isTyping(e.target) && !mod && !e.altKey) boardKey(e);
@@ -4409,7 +4468,7 @@ rebuildKeys(); updateKeyHints();
 app.classList.toggle('sb-off', !st.sidebar);
 $('#btnTop').classList.toggle('on', !!st.onTop);
 renderBoard();
-grid.focus({ preventScroll: true });
+boardSearch.focus({ preventScroll: true });
 host.send('ready');
 warmSearch();
 host.send('closeToTray', st.closeToTray ? '1' : '0');
