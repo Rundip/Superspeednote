@@ -944,14 +944,14 @@ function renderBoard(force) {
   filterBoard();
 }
 function filterBoard() {
-  const q = query.trim().toLowerCase();
+  const q = query.trim().toLowerCase(), terms = termsOf(q), kinds = terms.map(kindOf);
   const byId = new Map(S.notes.map(n => [n.id, n]));
   let first = null, selShown = false;
   for (const c of grid.children) {
     const id = c.dataset.id;
     if (!id) { if (c.classList.contains('new')) c.hidden = !!q; continue; }
     const n = byId.get(id);
-    const ok = !q || (n && (titleOf(n).toLowerCase().includes(q) || noteTextLower(id).includes(q)));
+    const ok = !q || (n && noteMatches(n, terms, kinds));
     c.hidden = !ok;
     if (!ok) multi.delete(id);
     if (ok) { if (!first) first = id; if (id === selId) selShown = true; }
@@ -960,6 +960,7 @@ function filterBoard() {
   if (empty) { empty.hidden = !q || !!first; empty.textContent = `‘${query}’ 와 일치하는 메모가 없어요`; }
   if (!selShown) selId = first;
   markSel();
+  showHits(terms, kinds, byId);
 }
 function cardHTML(n, idx) {
   const pv = previewAfterTitle(n), title = titleOf(n);
@@ -3349,11 +3350,51 @@ function sendOut(mode) {
 let paletteOn = false, palMode = '';             // 'pop' = own little window over another program, 'in' / 'key' = inside the app
 const CHO = 'ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ';
 function choOf(s) {                               // 김철수 -> ㄱㅊㅅ (same length, so match positions line up)
-  let o = '';
-  for (let i = 0; i < s.length; i++) { const c = s.charCodeAt(i) - 0xAC00; o += c >= 0 && c < 11172 ? CHO[(c / 588) | 0] : s[i]; }
-  return o;
+  const a = new Array(s.length);
+  for (let i = 0; i < s.length; i++) { const c = s.charCodeAt(i) - 0xAC00; a[i] = c >= 0 && c < 11172 ? CHO[(c / 588) | 0] : s[i]; }
+  return a.join('');
 }
 const isCho = t => /^[ㄱ-ㅎ]+$/.test(t);
+// The Korean IME merges consonants typed without a vowel (ㅂ+ㅅ -> ㅄ), which no 초성 string ever contains
+const JAMO2 = { 'ㄳ': 'ㄱㅅ', 'ㄵ': 'ㄴㅈ', 'ㄶ': 'ㄴㅎ', 'ㄺ': 'ㄹㄱ', 'ㄻ': 'ㄹㅁ', 'ㄼ': 'ㄹㅂ', 'ㄽ': 'ㄹㅅ', 'ㄾ': 'ㄹㅌ', 'ㄿ': 'ㄹㅍ', 'ㅀ': 'ㄹㅎ', 'ㅄ': 'ㅂㅅ' };
+const normQ = s => s.replace(/[ㄳㄵㄶㄺㄻㄼㄽㄾㄿㅀㅄ]/g, c => JAMO2[c]);
+const termsOf = q => [...new Set(normQ(q.toLowerCase()).split(/\s+/).filter(Boolean))];
+const isNum = t => /^\d{4,}$/.test(t);            // a phone / account number typed without its dashes
+// the digits of each number in s, dashes and dots dropped: '02-1234-5678 / 3층' -> '0212345678 3'
+const digitsOf = s => (s.match(/\d(?:[-. ]?\d)*/g) || []).map(v => v.replace(/\D/g, '')).join(' ');
+// where search word t is in o.l (-1: nowhere); as typed, as 초성 (o.k) or as a number without dashes (o.d, at the end).
+// o is a note's text entry or one indexed line; both caches are built on the first query that needs them.
+function termAt(o, t, kind) {
+  let at = o.l.indexOf(t);
+  if (at < 0 && kind === 1) { if (o.k === undefined) o.k = choOf(o.l); at = o.k.indexOf(t); }
+  else if (at < 0 && kind === 2) { if (o.d === undefined) o.d = digitsOf(o.l); if (o.d.includes(t)) at = o.l.length; }
+  return at;
+}
+const kindOf = t => isCho(t) ? 1 : isNum(t) ? 2 : 0;
+// the board and Ctrl+K: every word is in the note's title or text
+function noteMatches(n, terms, kinds = terms.map(kindOf)) {
+  const tl = { l: titleOf(n).toLowerCase() }, e = textEntry(n.id);
+  return terms.every((t, j) => termAt(tl, t, kinds[j]) >= 0 || termAt(e, t, kinds[j]) >= 0);
+}
+// Board search: a card found by its text shows the words around the hit instead of its first line, so you can
+// see why it matched. Only the first 60 (the rest are off-screen); their own preview comes back afterwards.
+const snipped = new Map();                        // id -> [card, its own preview HTML]
+function showHits(terms, kinds, byId) {
+  const was = new Map(snipped);
+  snipped.clear();
+  if (terms.length) {
+    let k = 0;
+    for (const c of grid.querySelectorAll('.card[data-id]:not([hidden])')) {
+      if (k++ >= 60) break;
+      const n = byId.get(c.dataset.id), pv = c.querySelector('.c-prev'), tl = { l: titleOf(n).toLowerCase() };
+      if (!pv || terms.every((t, j) => termAt(tl, t, kinds[j]) >= 0)) continue;   // the title already shows why
+      const old = was.get(n.id);
+      snipped.set(n.id, [c, old && old[0] === c ? old[1] : pv.innerHTML]);
+      pv.innerHTML = snippet(textEntry(n.id), terms, 14);
+    }
+  }
+  for (const [id, [c, h]] of was) if (!snipped.has(id) && c.isConnected) c.querySelector('.c-prev').innerHTML = h;
+}
 function ctxOf(x) {                               // heading above + column names: words there count as found too
   if (x.cx === undefined) x.cx = ((x.sec || '') + '\t' + (x.h ? x.h.join('\t') : '')).toLowerCase();
   return x.cx;
@@ -3383,8 +3424,8 @@ function partsOf(x) {
 }
 const usedPart = (u, x) => u && u[2] >= 0 && u[2] < partsOf(x).length ? u[2] : -1;
 function searchLines(q, limit = 50) {
-  const ql = q.toLowerCase().trim();
-  const terms = [...new Set(ql.split(/\s+/).filter(Boolean))];
+  const ql = normQ(q.toLowerCase().trim());
+  const terms = termsOf(q);
   if (!terms.length) return [];
   const cho = terms.map(isCho), anyCho = cho.some(Boolean);
   const notes = S.notes.slice().sort((a, b) => (b.updated || 0) - (a.updated || 0));
@@ -3446,6 +3487,14 @@ function hitMap(s, terms) {
   let cho = null;
   for (const t of terms) {
     let src = low;
+    if (isNum(t) && !low.includes(t)) {           // typed without dashes: mark those digits and the dashes between
+      for (const m of low.matchAll(/\d(?:[-. ]?\d)*/g)) {
+        const d = m[0].replace(/\D/g, ''), pos = [];
+        for (let i = 0; i < m[0].length; i++) if (m[0][i] >= '0' && m[0][i] <= '9') pos.push(m.index + i);
+        for (let k = d.indexOf(t); k >= 0; k = d.indexOf(t, k + 1)) hit.fill(1, pos[k], pos[k + t.length - 1] + 1);
+      }
+      continue;
+    }
     if (isCho(t) && !low.includes(t)) src = cho || (cho = choOf(low));
     for (let i = src.indexOf(t); i >= 0; i = src.indexOf(t, i + 1)) hit.fill(1, i, i + t.length);
   }
@@ -3510,7 +3559,7 @@ function openPalette(mode) {
   };
   const render = () => {
     q = inp.value.trim();
-    terms = [...new Set(q.toLowerCase().split(/\s+/).filter(Boolean))];
+    terms = termsOf(q);
     items = q ? searchLines(q) : recentLines();
     idx = clamp(idx, 0, Math.max(0, items.length - 1));
     list.innerHTML = (!q && items.length ? '<div class="pal-sec">최근 붙여넣은 줄</div>' : '') +
@@ -3752,12 +3801,21 @@ function openSwitcher() {
   flushNote();
   openModal(`<div class="dlg qs"><div class="qs-in">${ic('i-search')}<input id="qsIn" placeholder="제목이나 내용으로 메모 찾기" spellcheck="false" autocomplete="off"><kbd>Esc</kbd></div><div class="qs-list" id="qsList"></div></div>`);
   const inp = $('#qsIn'), list = $('#qsList');
-  let items = [], idx = 0;
+  let items = [], idx = 0, terms = [];
   const render = () => {
-    const q = inp.value.trim().toLowerCase();
-    items = ordered().map(n => ({ n, t: noteText(n.id) })).filter(x => !q || titleOf(x.n).toLowerCase().includes(q) || x.t.toLowerCase().includes(q));
+    terms = termsOf(inp.value);
+    const kinds = terms.map(kindOf);
+    items = [];
+    for (const n of ordered()) {                  // same rule as the board; the note you named comes first
+      if (terms.length && !noteMatches(n, terms, kinds)) continue;
+      const tl = { l: titleOf(n).toLowerCase() };
+      let sc = terms.length && termAt(tl, terms[0], kinds[0]) === 0 ? 300 : 0;
+      terms.forEach((t, j) => { if (termAt(tl, t, kinds[j]) >= 0) sc += 200; });
+      items.push({ n, e: textEntry(n.id), sc });
+    }
+    items.sort((a, b) => b.sc - a.sc);            // stable: ties keep the board order (pinned first)
     idx = clamp(idx, 0, Math.max(0, items.length - 1));
-    list.innerHTML = items.map((x, i) => `<div class="qs-item${i === idx ? ' on' : ''}" data-i="${i}"><span class="c-dot" style="--c:${NOTE_COLORS[x.n.color]}"></span><div class="qs-txt"><b>${mark(titleOf(x.n) || '제목 없음', q)}</b><small>${snippet(x.t, q)}</small></div>${x.n.hotkey ? `<span class="chip">${esc(x.n.hotkey.label)}</span>` : ''}</div>`).join('') ||
+    list.innerHTML = items.map((x, i) => `<div class="qs-item${i === idx ? ' on' : ''}" data-i="${i}"><span class="c-dot" style="--c:${NOTE_COLORS[x.n.color]}"></span><div class="qs-txt"><b>${mark(titleOf(x.n) || '제목 없음', terms)}</b><small>${snippet(x.e, terms)}</small></div>${x.n.hotkey ? `<span class="chip">${esc(x.n.hotkey.label)}</span>` : ''}</div>`).join('') ||
       '<div class="qs-empty">일치하는 메모가 없어요</div>';
     const on = list.querySelector('.on');
     if (on) on.scrollIntoView({ block: 'nearest' });
@@ -3765,10 +3823,11 @@ function openSwitcher() {
   const go = i => {
     const x = items[i];
     if (!x) return;
-    const q = inp.value.trim();
+    let w = '';                                   // land on the first word found in the text (as written there)
+    for (const t of terms) if ((w = hitText(x.e.t, t))) break;
     closeModal();
     openNote(x.n.id);
-    if (q && x.t.toLowerCase().includes(q.toLowerCase())) findText(q);   // land on what you searched for
+    if (w) findText(w);
   };
   inp.addEventListener('input', () => { idx = 0; render(); });
   inp.addEventListener('keydown', e => {
@@ -3782,17 +3841,26 @@ function openSwitcher() {
   render();
   inp.focus();
 }
-function mark(s, q) {
-  if (!q) return esc(s);
-  const i = s.toLowerCase().indexOf(q);
-  return i < 0 ? esc(s) : esc(s.slice(0, i)) + '<mark>' + esc(s.slice(i, i + q.length)) + '</mark>' + esc(s.slice(i + q.length));
+function mark(s, terms) { return terms.length ? marked(s, hitMap(s, terms), 0, s.length) : esc(s); }
+// a note's text (its textEntry) from a little before the first hit (lead characters), the hits marked
+function snippet(e, terms, lead = 24) {
+  let i = -1;
+  for (const t of terms) { const k = termAt(e, t, kindOf(t)); if (k >= 0 && k < e.l.length && (i < 0 || k < i)) i = k; }
+  if (i < 0 && terms.some(isNum)) i = hitMap(e.l, terms.filter(isNum)).indexOf(1);   // only matched without its dashes
+  if (i < 0) { const t = e.t.slice(0, 300).replace(/\s+/g, ' ').trim(); return esc(t.slice(0, 70)) || '<span class="ph">비어 있음</span>'; }
+  const a = Math.max(0, i - lead * 3);
+  let s = e.t.slice(a, i + 200).replace(/\s+/g, ' ');
+  if (!a) s = s.trimStart();
+  const hit = hitMap(s, terms);
+  let b = Math.max(0, hit.indexOf(1) - lead);
+  while (s[b] === ' ') b++;
+  return (a || b ? '…' : '') + marked(s, hit, b, Math.min(s.length, b + 120));
 }
-function snippet(text, q) {
-  const t = text.replace(/\s+/g, ' ').trim();
-  const i = q ? t.toLowerCase().indexOf(q) : -1;
-  if (i < 0) return esc(t.slice(0, 70)) || '<span class="ph">비어 있음</span>';
-  const s = Math.max(0, i - 24);
-  return (s ? '…' : '') + mark(t.slice(s, i + q.length + 50), q);
+function hitText(s, t) {                          // what search word t matched in s: '김철수' for ㄱㅊㅅ, '02-1234' for 021234
+  const h = hitMap(s, [t]), a = h.indexOf(1);
+  let b = a;
+  while (b >= 0 && h[b]) b++;
+  return a < 0 ? '' : s.slice(a, b);
 }
 
 // ---------------------------------------------------------------- global hotkeys (registered by the native shell)
