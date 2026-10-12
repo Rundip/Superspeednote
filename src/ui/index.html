@@ -3551,10 +3551,13 @@ function openPalette(mode) {
   if (mode === 'pop') app.classList.add('pal-pop');
   closePop();
   if (cur) flushNote();
-  openModal(`<div class="dlg qs pal"><div class="qs-in">${ic('i-search')}<input id="palIn" placeholder="찾을 내용 (초성도 돼요) → Enter로 바로 붙여넣기" spellcheck="false" autocomplete="off"><kbd>Esc</kbd></div>` +
+  if (selRange()) lastSel = selSave();            // now, not on the next selectionchange: a line may go in right here
+  const isPop = mode === 'pop', inNote = (mode === 'in' || mode === 'key') && view === 'editor' && !!cur;   // inNote: Alt+Enter puts it here
+  openModal(`<div class="dlg qs pal"><div class="qs-in">${ic('i-search')}<input id="palIn" placeholder="${mode === 'quick' ? '다른 메모에서 찾아 넣기 (초성도 돼요)' : '찾을 단어 (초성 ㄱㅊㅅ도 돼요)'}" spellcheck="false" autocomplete="off"><kbd>Esc</kbd></div>` +
     `<div class="pal-body"><div class="qs-list" id="palList"></div><div class="pal-pv" id="palPv"></div></div>` +
-    (mode === 'quick' ? `<div class="pal-foot"><span><kbd>Enter</kbd>메모에 넣기</span><span><kbd>Tab</kbd>칸·단어만</span><span><kbd>Alt+1~9</kbd>바로 넣기</span><span class="fill"></span><span><kbd>Esc</kbd>닫기</span></div></div>`
-      : `<div class="pal-foot"><span><kbd>Enter</kbd>붙여넣기</span><span><kbd>Tab</kbd>칸·단어만</span><span><kbd>Shift+Enter</kbd>복사만</span><span><kbd>Ctrl+Enter</kbd>메모 열기</span><span><kbd>Alt+1~9</kbd>바로 붙여넣기</span><span class="fill"></span><span><kbd>Esc</kbd>${mode === 'pop' ? '돌아가기' : '닫기'}</span></div></div>`),
+    (mode === 'quick' ? `<div class="pal-foot"><span><kbd>Enter</kbd>메모에 넣기</span><span><kbd>Tab</kbd>칸·단어만</span><span><kbd>Shift+Enter</kbd>복사만</span><span class="fill"></span><span><kbd>Esc</kbd>닫기</span></div></div>`
+      : `<div class="pal-foot">${inNote ? '<span><kbd>Alt+Enter</kbd>이 메모에 넣기</span>' : ''}<span><kbd>Enter</kbd>${isPop ? '붙여넣기' : '이전 창에 붙여넣기'}</span><span><kbd>Tab</kbd>칸·단어만</span>` +
+        `<span><kbd>Shift+Enter</kbd>${isPop ? '복사만' : '복사하고 이전 창으로'}</span><span><kbd>Ctrl+Enter</kbd>메모 열기</span>${inNote ? '' : '<span><kbd>Alt+1~9</kbd>바로 붙여넣기</span>'}<span class="fill"></span><span><kbd>Esc</kbd>${isPop ? '돌아가기' : '닫기'}</span></div></div>`),
     () => { paletteOn = false; app.classList.remove('pal-pop'); host.send('palette', '0'); });
   paletteOn = true;
   host.send('palette', '1');
@@ -3602,19 +3605,23 @@ function openPalette(mode) {
     if (el) el.outerHTML = itemHTML(items[i], i);
     preview();
   };
+  // into the note being written, at the caret: a space first if it would stick to a word; a whole table row
+  // becomes cells on an empty line or in a table (as Ctrl+V does), elsewhere one line of its values
+  const insertLine = (it, p) => {
+    const r = selRange(), blk = r && (blockOf(r.startContainer) || editor), row = it.x.c && it.part < 0;
+    if (row && (navLive() || editCell || (blk && blk.nodeName !== 'LI' && !blk.textContent.trim()))) { doPaste(p.text, p.html, []); return; }
+    if (navLive()) { doPaste(p.text, '', [], true); return; }   // selected cells take the value, like Excel
+    let t = row ? it.x.c.map(v => v.replace(/\s+/g, ' ').trim()).filter(Boolean).join(' · ') : p.text;
+    if (blk) { const b = document.createRange(); b.setStart(blk, 0); b.setEnd(r.startContainer, r.startOffset); if (/\S$/.test(b.toString())) t = ' ' + t; }
+    edit(() => exec('insertText', t));
+  };
   const pick = (i, how) => {
     const it = items[i];
     if (!it) return;
-    const pop = palMode === 'pop';
-    if (palMode === 'quick') {                    // writing a quick memo: the line goes into the memo
-      rememberUse(it);
-      const p = payloadOf(it);
-      closeModal();                               // puts the caret back where it was
-      edit(() => exec('insertText', p.text));
-      return;
-    }
+    const quick = palMode === 'quick', pop = palMode === 'pop';
     if (how === 'open') {
-      const t = terms.find(x => it.x.l.includes(x)) || it.x.s.split('\t').find(Boolean).slice(0, 40);
+      if (quick) return;                          // the memo window stays a memo
+      const t = terms.map(w => hitText(it.x.s, w)).find(Boolean) || it.x.s.split('\t').find(Boolean).slice(0, 40);
       const L = linesOf(it.n.id), tl = t.toLowerCase();
       let nth = 0;                                // land on this very line: count the same word above it
       for (let j = 0; j < it.i; j++) for (let k = L[j].l.indexOf(tl); k >= 0; k = L[j].l.indexOf(tl, k + 1)) nth++;
@@ -3626,6 +3633,8 @@ function openPalette(mode) {
     }
     rememberUse(it);
     const p = payloadOf(it);
+    if (how === 'note' || (quick && how === 'paste')) { closeModal(); insertLine(it, p); return; }   // closing puts the caret back
+    if (quick || how === 'clip') { closeModal(); putClip(p); toast('복사했어요'); return; }       // copy and stay here
     if (!HOST) { closeModal(); putClip(p); toast(`복사됨 · ${p.text.slice(0, 40)} (브라우저 미리보기에서는 창 전환이 없어요)`); return; }
     host.send('sendOut', how, String(p.text.length), p.text + p.html);   // back to the program, then paste
     closeModal();
@@ -3638,6 +3647,7 @@ function openPalette(mode) {
     it.part = d > 0 ? (it.part + 1 >= P.length ? -1 : it.part + 1) : (it.part <= -1 ? P.length - 1 : it.part - 1);
     redraw(idx);
   };
+  const howOf = e => e.ctrlKey ? 'open' : e.shiftKey ? 'copy' : e.altKey && inNote ? 'note' : 'paste';
   let raf = 0;
   inp.addEventListener('input', () => { idx = 0; if (!raf) raf = requestAnimationFrame(() => { raf = 0; render(); }); });
   inp.addEventListener('keydown', e => {
@@ -3648,9 +3658,9 @@ function openPalette(mode) {
     else if (k === 'PageDown') { e.preventDefault(); move(idx + 8); }
     else if (k === 'PageUp') { e.preventDefault(); move(idx - 8); }
     else if (k === 'Tab') { e.preventDefault(); cyclePart(e.shiftKey ? -1 : 1); }
-    else if (k === 'Enter') { e.preventDefault(); if (raf) { cancelAnimationFrame(raf); raf = 0; render(); } pick(idx, e.ctrlKey ? 'open' : e.shiftKey ? 'copy' : 'paste'); }
+    else if (k === 'Enter') { e.preventDefault(); if (raf) { cancelAnimationFrame(raf); raf = 0; render(); } pick(idx, howOf(e)); }
     else if (e.altKey && /^Digit[1-9]$/.test(e.code)) { e.preventDefault(); if (raf) { cancelAnimationFrame(raf); raf = 0; render(); } pick(+e.code.slice(5) - 1, 'paste'); }
-    else if (e.ctrlKey && e.code === 'KeyC' && inp.selectionStart === inp.selectionEnd && items[idx]) { e.preventDefault(); pick(idx, 'copy'); }
+    else if (e.ctrlKey && e.code === 'KeyC' && inp.selectionStart === inp.selectionEnd && items[idx]) { e.preventDefault(); pick(idx, palMode === 'pop' ? 'copy' : 'clip'); }
     else if (k === 'Escape') {
       e.preventDefault(); e.stopPropagation();
       if (palMode === 'pop') host.send('back');   // summoned over another program: go back there
@@ -3659,7 +3669,7 @@ function openPalette(mode) {
   });
   list.addEventListener('mousemove', e => { const it = e.target.closest('.qs-item'); if (it && +it.dataset.i !== idx) move(+it.dataset.i); });
   modal.querySelector('.pal').addEventListener('mousedown', e => { if (e.target !== inp) e.preventDefault(); });   // keep typing in the box
-  list.addEventListener('click', e => { const it = e.target.closest('.qs-item'); if (it) pick(+it.dataset.i, e.ctrlKey ? 'open' : e.shiftKey ? 'copy' : 'paste'); });
+  list.addEventListener('click', e => { const it = e.target.closest('.qs-item'); if (it) pick(+it.dataset.i, howOf(e)); });
   render();
   inp.focus();
 }

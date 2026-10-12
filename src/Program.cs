@@ -994,7 +994,7 @@ namespace SuperSpeedNote
             bool hide = false;
             if (hasReturn && retNote == null && retHwnd != IntPtr.Zero && Native.IsWindow(retHwnd) && !IsShellWindow(retHwnd)) { target = retHwnd; hide = retHidden; }
             else if (lastExternal != IntPtr.Zero && Native.IsWindow(lastExternal) && Native.IsWindowVisible(lastExternal)) target = lastExternal;
-            if (target == IntPtr.Zero) { Post("toast", "복사했어요 · 돌아갈 창이 없어 붙여넣기는 하지 않았어요"); return; }
+            if (target == IntPtr.Zero) { Post("toast", paste ? "복사했어요 · 돌아갈 창이 없어 붙여넣지는 못했어요" : "복사했어요"); return; }
             hasReturn = false;
             if (Native.IsIconic(target)) Native.ShowWindow(target, 9 /*SW_RESTORE*/);
             ForceForeground(target);
