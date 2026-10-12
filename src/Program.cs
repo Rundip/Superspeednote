@@ -22,11 +22,12 @@ using Microsoft.Win32;
 
 [assembly: AssemblyTitle("Super Speed Note")]
 [assembly: AssemblyProduct("Super Speed Note")]
-[assembly: AssemblyDescription("Super Speed Note - ultra light note app")]
-[assembly: AssemblyCompany("Super Speed Note")]
-[assembly: AssemblyCopyright("Super Speed Note")]
-[assembly: AssemblyVersion("1.1.0.0")]
-[assembly: AssemblyFileVersion("1.1.0.0")]
+[assembly: AssemblyDescription("Super Speed Note")]
+[assembly: AssemblyCompany("Mukhodeveloper")]
+[assembly: AssemblyCopyright("© 2026 Mukhodeveloper")]
+[assembly: AssemblyVersion(SuperSpeedNote.Program.Version + ".0")]
+[assembly: AssemblyFileVersion(SuperSpeedNote.Program.Version + ".0")]
+[assembly: AssemblyInformationalVersion(SuperSpeedNote.Program.Version)]
 
 namespace SuperSpeedNote
 {
@@ -35,6 +36,15 @@ namespace SuperSpeedNote
         public const string Version = "1.4.0";
         public const string WebView2Version = "1.0.4258.31";
         public static string DataDir, LocalDir;
+
+        // Installed from the Microsoft Store (MSIX package) rather than run as a plain exe
+        public static readonly bool Packaged = IsPackaged();
+        [DllImport("kernel32.dll", CharSet = CharSet.Unicode)] static extern int GetCurrentPackageFullName(ref int length, StringBuilder name);
+        static bool IsPackaged()
+        {
+            try { int n = 0; return GetCurrentPackageFullName(ref n, null) != 15700 /*APPMODEL_ERROR_NO_PACKAGE*/; }
+            catch { return false; }
+        }
         public static readonly Stopwatch Clock = Stopwatch.StartNew();
         public static long ShownMs;
         static readonly StringBuilder marks = new StringBuilder();
@@ -1290,6 +1300,7 @@ namespace SuperSpeedNote
                 case "top": TopMost = a == "1"; break;
                 case "closeToTray": closeToTray = a == "1"; break;
                 case "autostart":
+                    if (Program.Packaged) break;                 // Store version: Task Manager > Startup apps
                     startupMode = a == "1" ? "tray" : a == "0" ? "off" : a;
                     SetStartupMode(startupMode);
                     break;
@@ -1413,10 +1424,13 @@ namespace SuperSpeedNote
             }
         }
 
-        // Windows start-up: "off", "standby" (hotkeys only, ~no memory) or "tray" (engine preloaded, instant)
+        // Windows start-up: "off", "standby" (hotkeys only, ~no memory) or "tray" (engine preloaded, instant).
+        // The Microsoft Store version ("package") starts through its own startup task instead, which the user
+        // turns on / off in Task Manager > Startup apps.
         const string RunKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
         static string GetStartupMode()
         {
+            if (Program.Packaged) return "package";
             try
             {
                 using (RegistryKey k = Registry.CurrentUser.OpenSubKey(RunKey))
@@ -1431,6 +1445,7 @@ namespace SuperSpeedNote
 
         static void SetStartupMode(string mode)
         {
+            if (Program.Packaged) return;
             using (RegistryKey k = Registry.CurrentUser.CreateSubKey(RunKey))
             {
                 if (mode == "standby" || mode == "tray")
@@ -1444,6 +1459,12 @@ namespace SuperSpeedNote
         {
             try
             {
+                if (Program.Packaged)   // Store version: its startup task replaces the old entry (else both would start)
+                {
+                    using (RegistryKey k = Registry.CurrentUser.OpenSubKey(RunKey, true))
+                        if (k != null && k.GetValue("SuperSpeedNote") != null) k.DeleteValue("SuperSpeedNote", false);
+                    return;
+                }
                 using (RegistryKey k = Registry.CurrentUser.OpenSubKey(RunKey))
                 {
                     string v = k == null ? null : k.GetValue("SuperSpeedNote") as string;

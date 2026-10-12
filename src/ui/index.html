@@ -214,6 +214,26 @@ body.sb-off #sidebar{display:none}
 #editor h3{font-size:1.18em;line-height:1.4;font-weight:700;margin:.45em 0 .1em}
 #editor b,#editor strong{font-weight:750}
 #editor ul,#editor ol{margin:.15em 0;padding-left:1.7em}
+/* numbered lists follow the Korean outline order when indented: 1. → 가. → 1) → 가) → (1) → (가) → ① → ㉮ */
+@counter-style ko-ga{system:alphabetic;symbols:'가' '나' '다' '라' '마' '바' '사' '아' '자' '차' '카' '타' '파' '하';suffix:'. '}
+@counter-style ko-num-paren{system:extends decimal;suffix:') '}
+@counter-style ko-ga-paren{system:extends ko-ga;suffix:') '}
+@counter-style ko-num-wrap{system:extends decimal;prefix:'(';suffix:') '}
+@counter-style ko-ga-wrap{system:extends ko-ga;prefix:'(';suffix:') '}
+@counter-style ko-circle{system:fixed;symbols:'①' '②' '③' '④' '⑤' '⑥' '⑦' '⑧' '⑨' '⑩' '⑪' '⑫' '⑬' '⑭' '⑮' '⑯' '⑰' '⑱' '⑲' '⑳';suffix:' ';fallback:ko-num-wrap}
+@counter-style ko-ga-circle{system:fixed;symbols:'㉮' '㉯' '㉰' '㉱' '㉲' '㉳' '㉴' '㉵' '㉶' '㉷' '㉸' '㉹' '㉺' '㉻';suffix:' ';fallback:ko-ga-wrap}
+#editor ol{list-style-type:decimal}
+#editor ol ol{list-style-type:ko-ga}
+#editor ol ol ol{list-style-type:ko-num-paren}
+#editor ol ol ol ol{list-style-type:ko-ga-paren}
+#editor ol ol ol ol ol{list-style-type:ko-num-wrap}
+#editor ol ol ol ol ol ol{list-style-type:ko-ga-wrap}
+#editor ol ol ol ol ol ol ol{list-style-type:ko-circle}
+#editor ol ol ol ol ol ol ol ol{list-style-type:ko-ga-circle}
+#editor ol li::marker{font-variant-numeric:tabular-nums}
+/* a line whose bullet was taken off (Backspace at its start): stays in place, no marker, not counted */
+#editor li.nob{display:block}
+#editor ul.checklist>li.nob::before{display:none}
 #editor ul.checklist{list-style:none;padding-left:.15em}
 #editor ul.checklist>li{position:relative;padding-left:1.85em}
 #editor ul.checklist>li::before{content:'';position:absolute;left:.1em;top:.37em;width:1.05em;height:1.05em;border:2px solid var(--line-2);border-radius:.32em;background:var(--paper);cursor:pointer;box-sizing:border-box;transition:background .12s,border-color .12s}
@@ -429,6 +449,11 @@ body.pal-pop #toasts{bottom:56px}
 .tr-del:hover{background:var(--hover);color:#e5484d}
 .tr-del.arm,.btn.danger.arm{background:#e5484d;color:#fff}
 .btn.danger{color:#e5484d}
+.btn.danger-fill{background:#e5484d;color:#fff}
+.dlg.confirm{width:min(440px,calc(100vw - 32px))}
+.del-list{margin:4px 0 2px;padding-left:20px;font-size:13px;color:var(--ink-2);line-height:1.7}
+.del-list li{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.del-list li.more{list-style:none;margin-left:-20px;color:var(--ink-3)}
 .btn:disabled{opacity:.4;cursor:default;filter:none}
 .help{display:grid;grid-template-columns:1fr 1fr;gap:4px 26px}
 .help h4{grid-column:1/-1;margin:12px 0 4px;font-size:12px;color:var(--accent-ink);letter-spacing:.04em}
@@ -746,10 +771,14 @@ function toPlain(root) {
       }
       const block = /^(DIV|P|H[1-6]|LI|BLOCKQUOTE|PRE|UL|OL)$/.test(tag);
       if (block && line) flush();
-      if (tag === 'LI') {
+      if (tag === 'LI') {                         // indented two spaces per level, with the same bullet / number as on screen
         const p = c.parentElement;
-        line += p && p.classList.contains('checklist') ? (c.dataset.checked === 'true' ? '[x] ' : '[ ] ')
-          : p && p.nodeName === 'OL' ? (Array.prototype.indexOf.call(p.children, c) + 1) + '. ' : '• ';
+        let depth = 0;
+        for (let q = p; q && q.nodeName !== 'TD' && q !== editor; q = q.parentElement) if (q.nodeName === 'UL' || q.nodeName === 'OL') depth++;
+        line += '  '.repeat(Math.max(0, depth - 1));
+        if (!c.classList.contains('nob'))
+          line += p && p.classList.contains('checklist') ? (c.dataset.checked === 'true' ? '[x] ' : '[ ] ')
+            : p && p.nodeName === 'OL' ? olLabel(c) : '• ';
       }
       walk(c);
       if (block && line) flush();
@@ -1007,7 +1036,7 @@ grid.addEventListener('contextmenu', e => {
   if (multi.size > 1 && multi.has(c.dataset.id)) {
     const ids = [...multi];
     showMenu(e.clientX, e.clientY, [
-      { label: `선택한 ${ids.length}개 삭제`, icon: 'i-trash', kbd: 'Del', danger: true, action: () => deleteNotes(ids) },
+      { label: `선택한 ${ids.length}개 삭제`, icon: 'i-trash', kbd: 'Del', danger: true, action: () => askDeleteNotes(ids) },
       { label: '선택 해제', kbd: 'Esc', action: clearMulti }
     ]);
     return;
@@ -1067,7 +1096,7 @@ function boardKey(e) {
     case 'Home': { const c = grid.querySelector('.card[data-id]:not([hidden])'); if (c) setSel(c.dataset.id, true, e.shiftKey ? 'range' : 'single'); break; }
     case 'End': { const c = $$('.card[data-id]:not([hidden])', grid).pop(); if (c) setSel(c.dataset.id, true, e.shiftKey ? 'range' : 'single'); break; }
     case 'Enter': case ' ': if (selId) openNote(selId); break;
-    case 'Delete': if (multi.size > 1) deleteNotes([...multi]); else if (selId) deleteNote(selId); break;
+    case 'Delete': if (multi.size > 1) askDeleteNotes([...multi]); else if (selId) deleteNote(selId); break;
     case 'F2': if (selId) renameInline(selId); break;
     case '/': boardSearch.focus(); break;
     default:
@@ -1114,6 +1143,23 @@ function newNote(front) {                        // front === true: first in the
   openNote(n.id);                                  // straight into the body: write first, title later (or never)
 }
 function deleteNote(id) { deleteNotes([id]); }
+// Several notes at once: ask first, so a stray Ctrl+A → Del can't clear the board. One note goes straight to
+// the trash (with 되돌리기). Cancel is focused; Del again confirms.
+function askDeleteNotes(ids) {
+  ids = ids.filter(id => noteById(id));
+  if (ids.length < 2) { if (ids.length) deleteNotes(ids); return; }
+  const all = ids.length === S.notes.length;
+  const names = ids.slice(0, 6).map(id => `<li>${esc(titleOf(noteById(id)) || '제목 없음')}</li>`).join('') +
+    (ids.length > 6 ? `<li class="more">외 ${ids.length - 6}개</li>` : '');
+  openModal(`<div class="dlg confirm"><div class="dlg-head">${ic('i-trash')}<h3>${all ? `메모 ${ids.length}개를 모두 지울까요?` : `메모 ${ids.length}개를 지울까요?`}</h3></div>` +
+    `<div class="dlg-body"><ul class="del-list">${names}</ul><div class="khint">휴지통으로 옮겨져서 언제든 복원할 수 있어요.</div></div>` +
+    `<div class="dlg-foot"><span class="ver">Del 한 번 더 = 삭제 · Esc = 취소</span><span style="flex:1"></span><button class="btn" id="delNo">취소</button><button class="btn danger-fill" id="delYes">${ids.length}개 삭제</button></div></div>`);
+  const yes = $('#delYes');
+  $('#delNo').onclick = closeModal;
+  yes.onclick = () => { closeModal(); deleteNotes(ids); };
+  modal.querySelector('.dlg').addEventListener('keydown', e => { if (e.key === 'Delete') { e.preventDefault(); e.stopPropagation(); yes.click(); } });
+  $('#delNo').focus();
+}
 // Deleted notes go to the data folder's trash\ (never erased); one "되돌리기" puts them all back in place.
 function deleteNotes(ids) {
   const items = [];
@@ -1172,6 +1218,12 @@ function copyText(id) {
   navigator.clipboard.writeText(t).then(() => toast('텍스트로 복사했어요'), () => toast('복사하지 못했어요'));
 }
 const EXPORT_CSS = 'body{font:15px/1.75 "Malgun Gothic",sans-serif;max-width:880px;margin:40px auto;padding:0 24px;color:#0f1b33;white-space:pre-wrap}h1.title{font-size:28px;margin:0 0 24px}table{border-collapse:collapse;white-space:normal}td{border:1px solid #cbd5e6;padding:6px 12px;vertical-align:top}table.hdr tr:first-child td{background:#edf2fd;font-weight:700}ul.checklist{list-style:none;padding-left:4px}ul.checklist li::before{content:"\\2610  "}ul.checklist li[data-checked=true]::before{content:"\\2611  "}ul.checklist li[data-checked=true]{text-decoration:line-through;color:#8a97b0}blockquote{border-left:3px solid #3b6cf6;margin:8px 0;padding:4px 14px;background:#f1f5ff}pre{background:#0d1a36;color:#dbe6ff;padding:12px;border-radius:8px}img{max-width:100%}';
+// the same numbering order as in the app (1. 가. 1) 가) ...) and bullet-less lines
+const EXPORT_LIST_CSS = '@counter-style ko-ga{system:alphabetic;symbols:"가" "나" "다" "라" "마" "바" "사" "아" "자" "차" "카" "타" "파" "하";suffix:". "}' +
+  '@counter-style ko-num-paren{system:extends decimal;suffix:") "}@counter-style ko-ga-paren{system:extends ko-ga;suffix:") "}' +
+  '@counter-style ko-num-wrap{system:extends decimal;prefix:"(";suffix:") "}@counter-style ko-ga-wrap{system:extends ko-ga;prefix:"(";suffix:") "}' +
+  'ol ol{list-style-type:ko-ga}ol ol ol{list-style-type:ko-num-paren}ol ol ol ol{list-style-type:ko-ga-paren}ol ol ol ol ol{list-style-type:ko-num-wrap}ol ol ol ol ol ol{list-style-type:ko-ga-wrap}' +
+  'li.nob{display:block}ul.checklist li.nob::before{content:none}';
 function exportNote(id, kind) {
   const n = noteById(id);
   if (!n) return;
@@ -1179,7 +1231,7 @@ function exportNote(id, kind) {
   const name = (titleOf(n) || '메모').replace(/[\\/:*?"<>|]/g, '_').slice(0, 80) + '.' + kind;
   const content = kind === 'txt'
     ? (n.title ? n.title + '\n\n' : '') + noteText(id)
-    : `<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>${esc(titleOf(n) || '메모')}</title><style>${EXPORT_CSS}</style></head><body><h1 class="title">${esc(n.title || '')}</h1><div>${bodies[id] || ''}</div></body></html>`;
+    : `<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>${esc(titleOf(n) || '메모')}</title><style>${EXPORT_CSS + EXPORT_LIST_CSS}</style></head><body><h1 class="title">${esc(n.title || '')}</h1><div>${bodies[id] || ''}</div></body></html>`;
   if (HOST) { host.send('export', name, kind === 'txt' ? content.replace(/\r?\n/g, '\r\n') : content); return; }
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([content], { type: kind === 'txt' ? 'text/plain' : 'text/html' }));
@@ -1314,7 +1366,7 @@ sbList.addEventListener('click', e => {
 });
 sbList.addEventListener('keydown', e => {
   if (!sbMulti.size) return;
-  if (e.key === 'Delete') { e.preventDefault(); e.stopPropagation(); deleteNotes([...sbMulti]); }
+  if (e.key === 'Delete') { e.preventDefault(); e.stopPropagation(); askDeleteNotes([...sbMulti]); }
   else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); clearSb(); refocus(); }
 });
 sbList.addEventListener('contextmenu', e => {
@@ -1324,7 +1376,7 @@ sbList.addEventListener('contextmenu', e => {
   if (sbMulti.size > 1 && sbMulti.has(it.dataset.id)) {
     const ids = [...sbMulti];
     showMenu(e.clientX, e.clientY, [
-      { label: `선택한 ${ids.length}개 삭제`, icon: 'i-trash', kbd: 'Del', danger: true, action: () => deleteNotes(ids) },
+      { label: `선택한 ${ids.length}개 삭제`, icon: 'i-trash', kbd: 'Del', danger: true, action: () => askDeleteNotes(ids) },
       { label: '선택 해제', kbd: 'Esc', action: clearSb }
     ]);
     return;
@@ -1584,10 +1636,11 @@ editor.addEventListener('keydown', e => {
   if (td && (e.key === 'Enter' || e.key === 'Tab') && onTableKey(e, td)) return;
   if (e.key === 'Tab') {
     e.preventDefault();
-    if (closestSel('li')) edit(() => exec(e.shiftKey ? 'outdent' : 'indent'));
+    if (closestSel('li')) listIndent(e.shiftKey);
     else if (!e.shiftKey) edit(() => exec('insertText', '\t'));
     return;
   }
+  if (e.key === 'Backspace' && !e.shiftKey && listBackspace()) { e.preventDefault(); return; }
   if (e.key === ' ' && mdShortcut()) { e.preventDefault(); return; }
   if (e.key === 'Enter' && !e.shiftKey && hrShortcut()) { e.preventDefault(); return; }
 });
@@ -1612,7 +1665,7 @@ editor.addEventListener('mousedown', e => {
       nav = null; editCell = null;
     }
   }
-  const li = e.target.closest && e.target.closest('ul.checklist > li');
+  const li = e.target.closest && e.target.closest('ul.checklist > li:not(.nob)');
   if (li && e.target === li && e.offsetX < parseFloat(getComputedStyle(li).paddingLeft)) {
     e.preventDefault();
     edit(() => { li.dataset.checked = li.dataset.checked === 'true' ? 'false' : 'true'; });
@@ -1705,12 +1758,111 @@ function setBlock(tag) {
   });
   updateToolbar();
 }
+// ---- list lines (글머리 / 번호 / 체크): Backspace and Tab work line by line, like a word processor
+const isList = n => !!n && (n.nodeName === 'UL' || n.nodeName === 'OL');
+// the list item the caret sits at the very start of (nothing typed before it on that line)
+function liAtLineStart() {
+  const r = selRange();
+  if (!r || !r.collapsed) return null;
+  const li = closestSel('li');
+  if (!li || !editor.contains(li) || li.closest('td')) return null;
+  const pre = document.createRange();
+  pre.setStart(li, 0); pre.setEnd(r.startContainer, r.startOffset);
+  return pre.toString() || pre.cloneContents().querySelector('img') ? null : li;
+}
+// Backspace at the start of a list line: 1st press takes the bullet off that line only (the text stays where it
+// is), the next press moves the line out one level; an empty top-level line leaves the list at once.
+function listBackspace() {
+  const li = liAtLineStart();
+  if (!li) return false;
+  const top = !isList(li.parentElement.parentElement) && li.parentElement.parentElement.nodeName !== 'LI';
+  edit(() => {
+    if (!li.classList.contains('nob') && !(top && emptyHtml(li.innerHTML))) {
+      li.classList.add('nob'); delete li.dataset.checked;
+      placeCaret(li, false);
+    } else liftItem(li);
+  });
+  return true;
+}
+// one level out; from the top level the line leaves the list as a normal line
+function liftItem(li) {
+  const list = li.parentElement, holder = list.parentElement;
+  const after = [];
+  for (let n = li.nextSibling; n; n = n.nextSibling) after.push(n);
+  let tail = null;
+  if (after.length) { tail = list.cloneNode(false); tail.removeAttribute('start'); after.forEach(n => tail.appendChild(n)); }
+  let moved;
+  if (isList(holder)) {                           // Chrome nests a list straight inside its parent list
+    list.after(li);
+    if (tail) li.after(tail);                     // the lines below become this line's sub-items
+    moved = li;
+  } else if (holder.nodeName === 'LI') {          // pasted HTML: list inside a list item
+    holder.after(li);
+    if (tail) li.appendChild(tail);
+    moved = li;
+  } else {                                        // top level: a normal line between the two halves
+    if (tail) {
+      list.after(tail);
+      if (list.nodeName === 'OL') tail.start = (list.start || 1) + $$(':scope > li:not(.nob)', list).length - (li.classList.contains('nob') ? 0 : 1);
+    }
+    const d = document.createElement('div');
+    while (li.firstChild) d.appendChild(li.firstChild);
+    if (!d.firstChild) d.innerHTML = '<br>';
+    list.after(d);
+    li.remove();
+    moved = d;
+  }
+  if (!list.querySelector('li')) list.remove();
+  placeCaret(moved, false);
+}
+// Tab / Shift+Tab on a list line: indent / outdent the line, keeping checklists checklists
+function listIndent(out) {
+  const one = out && closestSel('li'), r = selRange();
+  if (one && r && one.contains(r.endContainer) && !isList(one.parentElement.parentElement) && one.parentElement.parentElement.nodeName !== 'LI') {
+    edit(() => liftItem(one));                    // top level: a proper line, and the numbers below carry on
+    updateToolbar();
+    return;
+  }
+  edit(() => {
+    exec(out ? 'outdent' : 'indent');
+    const li = closestSel('li'), L = li && li.parentElement;
+    if (!L) return;
+    const outer = L.parentElement && L.parentElement.closest('ul,ol');
+    if (L.nodeName === 'UL' && outer && outer.classList.contains('checklist')) L.classList.add('checklist');
+    if (!L.classList.contains('checklist')) delete li.dataset.checked;
+  });
+  updateToolbar();
+}
+// what number a numbered line shows (1. 가. 1) 가) (1) (가) ① ㉮ by depth) - for copying as text
+function olLabel(li) {
+  const ol = li.parentElement;
+  let n = ol.start || 1, depth = 0;
+  for (let s = li.previousElementSibling; s; s = s.previousElementSibling) if (s.nodeName === 'LI' && !s.classList.contains('nob')) n++;
+  for (let p = ol; p && p !== editor; p = p.parentElement) if (p.nodeName === 'OL') depth++;
+  const ko = i => { let t = ''; for (i--; i >= 0; i = Math.floor(i / 14) - 1) t = '가나다라마바사아자차카타파하'[i % 14] + t; return t; };
+  switch ((depth - 1) % 8) {
+    case 1: return ko(n) + '. ';
+    case 2: return n + ') ';
+    case 3: return ko(n) + ') ';
+    case 4: return '(' + n + ') ';
+    case 5: return '(' + ko(n) + ') ';
+    case 6: return n <= 20 ? String.fromCharCode(0x2460 + n - 1) + ' ' : '(' + n + ') ';
+    case 7: return n <= 14 ? String.fromCharCode(0x326E + n - 1) + ' ' : '(' + ko(n) + ') ';
+    default: return n + '. ';
+  }
+}
 function toggleList(kind) {
   ensureEditorFocus();
   edit(() => {
     const li = closestSel('li');
     const list = li && li.parentElement;
     const isChk = list && list.classList.contains('checklist');
+    if (li && li.classList.contains('nob')) {     // a line whose bullet was taken off: the button puts it back
+      li.classList.remove('nob');
+      if (!li.className) li.removeAttribute('class');
+      const same = kind === 'chk' ? isChk : kind === 'ol' ? list.nodeName === 'OL' : list.nodeName === 'UL' && !isChk;
+      if (same) return;
+    }
     if (kind === 'chk') {
       if (isChk) { exec('insertUnorderedList'); return; }
       if (list && list.nodeName === 'UL') { list.classList.add('checklist'); return; }
@@ -3875,7 +4027,9 @@ function openSettings(tab) {
     body = `${row('테마', '네이비 & 화이트', `<div class="seg" id="setTheme"><button data-v="light">라이트</button><button data-v="dark">다크 네이비</button></div>`)}
     ${row('단축키', `앱 부르기 ${esc(kl0(st.appHotkey))} · 찾아 붙여넣기 ${esc(kl0(st.findHotkey))} · 빠른 메모 ${esc(kl0(st.quickHotkey))}`, `<button class="btn" id="setGoKeys">단축키 설정</button>`)}
     ${row('닫기(X) → 트레이로 숨기기', '켜 두면 다음 호출이 즉시 열립니다 (권장)', sw('closeToTray', st.closeToTray))}
-    ${row('Windows 시작 시', '<span class="wrap"><b>단축키 대기</b> 꺼져 있어도 단축키로 열림 · 메모리 거의 안 씀 · 첫 호출 약 1초<br><b>트레이 상주</b> 언제나 즉시 열림 · 메모리 더 사용</span>', `<div class="seg" id="setStart"><button data-v="off">끔</button><button data-v="standby">단축키 대기</button><button data-v="tray">트레이 상주</button></div>`)}
+    ${startMode() === 'package'
+      ? row('Windows 시작 시', '<span class="wrap">로그인하면 <b>단축키 대기</b>로 켜져서 꺼져 있어도 단축키가 동작해요.<br>끄려면 작업 관리자 › 시작 앱(또는 설정 › 앱 › 시작 프로그램)에서 Super Speed Note를 끄세요.</span>', '')
+      : row('Windows 시작 시', '<span class="wrap"><b>단축키 대기</b> 꺼져 있어도 단축키로 열림 · 메모리 거의 안 씀 · 첫 호출 약 1초<br><b>트레이 상주</b> 언제나 즉시 열림 · 메모리 더 사용</span>', `<div class="seg" id="setStart"><button data-v="off">끔</button><button data-v="standby">단축키 대기</button><button data-v="tray">트레이 상주</button></div>`)}
     ${row('항상 위에 표시', '', sw('onTop', st.onTop))}
     ${row('에디터 글꼴', '', `<select class="sel" id="setFont">${Object.entries(FONTS).map(([k, v]) => `<option value="${k}"${st.font === k ? ' selected' : ''}>${v[0]}</option>`).join('')}</select>`)}
     ${row('글자 크기', 'Ctrl + 마우스 휠로도 조절', `<div class="seg"><button data-z="-1">−</button><span class="val" id="setZ">${st.fontSize}px</span><button data-z="1">+</button></div>`)}
@@ -3924,14 +4078,16 @@ function openSettings(tab) {
     else if (k === 'onTop') setOnTop(on);
   };
   const segS = $('#setStart');
-  const paintStart = () => { for (const b of segS.children) b.classList.toggle('on', b.dataset.v === startMode()); };
-  paintStart();
-  segS.onclick = e => {
-    const b = e.target.closest('button');
-    if (!b) return;
-    boot.autostart = b.dataset.v; host.send('autostart', b.dataset.v); paintStart();
-    if (!HOST) toast('브라우저 미리보기에서는 적용되지 않아요');
-  };
+  if (segS) {                                     // not in the Store version (Windows handles its startup)
+    const paintStart = () => { for (const b of segS.children) b.classList.toggle('on', b.dataset.v === startMode()); };
+    paintStart();
+    segS.onclick = e => {
+      const b = e.target.closest('button');
+      if (!b) return;
+      boot.autostart = b.dataset.v; host.send('autostart', b.dataset.v); paintStart();
+      if (!HOST) toast('브라우저 미리보기에서는 적용되지 않아요');
+    };
+  }
   $('#setFont').onchange = e => { st.font = e.target.value; applyFont(); saveStateSoon(); };
   for (const b of $$('[data-z]', modal)) b.onclick = () => { zoom(+b.dataset.z); $('#setZ').textContent = st.fontSize + 'px'; };
   $('#setOpen').onclick = () => host.send('openData');
@@ -4118,7 +4274,7 @@ setInterval(() => {                                // "3분 전" labels
     if (n && t) { const v = relTime(n.updated); if (t.textContent !== v) t.textContent = v; }
   }
 }, 60000);
-window.__ssn = { S, bodies, openNote, showBoard, newNote, applyHotkeys, saveStateSoon, doPaste, tableOp, undo, redo, searchLines, openPalette, quickStart, quickEnd, deleteNotes, openTrash };   // debugging handle
+window.__ssn = { S, bodies, openNote, showBoard, newNote, applyHotkeys, saveStateSoon, doPaste, tableOp, undo, redo, searchLines, openPalette, quickStart, quickEnd, deleteNotes, openTrash, toPlain };   // debugging handle
 })();
 </script>
 </body>

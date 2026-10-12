@@ -21,7 +21,20 @@ static class IconGen
 
     static int Main(string[] args)
     {
-        if (args.Length < 1) { Console.WriteLine("usage: IconGen out.ico [pngDir]"); return 1; }
+        if (args.Length == 2 && args[0] == "--store") return StoreAssets(args[1]);
+        if (args.Length == 2 && args[0] == "--boxart")      // 1:1 logo for the Store listing page (1080 x 1080)
+        {
+            using (var bmp = new Bitmap(1080, 1080, PixelFormat.Format32bppArgb))
+            using (Graphics g = Graphics.FromImage(bmp))
+            {
+                using (var br = new LinearGradientBrush(new Rectangle(0, 0, 1080, 1080), NavyDeep, Navy, 90f)) g.FillRectangle(br, 0, 0, 1080, 1080);
+                using (Bitmap icon = Render(760)) g.DrawImage(icon, 160, 160, 760, 760);
+                bmp.Save(args[1], ImageFormat.Png);
+            }
+            Console.WriteLine("box art -> " + args[1]);
+            return 0;
+        }
+        if (args.Length < 1) { Console.WriteLine("usage: IconGen out.ico [pngDir] | IconGen --store outDir"); return 1; }
         string outIco = args[0];
         string pngDir = args.Length > 1 ? args[1] : null;
         int[] sizes = { 16, 20, 24, 32, 40, 48, 64, 96, 128, 256 };
@@ -70,6 +83,51 @@ static class IconGen
         }
         Console.WriteLine("icon -> " + outIco);
         return 0;
+    }
+
+    // Logos a Microsoft Store (MSIX) package needs, at the scales Windows picks from (via resources.pri)
+    static int StoreAssets(string dir)
+    {
+        Directory.CreateDirectory(dir);
+        Action<string, int> square = (name, s) => { using (Bitmap b = Render(s)) b.Save(Path.Combine(dir, name), ImageFormat.Png); };
+        foreach (int sc in new[] { 100, 125, 150, 200, 400 })
+        {
+            square("Square44x44Logo.scale-" + sc + ".png", 44 * sc / 100);
+            square("Square150x150Logo.scale-" + sc + ".png", 150 * sc / 100);
+            square("StoreLogo.scale-" + sc + ".png", 50 * sc / 100);
+            using (Bitmap w = Wide(310 * sc / 100, 150 * sc / 100)) w.Save(Path.Combine(dir, "Wide310x150Logo.scale-" + sc + ".png"), ImageFormat.Png);
+        }
+        // taskbar / Start list sizes (unplated = drawn on its own tile, no accent colour behind)
+        foreach (int t in new[] { 16, 20, 24, 30, 32, 36, 40, 48, 60, 64, 72, 80, 96, 256 })
+        {
+            square("Square44x44Logo.targetsize-" + t + ".png", t);
+            square("Square44x44Logo.targetsize-" + t + "_altform-unplated.png", t);
+            square("Square44x44Logo.targetsize-" + t + "_altform-lightunplated.png", t);
+        }
+        Console.WriteLine("store assets -> " + dir);
+        return 0;
+    }
+
+    // wide tile: the icon on the navy gradient, with the name
+    static Bitmap Wide(int w, int h)
+    {
+        var bmp = new Bitmap(w, h, PixelFormat.Format32bppArgb);
+        using (Graphics g = Graphics.FromImage(bmp))
+        {
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
+            using (var br = new LinearGradientBrush(new Rectangle(0, 0, w, h), NavyDeep, Navy, 90f)) g.FillRectangle(br, 0, 0, w, h);
+            int s = (int)(h * 0.62f);
+            using (Bitmap icon = Render(s)) g.DrawImage(icon, (int)(w * 0.08f), (h - s) / 2, s, s);
+            using (var f = new Font("Segoe UI Semibold", h * 0.13f, FontStyle.Regular, GraphicsUnit.Pixel))
+            using (var b = new SolidBrush(White))
+            {
+                var r = new RectangleF(w * 0.08f + s + w * 0.06f, 0, w, h);
+                var sf = new StringFormat { LineAlignment = StringAlignment.Center };
+                g.DrawString("Super Speed\nNote", f, b, r, sf);
+            }
+        }
+        return bmp;
     }
 
     static Bitmap Render(int s)

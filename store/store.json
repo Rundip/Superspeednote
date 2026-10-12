@@ -1,0 +1,8 @@
+{
+  "_comment": "Values from Partner Center > Super speed note > Product management > Product identity. DisplayName must match the reserved app name exactly.",
+  "IdentityName": "Mukhodeveloper.Superspeednote",
+  "Publisher": "CN=79DCA1E1-BDCC-43D1-A79C-51DC6C8CFF1D",
+  "PublisherDisplayName": "Mukhodeveloper",
+  "DisplayName": "Super speed note",
+  "StoreId": "9N4JKW5GFTHS"
+}
