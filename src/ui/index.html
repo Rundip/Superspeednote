@@ -204,7 +204,7 @@ body.sb-off #sidebar{display:none}
 #findCount{font:600 11.5px "Segoe UI",var(--ui);color:var(--ink-3);min-width:44px;text-align:right;padding-right:4px}
 #findbar .tb{height:26px;min-width:26px;padding:0}
 #scroller{flex:1;min-height:0;overflow:auto;position:relative}
-#sheet{position:relative;min-height:100%}
+#sheet{position:relative;min-height:100%;overflow-x:clip}
 #editor{position:relative;outline:none;min-height:100%;padding:30px 52px 42vh;font-family:var(--ef);font-size:var(--fs);line-height:1.75;color:var(--ink);white-space:pre-wrap;overflow-wrap:break-word;tab-size:4;user-select:text;caret-color:var(--accent);cursor:text}
 #editor.is-empty::before{content:attr(data-ph);position:absolute;left:52px;top:30px;color:var(--ink-3);opacity:.85;pointer-events:none;white-space:pre-line}
 #editor div,#editor p{margin:0}
@@ -226,7 +226,7 @@ body.sb-off #sidebar{display:none}
 #editor hr{border:0;height:14px;margin:.6em 0;background:linear-gradient(90deg,var(--accent),transparent) center/100% 2px no-repeat}   /* 14px tall: easy to click and select */
 #editor a{color:var(--accent-ink);text-decoration:underline;text-underline-offset:2px}
 #editor img{max-width:100%;border-radius:8px;vertical-align:bottom}
-#editor table.t{border-collapse:collapse;margin:1.6em 0;display:block;width:max-content;max-width:100%;overflow-x:auto}
+#editor table.t{border-collapse:collapse;margin:max(1.6em,26px) 0;display:block;width:max-content;max-width:100%;overflow-x:auto}
 #editor table.t td{border:1px solid var(--line-2);padding:.42em .8em;min-width:5.5em;vertical-align:top;line-height:1.55}
 #editor table.t.hdr tr:first-child td{background:var(--th-bg);color:var(--th-ink);font-weight:700}
 ::highlight(ssn-find){background-color:rgba(255,200,40,.45)}
@@ -245,7 +245,7 @@ body.sb-off #sidebar{display:none}
 .tbar{position:absolute;pointer-events:auto;border-radius:7px;display:grid;place-items:center;color:var(--accent);background:color-mix(in srgb,var(--accent) 6%,transparent);border:1px dashed color-mix(in srgb,var(--accent) 38%,transparent);opacity:.6;transition:opacity .12s,background .12s,border-color .12s;touch-action:none}
 .tbar .i{width:12px;height:12px;stroke-width:2.6}
 .tbar:hover,.tbar.drag{opacity:1;background:var(--accent-soft);border:1px solid var(--accent)}
-.tbar.b{left:0;right:0;bottom:-24px;height:16px;cursor:row-resize}
+.tbar.b{left:0;right:0;bottom:-22px;height:16px;cursor:row-resize}
 .tbar.r{top:0;bottom:0;right:-24px;width:16px;cursor:col-resize}
 .tghost{position:absolute;display:none;pointer-events:none;border:1.5px dashed var(--accent);border-radius:4px}
 .tghost span{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);padding:2px 9px;border-radius:999px;background:var(--accent);color:#fff;font:700 11.5px "Segoe UI",var(--ui);white-space:nowrap}
@@ -255,7 +255,7 @@ body.sb-off #sidebar{display:none}
 .tins .i{width:11px;height:11px;stroke-width:3}
 .tinsln{position:absolute;left:0;top:0;display:none;background:var(--accent);opacity:.7;border-radius:2px}
 .tinsln.show{display:block}
-.tgrip{position:absolute;pointer-events:auto;left:-28px;top:-27px;width:18px;height:18px;border-radius:5px;display:grid;place-items:center;color:var(--ink-3);background:var(--paper);border:1px solid var(--line-2);opacity:.8}
+.tgrip{position:absolute;pointer-events:auto;left:-28px;top:-24px;width:18px;height:18px;border-radius:5px;display:grid;place-items:center;color:var(--ink-3);background:var(--paper);border:1px solid var(--line-2);opacity:.8}
 .tgrip:hover{color:var(--accent);border-color:var(--accent);opacity:1}
 .tgrip .i{width:11px;height:11px;stroke-width:2.2}
 #cellbox{position:absolute;border:2px solid var(--accent);border-radius:3px;display:none;pointer-events:none}
@@ -275,7 +275,7 @@ body.sb-off #sidebar{display:none}
 .mit .i{width:16px;height:16px;color:var(--ink-2)}
 .mit>i{width:16px;flex:none}
 .mit span{flex:1}
-.mit kbd{color:var(--ink-3);margin-left:18px}
+.mit kbd{color:var(--ink-2);margin-left:18px}
 .mit.danger,.mit.danger .i{color:#e5484d}
 .mit:disabled{opacity:.38;pointer-events:none}
 .mit.on{color:var(--accent-ink)}
@@ -287,9 +287,9 @@ body.sb-off #sidebar{display:none}
 .sw.on::after{content:'';position:absolute;inset:-4px;border-radius:50%;border:2px solid var(--accent)}
 .sw.none{background:linear-gradient(135deg,transparent 44%,#e5484d 44% 56%,transparent 56%),var(--paper)}
 .sw.txt{display:grid;place-items:center;font:800 13px "Segoe UI";background:var(--paper)}
-.bl{display:flex;align-items:center;width:100%;padding:6px 10px;border-radius:8px;text-align:left;gap:10px}
-.bl:hover{background:var(--hover)}
-.bl kbd{margin-left:auto;color:var(--ink-3)}
+.blk{display:flex;align-items:center;width:100%;padding:6px 10px;border-radius:8px;text-align:left;gap:10px}
+.blk:hover{background:var(--hover)}
+.blk kbd{margin-left:auto;color:var(--ink-2)}
 .tgrid{display:grid;grid-template-columns:repeat(8,19px);gap:3px;padding:8px 8px 4px}
 .tgrid i{width:19px;height:19px;border-radius:4px;border:1px solid var(--line-2);background:var(--paper)}
 .tgrid i.on{background:var(--accent-soft);border-color:var(--accent)}
@@ -443,7 +443,7 @@ body.pal-pop #toasts{bottom:56px}
 .rz.l{left:0;top:8px;bottom:8px;width:5px;cursor:ew-resize}.rz.r{right:0;top:8px;bottom:8px;width:5px;cursor:ew-resize}
 .rz.tl{left:0;top:0;width:8px;height:8px;cursor:nwse-resize}.rz.tr{right:0;top:0;width:8px;height:8px;cursor:nesw-resize}
 .rz.bl{left:0;bottom:0;width:8px;height:8px;cursor:nesw-resize}.rz.br{right:0;bottom:0;width:10px;height:10px;cursor:nwse-resize}
-body.maxed .rz,body.web .rz{display:none}
+body.maxed:not(.quick) .rz,body.web .rz{display:none}
 @media (max-width:820px){#sidebar{display:none}.hero,.grid,.board-foot{padding-left:22px;padding-right:22px}}
 </style>
 </head>
@@ -1442,13 +1442,16 @@ function topLevel(n) { while (n && n.parentNode !== editor) n = n.parentNode; re
 const loose = c => !!c && (c.nodeType === 3 || (c.nodeType === 1 && !BLOCK_TAGS.test(c.nodeName)));
 function needsRoot() {
   if (!editor.firstChild) return true;
+  const r0 = selRange();
+  if (r0 && r0.startContainer.nodeType === 3 && r0.startContainer.parentNode === editor) return true;   // bare text at the top
   const n = selNode();
   return loose(editor.firstChild) || (!!n && n !== editor && loose(topLevel(n)));
 }
 function ensureRoot() {
   if (!editor.firstChild) { editor.innerHTML = '<div><br></div>'; placeCaret(editor.firstChild, false); return; }
-  const n = selNode();
-  const top = n && n !== editor ? topLevel(n) : null;
+  const n = selNode(), r0 = selRange();
+  const top = r0 && r0.startContainer.parentNode === editor && r0.startContainer.nodeType === 3 ? r0.startContainer   // typed after a table / divider
+    : n && n !== editor ? topLevel(n) : null;
   const bad = loose;
   const start = bad(top) ? top : bad(editor.firstChild) ? editor.firstChild : null;
   if (!start) return;
@@ -1588,8 +1591,14 @@ editor.addEventListener('keydown', e => {
   if (e.key === ' ' && mdShortcut()) { e.preventDefault(); return; }
   if (e.key === 'Enter' && !e.shiftKey && hrShortcut()) { e.preventDefault(); return; }
 });
+function inNavRect(td) {
+  if (!td || !navLive() || td.closest('table') !== nav.t) return false;
+  const rc = navRect(), ri = td.parentElement.rowIndex, ci = td.cellIndex;
+  return ri >= rc.r0 && ri <= rc.r1 && ci >= rc.c0 && ci <= rc.c1;
+}
 editor.addEventListener('mousedown', e => {
-  if (e.button === 0) mouseSel = true;
+  if (e.button === 0) { mouseSel = true; dragFrom = !e.shiftKey && e.detail < 2 && e.target.closest ? e.target.closest('td') : null; }
+  if (e.button === 2 && inNavRect(e.target.closest && e.target.closest('td'))) { e.preventDefault(); return; }   // right-click keeps the range
   const td = e.button === 0 && e.target.closest && e.target.closest('td');
   if (td && editor.contains(td) && td !== editCell) {
     if (e.shiftKey && nav && nav.t === td.closest('table')) {   // Shift+click extends the cell range
@@ -1597,7 +1606,11 @@ editor.addEventListener('mousedown', e => {
       setNav(nav.t, td.parentElement.rowIndex, td.cellIndex, true);
       return;
     }
-    if (e.detail < 2) { nav = null; editCell = null; }          // a fresh click selects just that cell
+    if (e.detail < 2) {                                         // a fresh click selects just that cell
+      // the parked text is really selected: pressing on it would start a drag that moves it - drop it first
+      if (parked) { const cr = document.caretRangeFromPoint(e.clientX, e.clientY); if (cr) { const s = getSelection(); s.removeAllRanges(); s.addRange(cr); } parked = null; }
+      nav = null; editCell = null;
+    }
   }
   const li = e.target.closest && e.target.closest('ul.checklist > li');
   if (li && e.target === li && e.offsetX < parseFloat(getComputedStyle(li).paddingLeft)) {
@@ -1792,7 +1805,7 @@ function toolPop(kind, anchor) {
   const r = anchor.getBoundingClientRect();
   if (kind === 'block') {
     const look = { div: 'font-size:13.5px', h1: 'font-size:19px;font-weight:800', h2: 'font-size:16.5px;font-weight:750', h3: 'font-size:14.5px;font-weight:700', blockquote: 'font-size:13.5px;border-left:3px solid var(--accent);padding-left:8px', pre: 'font:12.5px var(--mono)' };
-    showPop(r.left, r.bottom + 6, BLOCKS.map(([t, l, k]) => `<button class="bl" data-v="${t}"><span style="${look[t]}">${l}</span><kbd>${esc(k.trim())}</kbd></button>`).join(''),
+    showPop(r.left, r.bottom + 6, BLOCKS.map(([t, l, k]) => `<button class="blk" data-v="${t}"><span style="${look[t]}">${l}</span><kbd>${esc(k.trim())}</kbd></button>`).join(''),
       b => { setBlock(b.dataset.v); });
   } else if (kind === 'fg') {
     showPop(r.left, r.bottom + 6, `<div class="mlabel">글자색 · 잘 보이는 색만 골랐어요</div><div class="swatches">${FG.map(c => c.v
@@ -1969,7 +1982,7 @@ function tblAct(op) {
 let nav = null;                                   // { t, ar, ac, fr, fc }  anchor / focus row + column
 let editCell = null, editKind = '', editOrig = '';
 let tabFrom = -1;                                 // column a run of Tabs started in: Enter goes back to it, like Excel
-let parked = null, mouseSel = false, parkAfterMouse = false;
+let parked = null, mouseSel = false, parkAfterMouse = false, dragFrom = null;   // dragFrom: the cell a mouse drag began in
 const ARROWS = { ArrowUp: [-1, 0], ArrowDown: [1, 0], ArrowLeft: [0, -1], ArrowRight: [0, 1] };
 function cellAt(t, r, c) { const tr = t.rows[r]; return tr ? tr.cells[Math.min(c, tr.cells.length - 1)] || null : null; }
 function navRect() { return { t: nav.t, r0: Math.min(nav.ar, nav.fr), r1: Math.max(nav.ar, nav.fr), c0: Math.min(nav.ac, nav.fc), c1: Math.max(nav.ac, nav.fc) }; }
@@ -2035,11 +2048,12 @@ function beginReplace() {                         // a key typed on a selected c
 // the IME's first key on a selected cell: no DOM or selection change here (see parkNav) - the composition replaces
 // the parked selection by itself; we only switch the cell to editing
 function imeReplace() {
-  const td = cellAt(nav.t, nav.fr, nav.fc);
+  const r = selRange(), td = (r && cellOf(r.startContainer)) || cellAt(nav.t, nav.fr, nav.fc);
   if (!td) return;
+  const row = td.parentElement.rowIndex, col = td.cellIndex;
   editCell = td; editKind = 'type'; editOrig = td.innerHTML;
-  nav = { t: nav.t, ar: nav.fr, ac: nav.fc, fr: nav.fr, fc: nav.fc };
-  editor.classList.remove('cellnav');
+  nav = { t: td.closest('table'), ar: row, ac: col, fr: row, fc: col };
+  requestAnimationFrame(() => { if (editCell === td) editor.classList.remove('cellnav'); });   // not even a class change on this key
   posOvSoon();
 }
 function leaveTable(t, up) {
@@ -2066,8 +2080,9 @@ function navTab(t, back) {
   if (c >= C) edit(() => addCol(t, C));           // Tab on the last column adds a column
   if (c < 0) { c = C - 1; r--; }
   if (r < 0) { setNav(t, 0, 0); return; }
+  const sameRow = r === nav.fr;
   setNav(t, r, c);
-  if (!back) tabFrom = from;
+  if (sameRow) tabFrom = from;                    // Shift+Tab within the run keeps where it began
 }
 function navKey(e) {
   const t = nav.t, mod = e.ctrlKey || e.metaKey, k = e.key;
@@ -2090,7 +2105,7 @@ function navKey(e) {
   if (mod && e.code === 'KeyA' && !e.shiftKey) {  // first Ctrl+A: the whole table, second: the whole note
     const rc = navRect();
     if (rc.r0 || rc.c0 || rc.r1 < t.rows.length - 1 || rc.c1 < tableCols(t) - 1) {
-      e.preventDefault(); nav.ar = 0; nav.ac = 0; nav.fr = t.rows.length - 1; nav.fc = tableCols(t) - 1; posOv(); return true;
+      e.preventDefault(); nav.ar = 0; nav.ac = 0; nav.fr = t.rows.length - 1; nav.fc = tableCols(t) - 1; parkNav(cellAt(t, nav.fr, nav.fc)); posOv(); return true;
     }
     clearNav(); return false;
   }
@@ -2103,7 +2118,7 @@ function editKey(e) {
   const td = editCell;
   if (!td.isConnected) { clearNav(); return false; }
   const t = td.closest('table'), r = td.parentElement.rowIndex, c = td.cellIndex;
-  const back = () => { nav = { t, ar: r, ac: c, fr: r, fc: c }; editCell = null; };
+  const back = () => { histCommit(); nav = { t, ar: r, ac: c, fr: r, fc: c }; editCell = null; };
   if (e.key === 'Escape') {                      // cancel the edit
     e.preventDefault(); e.stopPropagation();
     if (td.innerHTML !== editOrig) { td.innerHTML = editOrig; markDirty(); histSoon(); }
@@ -2134,7 +2149,7 @@ function editKey(e) {
 // the caret landing in a cell (click, arrow from outside, Tab, paste ...) selects that cell
 function syncNav() {
   const r = selRange();
-  if (!r) return;                                 // focus is in the title / find box: keep the state
+  if (!r || objSel) return;                       // focus is in the title / find box (or a picture is selected): keep the state
   const a = cellOf(r.startContainer), b = cellOf(r.endContainer);
   if (!a && !b) { if (nav || editCell) clearNav(); return; }
   if (a !== b) return;                            // dragging across cells: decided on mouseup
@@ -2146,7 +2161,8 @@ function syncNav() {
     else if (mouseSel) parkAfterMouse = true; else parkNav(a);   // a stray caret (right-click ...): park again
     return;
   }
-  if (!r.collapsed) { startEdit('f2', a, true); return; }   // text selected inside one cell = editing it
+  // text selected inside one cell = editing it - unless it is the whole cell coming back (undo, reopening the note)
+  if (!r.collapsed && (mouseSel || !a.textContent || r.toString() !== a.textContent)) { startEdit('f2', a, true); return; }
   nav = { t, ar: ri, ac: ci, fr: ri, fc: ci };
   editCell = null; tabFrom = -1;
   editor.classList.add('cellnav');
@@ -2176,10 +2192,21 @@ editor.addEventListener('dblclick', e => {
   startEdit('f2', td, true);
   if (cr && td.contains(cr.startContainer)) { const s = getSelection(); s.removeAllRanges(); s.addRange(cr); }
 });
-document.addEventListener('mouseup', () => {
-  const park = parkAfterMouse;
-  mouseSel = parkAfterMouse = false;
-  if (view !== 'editor' || editCell) return;
+document.addEventListener('mouseup', e => {
+  const park = parkAfterMouse, from = dragFrom;
+  mouseSel = parkAfterMouse = false; dragFrom = null;
+  if (view !== 'editor') return;
+  // a drag from one cell to another is exactly that range - wherever in the cells it began and ended
+  const at = from && document.elementFromPoint(e.clientX, e.clientY), to = at && at.closest && at.closest('td');
+  if (to && to !== from && editor.contains(to) && from.isConnected && to.closest('table') === from.closest('table')) {
+    const t = to.closest('table');
+    nav = { t, ar: from.parentElement.rowIndex, ac: from.cellIndex, fr: to.parentElement.rowIndex, fc: to.cellIndex };
+    editCell = null; tabFrom = -1;
+    editor.classList.add('cellnav');
+    parkNav(to); showOv(t); posOv(); updateToolbar();
+    return;
+  }
+  if (editCell) return;
   const rc = domCellRect();                       // a mouse drag across cells becomes a cell range
   if (!rc) { const f = park && navLive() && cellAt(nav.t, nav.fr, nav.fc); if (f) parkNav(f); return; }
   const s = getSelection(), fa = cellOf(s.anchorNode), ff = cellOf(s.focusNode);
@@ -2256,7 +2283,7 @@ function insHit(t, x, y) {
   if (!t.rows.length || !t.rows[0].cells.length) return null;
   const r = t.getBoundingClientRect();
   if (x < r.left + 3 && x >= r.left - 44 && y >= r.top - 6 && y <= r.bottom + 6) return { row: true, i: rowBorder(t, y) };
-  if (y < r.top + 3 && y >= r.top - 26 && x >= r.left - 6 && x <= r.right + 6) return { row: false, i: colBorder(t, x) };
+  if (y < r.top + 3 && y >= r.top - 24 && x >= r.left - 6 && x <= r.right + 6) return { row: false, i: colBorder(t, x) };
   return null;
 }
 // the marker and its guide line move by transform only (no layout); size / tooltip are written only when they change
@@ -2271,7 +2298,7 @@ function placeIns() {
       const rows = t.rows, i = Math.min(insAt.i, rows.length);
       y = (i < rows.length ? rows[i].getBoundingClientRect().top : rows[rows.length - 1].getBoundingClientRect().bottom) - tr.top;
       x = -22;
-      tinsln.style.transform = `translate(0,${y - 1.5}px)`;
+      tinsln.style.translate = `0 ${y - 1.5}px`;
       ln = `${tr.width}px 3px`;
       tip = i === 0 ? '맨 위에 행 삽입' : i >= rows.length ? '맨 아래에 행 삽입' : '여기에 행 삽입';
     } else {
@@ -2279,11 +2306,11 @@ function placeIns() {
       x = (j < cells.length ? cells[j].getBoundingClientRect().left : cells[cells.length - 1].getBoundingClientRect().right) - tr.left;
       y = -15;
       ok = x >= -2 && x <= tr.width + 2;            // a wide table scrolled sideways: border out of view
-      tinsln.style.transform = `translate(${x - 1.5}px,0)`;
+      tinsln.style.translate = `${x - 1.5}px 0`;
       ln = `3px ${tr.height}px`;
       tip = j === 0 ? '맨 왼쪽에 열 삽입' : j >= cells.length ? '맨 오른쪽에 열 삽입' : '여기에 열 삽입';
     }
-    tins.style.transform = `translate(${x}px,${y}px)`;
+    tins.style.translate = `${x}px ${y}px`;     // not transform: the hover `scale` would scale the offset too
     if (ln !== insLn) { insLn = ln; const [w, h] = ln.split(' '); tinsln.style.width = w; tinsln.style.height = h; }
     if (tip !== insTip) { insTip = tip; tins.title = tip; }
   }
@@ -2351,13 +2378,14 @@ function finishBar(commit) {
   d.b.classList.remove('drag');
   showGhost();
   const t = d.t;
-  if (!commit || !t.isConnected) { posOvSoon(); return; }
+  if (!commit || !t.isConnected || view !== 'editor' || !editor.contains(t)) { posOvSoon(); return; }
   const r = nav && nav.t === t ? nav.fr : 0, c = nav && nav.t === t ? nav.fc : 0;
   clearObj();
   if (d.row) { const r0 = t.rows.length; edit(() => { for (let k = 0; k < d.n; k++) addRow(t, t.rows.length); }); setNav(t, r0, c); }
   else { const c0 = tableCols(t); edit(() => { for (let k = 0; k < d.n; k++) addCol(t, tableCols(t)); }); setNav(t, r, c0); }
   if (d.n > 1) toast(`${d.n}${d.row ? '행' : '열'}을 추가했어요`);
 }
+document.addEventListener('keydown', e => { if (barDrag && e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); finishBar(false); } }, true);
 for (const b of $$('.tbar', ov)) {
   b.addEventListener('pointerdown', e => {
     if (e.button !== 0 || !ovTable || !ovTable.rows.length) return;
@@ -2441,6 +2469,12 @@ function objKey(e) {
   if (/^(Control|Shift|Alt|Meta)$/.test(e.key) || (mod && /^Key[CX]$/.test(e.code))) return false;   // copy / cut keep it
   const el = objSel;
   clearObj();
+  // a divider / table on its own line: arrows step to the line before / after it
+  const back = /^Arrow(Up|Left)$/.test(e.key), fwd = /^Arrow(Down|Right)$/.test(e.key);
+  if ((back || fwd) && !mod && !e.altKey && !e.shiftKey && el.parentNode === editor) {
+    const to = back ? el.previousElementSibling : el.nextElementSibling;
+    if (to && !/^(TABLE|HR)$/.test(to.nodeName)) { e.preventDefault(); placeCaret(to, back); return true; }
+  }
   if (e.key !== 'Escape') return false;           // anything else: let go, the key does its usual job
   e.preventDefault(); e.stopPropagation();
   if (el.nodeName !== 'TABLE') { const s = getSelection(); if (s.rangeCount) s.collapseToEnd(); }
@@ -2505,27 +2539,29 @@ function gridFromHtml(html) {
 // An HTML table as a full grid. Merged cells are spread out (the value stays in the top-left cell, like Excel's
 // unmerge) - skipping rowspan shifted every cell under a merge one column left. Excel's hidden helper row
 // (<tr style='display:none'> under "supportMisalignedColumns") is left out.
+function helperRow(tr) {                         // Excel: display:none; Word: an empty height=0 row
+  return tr.hidden || (tr.style && tr.style.display === 'none') || (tr.getAttribute('height') === '0' && !tr.textContent.trim());
+}
 function tableGrid(table, read, blank) {
+  const trs = Array.from(table.rows).filter(tr => !helperRow(tr));
   const rows = [];
-  let r = 0;
-  for (const tr of table.rows) {
-    if (tr.hidden || (tr.style && tr.style.display === 'none')) continue;
+  let w = 0;                                      // columns some cell starts in (a colspan="100" doesn't widen the table)
+  trs.forEach((tr, r) => {
     const row = rows[r] || (rows[r] = []);
     let c = 0;
     for (const td of tr.cells) {
       while (row[c] !== undefined) c++;           // slot taken by a merge from a row above
-      const cs = clamp(+td.colSpan || 1, 1, 50), rs = clamp(+td.rowSpan || 1, 1, 500);
+      const cs = clamp(+td.colSpan || 1, 1, 200), rs = clamp(+td.rowSpan || 1, 1, trs.length - r);
       for (let i = 0; i < rs; i++) {
         const rr = rows[r + i] || (rows[r + i] = []);
         for (let j = 0; j < cs; j++) rr[c + j] = i || j ? blank : read(td);
       }
+      w = Math.max(w, c + 1);
       c += cs;
     }
-    r++;
-  }
-  rows.length = r;                                // a rowspan reaching past the last row adds nothing
-  const w = Math.max(0, ...rows.map(x => x.length));
-  for (const x of rows) for (let j = 0; j < w; j++) if (x[j] === undefined) x[j] = blank;
+  });
+  rows.length = trs.length;
+  for (const x of rows) { x.length = Math.min(x.length, w); for (let j = 0; j < w; j++) if (x[j] === undefined) x[j] = blank; }
   return rows;
 }
 function cellText(td) {
@@ -2659,7 +2695,7 @@ function sanitize(html) {
       if (n.nodeType !== 1) continue;
       let tag = n.nodeName.toUpperCase();
       if (DROP.has(tag)) continue;
-      if (tag === 'TR' && (n.hidden || (n.style && n.style.display === 'none'))) continue;   // Excel's hidden helper row
+      if (tag === 'TR' && helperRow(n)) continue;   // Excel's / Word's hidden helper row
       tag = RENAME[tag] || tag;
       const stl = n.style || {};
       const fw = stl.fontWeight || '';
@@ -2693,6 +2729,8 @@ function sanitize(html) {
   out.querySelectorAll('table').forEach(t => {
     if (!t.rows.length) { t.remove(); return; }
     // one cell per slot: merged cells spread out, short rows padded (the editor's tables are plain grids)
+    const loose = Array.from(t.childNodes).filter(n => !/^(TBODY|TR)$/.test(n.nodeName));   // a caption's text
+    if (loose.some(n => n.textContent.trim())) { const d = document.createElement('div'); loose.forEach(n => d.appendChild(n)); t.before(d); }
     const g = tableGrid(t, td => td, null), tb = document.createElement('tbody');
     for (const row of g) {
       const tr = tb.insertRow();
@@ -2752,7 +2790,8 @@ editor.addEventListener('contextmenu', e => {
   e.preventDefault();
   const s = getSelection();
   const r = s.rangeCount ? s.getRangeAt(0) : null;
-  const inSel = r && !r.collapsed && Array.from(r.getClientRects()).some(b => e.clientX >= b.left && e.clientX <= b.right && e.clientY >= b.top && e.clientY <= b.bottom);
+  const inSel = inNavRect(e.target.closest && e.target.closest('td')) ||
+    (r && !r.collapsed && Array.from(r.getClientRects()).some(b => e.clientX >= b.left && e.clientX <= b.right && e.clientY >= b.top && e.clientY <= b.bottom));
   if (!inSel) { const cr = document.caretRangeFromPoint(e.clientX, e.clientY); if (cr) { s.removeAllRanges(); s.addRange(cr); } }
   const img = e.target.closest && e.target.closest('img');
   const td = e.target.closest && e.target.closest('td');
@@ -2787,7 +2826,7 @@ editor.addEventListener('contextmenu', e => {
       { label: '형광펜', icon: 'i-marker', kbd: kl('hl'), action: toggleHl },
       { label: '서식 지우기', icon: 'i-eraser', kbd: kl('clearFmt'), action: clearFmt });
   }
-  items.push({ sep: true }, { label: '모두 선택', kbd: 'Ctrl+A', action: () => { editor.focus(); exec('selectAll'); } });
+  items.push({ sep: true }, { label: '모두 선택', kbd: td ? '' : 'Ctrl+A', action: () => { clearNav(); editor.focus(); exec('selectAll'); } });
   showMenu(e.clientX, e.clientY, items);
 });
 
@@ -2915,17 +2954,20 @@ pop.addEventListener('mousemove', e => {
 // While a menu is open the keyboard drives it; any other key closes it and then does its usual job,
 // so the shortcuts printed in the menu (Ctrl+C, Ctrl+B ...) work right there.
 document.addEventListener('keydown', e => {
-  if (pop.hidden || e.isComposing || e.keyCode === 229) return;
-  if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closePop(); return; }
+  if (pop.hidden || e.isComposing || e.keyCode === 229) return;   // Korean typing closes it on compositionstart (below)
+  const plain = !e.ctrlKey && !e.altKey && !e.metaKey && !e.shiftKey;
+  // a row that prints this very key (Enter / F2 / Del / Esc in the note menus) runs, wherever the menu was opened
+  const row = menuOn && plain ? $$('.mit:not(:disabled)', pop).find(b => { const k = b.querySelector('kbd'); return k && k.textContent === (e.key === 'Escape' ? 'Esc' : keyName(codeOf(e))); }) : null;
+  if (e.key === 'Escape' && !row) { e.preventDefault(); e.stopPropagation(); closePop(); return; }
   if (!menuOn) return;
-  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); e.stopPropagation(); menuMove(e.key === 'ArrowDown' ? 1 : -1); return; }
-  if (e.key === 'Enter' && !e.ctrlKey && !e.altKey && !e.metaKey) {
-    const b = $('.mit.cur', pop);
-    if (b) { e.preventDefault(); e.stopPropagation(); b.click(); return; }
-  }
+  if (plain && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) { e.preventDefault(); e.stopPropagation(); menuMove(e.key === 'ArrowDown' ? 1 : -1); return; }
+  const cur = plain && e.key === 'Enter' && $('.mit.cur', pop);
+  if (cur || row) { e.preventDefault(); e.stopPropagation(); (cur || row).click(); return; }
   if (/^(Control|Shift|Alt|Meta|AltGraph|HangulMode|HanjaMode)$/.test(e.key)) return;
   closePop();
 }, true);
+// the IME's first key is keyCode 229 (left alone above, no DOM work allowed then): close the menu once it composes
+editor.addEventListener('compositionstart', () => { if (menuOn) closePop(); });
 function colorMenu(id, x, y) {
   const n = noteById(id);
   if (n) showMenu(x, y, [{ colors: true, value: n.color, pick: c => setColor(id, c) }]);

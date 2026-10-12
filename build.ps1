@@ -33,16 +33,17 @@ if (-not (Test-Path $coreDll)) {
 $ico = Join-Path $assets 'app.ico'
 $genSrc = Join-Path $root 'tools\IconGen.cs'
 $genStamp = Join-Path $obj 'icongen.sha256'
-$genHash = (Get-FileHash $genSrc -Algorithm SHA256).Hash
+# the stamp pairs the generator with the icon it made: a changed generator, or an icon put back by git, redraws it
+function IconStamp { (Get-FileHash $genSrc -Algorithm SHA256).Hash + ':' + $(if (Test-Path $ico) { (Get-FileHash $ico -Algorithm SHA256).Hash } else { '' }) }
 $genOld = if (Test-Path $genStamp) { (Get-Content $genStamp -Raw).Trim() } else { '' }
-if ($Icon -or -not (Test-Path $ico) -or $genOld -ne $genHash) {
+if ($Icon -or -not (Test-Path $ico) -or $genOld -ne (IconStamp)) {
     Write-Host 'Generating icon ...'
     $gen = Join-Path $obj 'IconGen.exe'
     & $csc /nologo /optimize+ /out:$gen /reference:System.Drawing.dll $genSrc
     if ($LASTEXITCODE) { throw 'IconGen compile failed' }
     & $gen $ico $assets
     if ($LASTEXITCODE) { throw 'IconGen failed' }
-    Set-Content -Path $genStamp -Value $genHash -Encoding ascii
+    Set-Content -Path $genStamp -Value (IconStamp) -Encoding ascii
 }
 
 # 3) A running copy locks the exe: ask it to save and exit first. Notes live in %APPDATA%, never in dist\,

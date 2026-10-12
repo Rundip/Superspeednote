@@ -475,9 +475,16 @@ namespace SuperSpeedNote
         }
 
         // ---------- double-click a window edge: stretch it to the screen that way, again: back ----------
-        IntPtr stretchWnd;
-        readonly int[] stretchFrom = new int[4];          // left, top, right, bottom before that edge was stretched
-        readonly bool[] stretched = new bool[4];
+        // One record per window (main / quick memo). "Back" only applies while the window is exactly where the
+        // stretch left it, on the same screen: once it was moved, snapped or resized, a double-click stretches again.
+        sealed class StretchState
+        {
+            public readonly int[] From = new int[4];      // left, top, right, bottom before that edge was stretched
+            public readonly bool[] On = new bool[4];
+            public Rectangle Result;
+            public string Screen;
+        }
+        readonly StretchState stretchMain = new StretchState(), stretchQuick = new StretchState();
         string lastEdge;
         int lastEdgeTick;
         Point lastEdgePt;
@@ -498,29 +505,32 @@ namespace SuperSpeedNote
             lastEdge = null;
             Form f = quickShown ? (Form)quick : this;     // the quick memo stretches itself
             if (string.IsNullOrEmpty(edge) || Native.IsZoomed(f.Handle) || f.WindowState == FormWindowState.Minimized) return;
-            if (stretchWnd != f.Handle) { stretchWnd = f.Handle; Array.Clear(stretched, 0, 4); }
-            Rectangle b = f.Bounds, wa = Screen.FromHandle(f.Handle).WorkingArea;
+            StretchState st = f == this ? stretchMain : stretchQuick;
+            Screen scr = Screen.FromHandle(f.Handle);
+            Rectangle b = f.Bounds, wa = scr.WorkingArea;
+            if (b != st.Result || scr.DeviceName != st.Screen) Array.Clear(st.On, 0, 4);   // moved / resized since: nothing to put back
             int[] cur = { b.Left, b.Top, b.Right, b.Bottom }, lim = { wa.Left, wa.Top, wa.Right, wa.Bottom };
             bool[] on = { edge.IndexOf('l') >= 0, edge.IndexOf('t') >= 0, edge.IndexOf('r') >= 0, edge.IndexOf('b') >= 0 };
             bool atLimit = true, any = false;
-            for (int i = 0; i < 4; i++) if (on[i]) { if (cur[i] != lim[i]) atLimit = false; if (stretched[i]) any = true; }
+            for (int i = 0; i < 4; i++) if (on[i]) { if (cur[i] != lim[i]) atLimit = false; if (st.On[i]) any = true; }
             bool back = atLimit && any;                   // every clicked edge already stretched: put them back
             int[] next = (int[])cur.Clone();
             for (int i = 0; i < 4; i++)
             {
                 if (!on[i]) continue;
-                if (back) { if (stretched[i]) next[i] = stretchFrom[i]; }
+                if (back) { if (st.On[i]) next[i] = st.From[i]; }
                 else next[i] = lim[i];
             }
             Size min = f.MinimumSize;
-            if (next[2] - next[0] < min.Width || next[3] - next[1] < min.Height) { Array.Clear(stretched, 0, 4); return; }   // stale "before"
+            if (next[2] - next[0] < min.Width || next[3] - next[1] < min.Height) { Array.Clear(st.On, 0, 4); return; }
             for (int i = 0; i < 4; i++)
             {
                 if (!on[i]) continue;
-                if (back) stretched[i] = false;
-                else if (cur[i] != lim[i]) { stretchFrom[i] = cur[i]; stretched[i] = true; }
+                if (back) st.On[i] = false;
+                else if (cur[i] != lim[i]) { st.From[i] = cur[i]; st.On[i] = true; }
             }
             f.Bounds = Rectangle.FromLTRB(next[0], next[1], next[2], next[3]);
+            st.Result = f.Bounds; st.Screen = scr.DeviceName;
         }
 
         // ---------- show / hide / focus ----------
