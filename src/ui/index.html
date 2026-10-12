@@ -895,7 +895,7 @@ function unwrap(el) { const p = el.parentNode; if (!p) return; while (el.firstCh
 
 // ---------------------------------------------------------------- saving
 let dirty = false, saveT = 0, stateT = 0, stateDirty = false;
-function markDirty() { dirty = true; setSave(true); clearTimeout(saveT); saveT = setTimeout(flushNote, 400); }
+function markDirty() { dirty = true; freshIds.delete(cur); setSave(true); clearTimeout(saveT); saveT = setTimeout(flushNote, 400); }
 function flushNote() {
   clearTimeout(saveT); saveT = 0;
   if (!dirty || !cur) return;
@@ -913,7 +913,11 @@ function flushNote() {
 }
 function saveStateSoon() { stateDirty = true; clearTimeout(stateT); stateT = setTimeout(flushState, 300); }
 function flushState() { clearTimeout(stateT); stateT = 0; if (!stateDirty) return; stateDirty = false; host.send('saveState', JSON.stringify(S)); }
-function flushAll() { flushNote(); flushState(); }
+function flushAll() {
+  // hidden, standby, quit: the open note's caret is kept too (normalized first, so its path fits the saved html)
+  if (cur && view === 'editor') { if (!composing) editor.normalize(); keepAt(); }
+  flushNote(); flushState();
+}
 function setSave(busy) { const el = $('#stSave'); el.classList.toggle('saving', busy); el.textContent = busy ? '저장 중…' : '저장됨'; }
 window.addEventListener('blur', flushAll);
 document.addEventListener('visibilitychange', () => { if (document.hidden) flushAll(); });
@@ -1139,7 +1143,8 @@ function renameInline(id) {
 function newNote(front) {                        // front === true: first in the list (quick memos)
   if (S.notes.length >= MAX_NOTES) { toast(`메모는 ${MAX_NOTES}개까지 만들 수 있어요`); return false; }
   const n = { id: uid(), title: '', color: COLOR_KEYS[S.notes.length % COLOR_KEYS.length], pinned: false, hotkey: null, created: now(), updated: now(), preview: '' };
-  if (front === true) S.notes.unshift(n); else S.notes.push(n);
+  if (front === true) S.notes.unshift(n);
+  else { S.notes.push(n); if (!freshIds.has(selId)) freshPrevSel = selId; freshIds.add(n.id); }
   bodies[n.id] = '<div><br></div>';
   host.send('saveNote', n.id, bodies[n.id]);
   saveStateSoon();
@@ -1227,7 +1232,7 @@ function duplicate(id) {
   if (!n) return;
   if (S.notes.length >= MAX_NOTES) { toast(`메모는 ${MAX_NOTES}개까지 만들 수 있어요`); return; }
   if (id === cur) flushNote();
-  const c = Object.assign({}, n, { id: uid(), title: (titleOf(n) || '제목 없음') + ' 사본', hotkey: null, pinned: false, created: now(), updated: now() });
+  const c = Object.assign({}, n, { id: uid(), title: (titleOf(n) || '제목 없음') + ' 사본', hotkey: null, pinned: false, created: now(), updated: now(), at: null });
   S.notes.splice(S.notes.indexOf(n) + 1, 0, c);
   bodies[c.id] = bodies[id];
   host.send('saveNote', c.id, bodies[c.id]);
@@ -1265,6 +1270,8 @@ function exportNote(id, kind) {
 // ---------------------------------------------------------------- view switching
 const memo = new Map();        // per-note caret + scroll, restored when you come back
 let lastSel = null;
+const freshIds = new Set();    // new notes not written in yet: left empty, they go away like an empty quick memo
+let freshPrevSel = null;       // the card selected before them, selected again then
 function setView(v) { view = v; app.dataset.view = v; }
 function openNote(id, o = {}) {
   const n = noteById(id);
@@ -1290,7 +1297,7 @@ function openNote(id, o = {}) {
   S.lastOpen = id; saveStateSoon();
   host.send('active', id);
   if (o.focusTitle) { titleIn.focus(); titleIn.select(); return; }
-  const m = memo.get(id);
+  const m = memo.get(id) || n.at;
   editor.focus({ preventScroll: true });
   if (!same) {
     if (m && m.sel) { selRestore(m.sel); scroller.scrollTop = m.top; }
@@ -1300,9 +1307,19 @@ function openNote(id, o = {}) {
 }
 function leaveNote() {
   if (!cur) return;
+  const n = noteById(cur);
+  if (n && freshIds.has(cur) && noteEmpty(cur) && !n.hotkey && !n.pinned) { freshIds.delete(cur); dropNote(cur); selId = freshPrevSel; return; }
   histCommit();                    // normalizes text nodes so the caret path matches the saved html
   flushNote();
-  memo.set(cur, { sel: selSave() || lastSel, top: scroller.scrollTop });
+  memo.set(cur, keepAt());
+}
+// Where to come back to: the caret only (a restored selection would be replaced by the first key typed),
+// also kept in the note's meta so it survives standby, Ctrl+Q and restarts.
+function keepAt() {
+  const s = selSave() || lastSel, n = noteById(cur);
+  const at = { sel: s && { a: s.b, ao: s.bo, b: s.b, bo: s.bo }, top: Math.round(scroller.scrollTop) };
+  if (n && JSON.stringify(n.at) !== JSON.stringify(at)) { n.at = at; saveStateSoon(); }
+  return at;
 }
 function showBoard() {
   if (cur) leaveNote();
@@ -1422,7 +1439,7 @@ function renderHead() {
 titleIn.addEventListener('input', () => {
   const n = noteById(cur);
   if (!n) return;
-  n.title = titleIn.value; n.updated = now(); staleCards.add(n.id); staleRows.add(n.id);
+  n.title = titleIn.value; n.updated = now(); staleCards.add(n.id); staleRows.add(n.id); freshIds.delete(n.id);
   $('#tbMid').textContent = titleOf(n);
   saveStateSoon(); renderSidebarSoon();
 });
@@ -4350,7 +4367,7 @@ if (HOST) window.chrome.webview.addEventListener('message', e => {
     case 'hidden': flushAll(); closePop(); if (paletteOn && palMode !== 'pop') closeModal(); break;
     case 'winState': app.classList.toggle('maxed', arg === '1'); break;
     case 'hotkeyStatus': onHotkeyStatus(arg); break;
-    case 'flush': flushAll(); host.send('flushed'); break;
+    case 'flush': if (freshIds.has(cur)) leaveNote(); flushAll(); host.send('flushed'); break;   // quit / standby: an untouched new note goes too
     case 'toast': toast(arg); break;
     case 'trash': onTrash(arg); break;
     case 'trashRestored': onTrashRestored(arg); break;
