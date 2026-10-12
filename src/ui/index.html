@@ -243,6 +243,7 @@ body.sb-off #sidebar{display:none}
 #editor blockquote{margin:.5em 0;padding:.35em 1em;border-left:3px solid var(--accent);background:var(--accent-soft);border-radius:0 10px 10px 0;color:var(--ink-2)}
 #editor pre{margin:.5em 0;padding:.8em 1em;border-radius:10px;background:#0d1a36;color:#dbe6ff;font:.9em/1.6 var(--mono);white-space:pre-wrap}
 [data-theme=dark] #editor pre{background:#060d20}
+#editor pre+pre,#editor blockquote+blockquote{margin-top:-.5em;padding-top:0;border-top-left-radius:0;border-top-right-radius:0}
 #editor hr{border:0;height:14px;margin:.6em 0;background:linear-gradient(90deg,var(--accent),transparent) center/100% 2px no-repeat}   /* 14px tall: easy to click and select */
 #editor a{color:var(--accent-ink);text-decoration:underline;text-underline-offset:2px}
 #editor img{max-width:100%;border-radius:8px;vertical-align:bottom}
@@ -317,6 +318,7 @@ body.sb-off #sidebar{display:none}
 .tghint{font-size:11.5px;color:var(--ink-3);padding:4px 10px 6px;max-width:200px;line-height:1.45}
 #modal{position:fixed;inset:0;z-index:90;display:none;align-items:flex-start;justify-content:center;padding-top:11vh;background:rgba(5,12,30,.4)}
 #modal.show{display:flex}
+.dlg:focus{outline:none}
 .dlg{width:min(520px,calc(100vw - 32px));max-height:80vh;display:flex;flex-direction:column;background:var(--menu);color:var(--ink);border-radius:18px;box-shadow:var(--sh-pop);border:1px solid var(--line);overflow:hidden;animation:pop .12s ease-out}
 .dlg.wide{width:min(600px,calc(100vw - 32px))}
 .dlg-head{display:flex;align-items:center;gap:10px;padding:18px 22px 6px}
@@ -448,6 +450,7 @@ body.pal-pop #toasts{bottom:56px}
 .tr-del .i{width:16px;height:16px}
 .tr-del:hover{background:var(--hover);color:#e5484d}
 .tr-del.arm,.btn.danger.arm{background:#e5484d;color:#fff}
+.tr-del.arm{width:auto;padding:0 10px;font:600 12px var(--ui);white-space:nowrap}
 .btn.danger{color:#e5484d}
 .btn.danger-fill{background:#e5484d;color:#fff}
 .dlg.confirm{width:min(440px,calc(100vw - 32px))}
@@ -1172,6 +1175,10 @@ function deleteNotes(ids) {
   if (!items.length) return;
   items.sort((a, b) => a.i - b.i);
   const gone = new Set(items.map(x => x.meta.id));
+  // the next card takes the selection (the one after, else before) - not the first card, often off screen
+  const vis = view === 'board' ? visibleIds() : [], at = Math.min(...items.map(x => vis.indexOf(x.meta.id)).filter(i => i >= 0));
+  const nextSel = isFinite(at) ? vis.slice(at).find(id => !gone.has(id)) || vis.slice(0, at).reverse().find(id => !gone.has(id)) || null : selId;
+  const wasOpen = cur && gone.has(cur) ? cur : null;
   S.notes = S.notes.filter(n => !gone.has(n.id));
   for (const x of items) {                        // empty: gone for good; else to the trash with its title, colour, place
     const id = x.meta.id;
@@ -1179,25 +1186,41 @@ function deleteNotes(ids) {
     delete bodies[id]; H.delete(id); textCache.delete(id); memo.delete(id);
     host.send('delNote', id, x.empty ? 'purge' : 'trash', x.empty ? '' : JSON.stringify(Object.assign({}, x.meta, { pos: x.i })));
   }
-  multi.clear(); sbMulti.clear(); sbAnchor = null;
+  multi.clear(); sbMulti.clear(); sbAnchor = null; selAnchor = null;
+  if (gone.has(selId)) selId = nextSel;
   stateDirty = true; flushState();
   applyHotkeys();
   if (cur && gone.has(cur)) { cur = null; showBoard(); } else rerender();
   markSb();
-  const label = items.length === 1 ? `‘${titleOf(items[0].meta) || '제목 없음'}’ 삭제됨` : `메모 ${items.length}개 삭제됨`;
-  toast(label, '되돌리기', () => {
-    for (const x of items) {                      // ascending original positions -> each lands where it was
+  if (view === 'board') { const c = grid.querySelector('.card.sel'); if (c) c.scrollIntoView({ block: 'nearest' }); }
+  const kept = items.filter(x => !x.empty).length, purged = items.length - kept;
+  const label = items.length === 1 ? (purged ? '빈 메모를 지웠어요' : `‘${titleOf(items[0].meta) || '제목 없음'}’ 메모를 휴지통으로 옮겼어요`)
+    : purged ? `메모 ${items.length}개를 지웠어요 · 빈 메모 ${purged}개는 휴지통에 남기지 않아요` : `메모 ${items.length}개를 휴지통으로 옮겼어요`;
+  let done = false;
+  const undoDel = () => {                         // once only, from the toast or Ctrl+Z on the board
+    if (done) return;
+    done = true;
+    if (boardUndo === undoDel) boardUndo = null;
+    const back = items.filter(x => !noteById(x.meta.id));   // already restored from the trash: never a second copy
+    if (!back.length) { toast('이미 복원된 메모예요'); return; }
+    for (const x of back) {                       // ascending original positions -> each lands where it was
       if (S.notes.length >= MAX_NOTES) break;
       S.notes.splice(Math.min(x.i, S.notes.length), 0, x.meta);
       bodies[x.meta.id] = x.html;
       host.send('saveNote', x.meta.id, x.html);
       if (!x.empty) host.send('unTrash', x.meta.id);   // no copy left behind in the trash
     }
+    if (trashItems) { const ids = new Set(back.map(x => x.meta.id)); trashItems = trashItems.filter(t => !(t.m && ids.has(t.m.id))); renderTrash(); }
     stateDirty = true; flushState();
     applyHotkeys();
-    selId = items[0].meta.id; rerender();
-  });
+    selId = back[0].meta.id; rerender();
+    if (view === 'board') { const c = grid.querySelector('.card.sel'); if (c) c.scrollIntoView({ block: 'nearest' }); }
+    if (wasOpen && noteById(wasOpen) && view === 'board' && !modalOpen()) openNote(wasOpen);
+  };
+  boardUndo = undoDel;
+  toast(label, '되돌리기 (Ctrl+Z)', undoDel);
 }
+let boardUndo = null;                             // the last delete, undoable with Ctrl+Z on the board until the next one
 function duplicate(id) {
   const n = noteById(id);
   if (!n) return;
@@ -1246,6 +1269,7 @@ function openNote(id, o = {}) {
   const n = noteById(id);
   if (!n) return;
   closePop();
+  boardUndo = null;
   const same = cur === id && view === 'editor';
   if (!same) {
     if (cur) leaveNote();
@@ -1640,6 +1664,7 @@ editor.addEventListener('keydown', e => {
     else if (!e.shiftKey) edit(() => exec('insertText', '\t'));
     return;
   }
+  if (e.key === 'Enter' && !e.shiftKey && boxEnter()) { e.preventDefault(); return; }
   if (e.key === 'Backspace' && !e.shiftKey && listBackspace()) { e.preventDefault(); return; }
   if (e.key === ' ' && mdShortcut()) { e.preventDefault(); return; }
   if (e.key === 'Enter' && !e.shiftKey && hrShortcut()) { e.preventDefault(); return; }
@@ -1851,30 +1876,65 @@ function olLabel(li) {
     default: return n + '. ';
   }
 }
+// the caret as character offsets inside a block, so it can be put back after the block is rebuilt
+function textOffset(root, node, off) { const r = document.createRange(); r.setStart(root, 0); r.setEnd(node, off); return r.toString().length; }
+function setSelOffsets(root, a, b) {
+  const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT), at = [null, 0, null, 0];
+  let n, pos = 0, last = null;
+  while ((n = w.nextNode())) {
+    const len = n.nodeValue.length;
+    if (!at[0] && a <= pos + len) { at[0] = n; at[1] = a - pos; }
+    if (!at[2] && b <= pos + len) { at[2] = n; at[3] = b - pos; break; }
+    pos += len; last = n;
+  }
+  if (!at[0]) { placeCaret(root, true); return; }
+  if (!at[2]) { at[2] = last || at[0]; at[3] = at[2].nodeValue.length; }
+  const r = document.createRange(); r.setStart(at[0], at[1]); r.setEnd(at[2], at[3]);
+  const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+}
+function caretKeep() {                            // [block, start, end] for a caret inside one non-list line
+  const r = selRange(), b = r && blockOf(r.startContainer);
+  if (!b || /^(LI|TD)$/.test(b.nodeName) || !b.contains(r.endContainer)) return null;
+  return [textOffset(b, r.startContainer, r.startOffset), textOffset(b, r.endContainer, r.endOffset)];
+}
+// Chrome builds a list made from a top-level line inside that line's <div>: lift it out (the caret stays put)
+function liftList() {
+  const li = closestSel('li'), L = li && li.closest('ul,ol'), w = L && L.parentNode;
+  if (!w || w === editor || w.nodeName !== 'DIV' || w.parentNode !== editor || w.childNodes.length !== 1) return;
+  const r = selRange(), k = r && li.contains(r.startContainer) ? [textOffset(li, r.startContainer, r.startOffset), textOffset(li, r.endContainer, r.endOffset)] : null;
+  unwrap(w);
+  if (k) setSelOffsets(li, k[0], k[1]);
+}
 function toggleList(kind) {
   ensureEditorFocus();
+  const keep = caretKeep();                       // making a list keeps the caret where you were typing
   edit(() => {
+    listInner(kind);
     const li = closestSel('li');
-    const list = li && li.parentElement;
-    const isChk = list && list.classList.contains('checklist');
-    if (li && li.classList.contains('nob')) {     // a line whose bullet was taken off: the button puts it back
-      li.classList.remove('nob');
-      if (!li.className) li.removeAttribute('class');
-      const same = kind === 'chk' ? isChk : kind === 'ol' ? list.nodeName === 'OL' : list.nodeName === 'UL' && !isChk;
-      if (same) return;
-    }
-    if (kind === 'chk') {
-      if (isChk) { exec('insertUnorderedList'); return; }
-      if (list && list.nodeName === 'UL') { list.classList.add('checklist'); return; }
-      exec('insertUnorderedList');
-      const l2 = closestSel('li');
-      if (l2 && l2.parentElement.nodeName === 'UL') l2.parentElement.classList.add('checklist');
-      return;
-    }
-    if (kind === 'ul' && isChk) { list.classList.remove('checklist'); if (!list.className) list.removeAttribute('class'); return; }
-    exec(kind === 'ul' ? 'insertUnorderedList' : 'insertOrderedList');
+    if (li) { liftList(); if (keep) setSelOffsets(li, keep[0], keep[1]); }
   });
   updateToolbar();
+}
+function listInner(kind) {
+  const li = closestSel('li');
+  const list = li && li.parentElement;
+  const isChk = list && list.classList.contains('checklist');
+  if (li && li.classList.contains('nob')) {     // a line whose bullet was taken off: the button puts it back
+    li.classList.remove('nob');
+    if (!li.className) li.removeAttribute('class');
+    const same = kind === 'chk' ? isChk : kind === 'ol' ? list.nodeName === 'OL' : list.nodeName === 'UL' && !isChk;
+    if (same) return;
+  }
+  if (kind === 'chk') {
+    if (isChk) { exec('insertUnorderedList'); return; }
+    if (list && list.nodeName === 'UL') { list.classList.add('checklist'); return; }
+    exec('insertUnorderedList');
+    const l2 = closestSel('li');
+    if (l2 && l2.parentElement.nodeName === 'UL') l2.parentElement.classList.add('checklist');
+    return;
+  }
+  if (kind === 'ul' && isChk) { list.classList.remove('checklist'); if (!list.className) list.removeAttribute('class'); return; }
+  exec(kind === 'ul' ? 'insertUnorderedList' : 'insertOrderedList');
 }
 function stamp() {
   ensureEditorFocus();
@@ -1883,6 +1943,7 @@ function stamp() {
 }
 function insertHr() {
   ensureEditorFocus();
+  clearObj();
   edit(() => { const hr = document.createElement('hr'); placeBlock(hr); placeCaret(hr.nextElementSibling, false); });
 }
 function blockOf(n) {
@@ -1906,17 +1967,52 @@ function mdShortcut() {
   edit(() => {
     const s = getSelection(); s.removeAllRanges(); s.addRange(pre);
     exec('delete');
-    if (kind === 'ul' || kind === 'ol') exec(kind === 'ul' ? 'insertUnorderedList' : 'insertOrderedList');
-    else if (kind === 'chk') { exec('insertUnorderedList'); const li = closestSel('li'); if (li) li.parentElement.classList.add('checklist'); }
+    if (kind === 'ul' || kind === 'ol') { exec(kind === 'ul' ? 'insertUnorderedList' : 'insertOrderedList'); liftList(); }
+    else if (kind === 'chk') { exec('insertUnorderedList'); const li = closestSel('li'); if (li) li.parentElement.classList.add('checklist'); liftList(); }
     else exec('formatBlock', kind);
   });
   updateToolbar();
   return true;
 }
+// Code blocks and quotes stay ONE box while you type (Enter = a new line inside it); Enter on an empty last line
+// leaves the box, like most editors. (Chrome split each Enter into a new <pre>, with no way out.)
+function textPos(root, k) {                       // [text node, offset] k characters into root
+  const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  let n, pos = 0, last = null;
+  while ((n = w.nextNode())) { if (k <= pos + n.nodeValue.length) return [n, k - pos]; pos += n.nodeValue.length; last = n; }
+  return last ? [last, last.nodeValue.length] : [root, 0];
+}
+function boxEnter() {
+  const r = selRange();
+  if (!r || !r.collapsed) return false;
+  const box = closestSel('pre') || closestSel('blockquote');
+  if (!box || box.closest('td')) return false;
+  const before = document.createRange(); before.setStart(box, 0); before.setEnd(r.startContainer, r.startOffset);
+  const after = document.createRange(); after.setStart(r.startContainer, r.startOffset); after.setEnd(box, box.childNodes.length);
+  const tb = before.toString();
+  if (after.toString().replace(/\n$/, '') === '' && (tb === '' || tb.endsWith('\n'))) {   // empty last line: out of the box
+    edit(() => {
+      if (tb) { const [n, o] = textPos(box, tb.length - 1), cut = document.createRange(); cut.setStart(n, o); cut.setEnd(box, box.childNodes.length); cut.deleteContents(); }
+      const d = document.createElement('div'); d.innerHTML = '<br>';
+      if (box.textContent.trim()) box.after(d); else box.replaceWith(d);
+      placeCaret(d, false);
+    });
+  } else edit(() => exec('insertLineBreak'));
+  return true;
+}
 function hrShortcut() {
   const blk = blockOf(selNode());
-  if (!blk || blk.nodeName !== 'DIV' || blk.textContent !== '---' || blk.parentNode !== editor) return false;
+  if (!blk || blk.nodeName !== 'DIV' || blk.textContent !== '---') return false;
+  const w = blk.parentNode;                       // a line inside an older list wrapper <div>: split it out first
+  if (w !== editor && !(w.nodeName === 'DIV' && w.parentNode === editor)) return false;
   edit(() => {
+    if (w !== editor) {
+      const tail = document.createElement('div');
+      while (blk.nextSibling) tail.appendChild(blk.nextSibling);
+      w.after(blk);
+      if (tail.firstChild) blk.after(tail);
+      if (!w.firstChild) w.remove();
+    }
     const hr = document.createElement('hr');
     const d = document.createElement('div'); d.innerHTML = '<br>';
     blk.replaceWith(hr); hr.after(d); placeCaret(d, false);
@@ -1957,7 +2053,7 @@ function toolPop(kind, anchor) {
   const r = anchor.getBoundingClientRect();
   if (kind === 'block') {
     const look = { div: 'font-size:13.5px', h1: 'font-size:19px;font-weight:800', h2: 'font-size:16.5px;font-weight:750', h3: 'font-size:14.5px;font-weight:700', blockquote: 'font-size:13.5px;border-left:3px solid var(--accent);padding-left:8px', pre: 'font:12.5px var(--mono)' };
-    showPop(r.left, r.bottom + 6, BLOCKS.map(([t, l, k]) => `<button class="blk" data-v="${t}"><span style="${look[t]}">${l}</span><kbd>${esc(k.trim())}</kbd></button>`).join(''),
+    showPop(r.left, r.bottom + 6, BLOCKS.map(([t, l, k]) => `<button class="blk" data-v="${t}"${t === 'blockquote' || t === 'pre' ? ' title="빈 줄에서 Enter를 누르면 빠져나가요"' : ''}><span style="${look[t]}">${l}</span><kbd>${esc(k.trim())}</kbd></button>`).join(''),
       b => { setBlock(b.dataset.v); });
   } else if (kind === 'fg') {
     showPop(r.left, r.bottom + 6, `<div class="mlabel">글자색 · 잘 보이는 색만 골랐어요</div><div class="swatches">${FG.map(c => c.v
@@ -2018,6 +2114,7 @@ function removeTable(t) {
 }
 function insertTable(rows, cols) {
   ensureEditorFocus();
+  clearObj();
   edit(() => {
     const t = buildTable(Array.from({ length: rows }, () => Array(cols).fill('')), true);
     placeBlock(t);
@@ -2029,15 +2126,24 @@ function insertTable(rows, cols) {
 function placeBlock(el) {
   const r = selRange();
   if (!r) { editor.appendChild(el); afterBlock(el); return; }
-  if (!r.collapsed) r.deleteContents();
   const sc = r.startContainer;
   const inTable = (sc.nodeType === 1 ? sc : sc.parentNode).closest('table');
+  if (!r.collapsed && !inTable) r.deleteContents();   // a selected cell keeps its value (its text is only parked)
+  clearNav();
+  const block = /^(TABLE|HR)$/;
   if (sc === editor) { editor.insertBefore(el, editor.childNodes[r.startOffset] || null); afterBlock(el); return; }
   const top = topLevel(inTable || sc);
   if (!top) { editor.appendChild(el); afterBlock(el); return; }
-  if (inTable || top.nodeName === 'TABLE' || top.nodeName === 'HR') { top.after(el); afterBlock(el); return; }
+  if (inTable || block.test(top.nodeName)) {      // after a table / divider: an empty line between, never glued
+    const gap = document.createElement('div'); gap.innerHTML = '<br>';
+    top.after(gap); gap.after(el); afterBlock(el); return;
+  }
   const empty = n => !n.textContent.trim() && !(n.querySelector && n.querySelector('img,table,hr'));
-  if (top.nodeType === 1 && empty(top)) { top.replaceWith(el); afterBlock(el); return; }
+  if (top.nodeType === 1 && empty(top)) {
+    const prev = top.previousElementSibling;      // the empty line under a table stays, as the gap between the two
+    if (prev && block.test(prev.nodeName) && block.test(el.nodeName)) { top.after(el); afterBlock(el); return; }
+    top.replaceWith(el); afterBlock(el); return;
+  }
   const before = document.createRange(); before.setStart(top, 0); before.setEnd(sc, r.startOffset);
   const after = document.createRange(); after.setStart(sc, r.startOffset); after.setEnd(top, top.nodeType === 3 ? top.nodeValue.length : top.childNodes.length);
   if (!after.toString().trim()) { top.after(el); afterBlock(el); return; }
@@ -3151,7 +3257,33 @@ function openModal(html, onClose) {
   modal.innerHTML = html;
   modal.classList.add('show');
   modalOnClose = onClose || null;
+  modalFocus();                                   // keys go to the dialog, never to the note behind it
 }
+// where keys belong while a dialog is open: its search box, a field marked data-autofocus, else the dialog itself
+function modalFocus() {
+  const d = modal.querySelector('.dlg');
+  if (!d) return null;
+  d.tabIndex = -1;
+  const f = modal.querySelector('#palIn, #qsIn, [data-autofocus]') || d;
+  if (document.activeElement !== f && !modal.contains(document.activeElement)) f.focus({ preventScroll: true });
+  return f;
+}
+// a key with the focus outside the open dialog (clicked its backdrop, the page behind ...) is pulled back into it;
+// Tab cycles inside the dialog
+document.addEventListener('keydown', e => {
+  if (!modalOpen() || recording) return;
+  if (!modal.contains(document.activeElement)) {
+    const f = modalFocus();
+    if (e.key !== 'Escape' && !(f && f.nodeName === 'INPUT')) { e.preventDefault(); e.stopPropagation(); }   // a search box takes the key itself
+    return;
+  }
+  if (e.key !== 'Tab' || e.target.id === 'palIn') return;   // Tab in the find-and-paste box picks a part of the line
+  const f = $$('button:not(:disabled),input,select,[tabindex="0"]', modal).filter(x => x.offsetParent && !x.hidden);
+  if (!f.length) return;
+  const i = f.indexOf(document.activeElement);
+  e.preventDefault();
+  f[e.shiftKey ? (i <= 0 ? f.length - 1 : i - 1) : (i < 0 || i === f.length - 1 ? 0 : i + 1)].focus();
+}, true);
 function closeModal() {
   if (!modalOpen()) return;
   modal.classList.remove('show');
@@ -3162,7 +3294,7 @@ function closeModal() {
   refocus();
 }
 function modalOpen() { return modal.classList.contains('show'); }
-modal.addEventListener('mousedown', e => { if (e.target === modal) closeModal(); });
+modal.addEventListener('mousedown', e => { if (e.target === modal) { e.preventDefault(); closeModal(); } });   // the caret goes back where it was
 
 // ---------------------------------------------------------------- send out: copy -> back to the previous window -> paste
 // What gets taken: selected cells, else selected text, else the cell being edited, else the current line.
@@ -3456,7 +3588,7 @@ function openPalette(mode) {
     }
   });
   list.addEventListener('mousemove', e => { const it = e.target.closest('.qs-item'); if (it && +it.dataset.i !== idx) move(+it.dataset.i); });
-  list.addEventListener('mousedown', e => e.preventDefault());   // keep typing in the box
+  modal.querySelector('.pal').addEventListener('mousedown', e => { if (e.target !== inp) e.preventDefault(); });   // keep typing in the box
   list.addEventListener('click', e => { const it = e.target.closest('.qs-item'); if (it) pick(+it.dataset.i, e.ctrlKey ? 'open' : e.shiftKey ? 'copy' : 'paste'); });
   render();
   inp.focus();
@@ -3524,15 +3656,17 @@ function openTrash() {
     if (!b || !row || !trashItems) return;
     const x = trashItems[+row.dataset.i];
     if (b.dataset.act === 'restore') restoreTrash(x);
-    else if (b.classList.contains('arm')) { host.send('trashPurge', x.f); trashItems = trashItems.filter(t => t !== x); renderTrash(); }
-    else arm(b, '한 번 더 누르면 영구 삭제');
+    else if (armed(b)) { host.send('trashPurge', x.f); trashItems = trashItems.filter(t => t !== x); renderTrash(); toast('영구 삭제했어요'); }
+    else if (!b.classList.contains('arm')) arm(b, '한 번 더 누르면 영구 삭제', '영구 삭제');
   };
   $('#trEmpty').onclick = e => {
     const b = e.currentTarget;
     if (!b.classList.contains('arm')) { arm(b, '', `정말 비울까요? ${trashItems.length}개 영구 삭제`); return; }
+    if (!armed(b)) return;
+    const n = trashItems.length;
     host.send('trashEmpty');
     trashItems = []; renderTrash();
-    toast('휴지통을 비웠어요');
+    toast(`휴지통을 비웠어요 · ${n}개 영구 삭제`);
   };
   host.send('trashList');
 }
@@ -3540,10 +3674,13 @@ function openTrash() {
 function arm(b, title, text) {
   const t0 = b.title, x0 = b.innerHTML;
   b.classList.add('arm');
+  b.dataset.armAt = now();
   if (title) b.title = title;
   if (text) b.textContent = text;
-  setTimeout(() => { if (b.isConnected) { b.classList.remove('arm'); b.title = t0; b.innerHTML = x0; } }, 3000);
+  setTimeout(() => { if (b.isConnected) { b.classList.remove('arm'); b.title = t0; b.innerHTML = x0; } }, 4000);
 }
+// the confirming click must come a moment later: a habitual double-click never deletes for good
+function armed(b) { return b.classList.contains('arm') && now() - +b.dataset.armAt > 450; }
 function onTrash(json) {
   if (!$('#trList')) return;
   let list = [];
@@ -3576,6 +3713,7 @@ function onTrashRestored(arg) {                   // file name, new id, saved in
   const p = arg.split(SEP), f = p[0], id = p[1], html = p.slice(3).join(SEP);
   if (trashItems) { trashItems = trashItems.filter(t => t.f !== f); renderTrash(); }
   if (!id) { toast('복원하지 못했어요 · 이미 복원했거나 파일이 없어요'); return; }
+  if (noteById(id)) { toast('이미 목록에 있는 메모예요'); return; }
   let m = {};
   try { m = p[2] ? JSON.parse(p[2]) : {}; } catch (e) { /* no info: defaults */ }
   const root = frag(html);
@@ -3640,6 +3778,7 @@ function openSwitcher() {
     else if (e.key === 'Enter') { e.preventDefault(); go(idx); }
   });
   list.addEventListener('click', e => { const it = e.target.closest('.qs-item'); if (it) go(+it.dataset.i); });
+  modal.querySelector('.qs').addEventListener('mousedown', e => { if (e.target !== inp) e.preventDefault(); });   // keep typing in the box
   render();
   inp.focus();
 }
@@ -4153,6 +4292,9 @@ $('#btnTop').onclick = () => setOnTop(!st.onTop);
 $('#btnTheme').onclick = () => setTheme(st.theme === 'dark' ? 'light' : 'dark');
 $('#btnSettings').onclick = openSettings;
 $('#stZoom').onclick = () => zoom(0);
+$('#noteHead').addEventListener('mousedown', e => { if (e.target.closest('button')) e.preventDefault(); });
+$('#status').addEventListener('mousedown', e => e.preventDefault());
+$('#pane').addEventListener('mousedown', e => { if (e.target.id === 'pane' || e.target.id === 'doc' || e.target === scroller || e.target === sheet) { e.preventDefault(); ensureEditorFocus(); } });
 scroller.addEventListener('wheel', e => { if (e.ctrlKey) { e.preventDefault(); zoom(e.deltaY < 0 ? 1 : -1); } }, { passive: false });
 document.addEventListener('contextmenu', e => { if (!e.defaultPrevented && !isTyping(e.target)) e.preventDefault(); });
 
@@ -4160,7 +4302,7 @@ document.addEventListener('contextmenu', e => { if (!e.defaultPrevented && !isTy
 document.addEventListener('keydown', e => {
   if (recording || e.isComposing || e.keyCode === 229) return;
   if (!pop.hidden && e.key === 'Escape') { e.preventDefault(); closePop(); return; }
-  if (modalOpen()) { if (e.key === 'Escape') { e.preventDefault(); closeModal(); } return; }
+  if (modalOpen()) { if (e.key === 'Escape') { e.preventDefault(); if (paletteOn && palMode === 'pop') host.send('back'); closeModal(); } return; }
   const mod = e.ctrlKey || e.metaKey, code = e.code;
   const act = actionFor(e, 'app');                  // shortcuts from Settings > 단축키
   if (quickOn) {                                    // the little memo window: no switching notes or views
@@ -4175,6 +4317,7 @@ document.addEventListener('keydown', e => {
     let hit = true;
     switch (code) {
       case 'KeyA': if (view === 'board' && !isTyping(e.target) && !e.shiftKey) selectAllCards(); else hit = false; break;
+      case 'KeyZ': if (view === 'board' && !e.shiftKey && boardUndo && !(isTyping(e.target) && e.target.value)) boardUndo(); else hit = false; break;
       case 'KeyC': if (!e.shiftKey && view === 'board' && !isTyping(e.target) && selId) copyNote(selId); else hit = false; break;
       case 'NumpadAdd': zoom(1); break;
       case 'NumpadSubtract': zoom(-1); break;
