@@ -32,7 +32,7 @@ namespace SuperSpeedNote
 {
     static class Program
     {
-        public const string Version = "1.3.0";
+        public const string Version = "1.4.0";
         public const string WebView2Version = "1.0.4258.31";
         public static string DataDir, LocalDir;
         public static readonly Stopwatch Clock = Stopwatch.StartNew();
@@ -472,6 +472,55 @@ namespace SuperSpeedNote
                 case "tr": return 14; case "b": return 15; case "bl": return 16; case "br": return 17;
             }
             return HTCAPTION;
+        }
+
+        // ---------- double-click a window edge: stretch it to the screen that way, again: back ----------
+        IntPtr stretchWnd;
+        readonly int[] stretchFrom = new int[4];          // left, top, right, bottom before that edge was stretched
+        readonly bool[] stretched = new bool[4];
+        string lastEdge;
+        int lastEdgeTick;
+        Point lastEdgePt;
+
+        // The page sees the double-click only if the first click's resize loop left it the button-up; catch it here too.
+        void EdgeDown(string edge)
+        {
+            Point p = Cursor.Position;
+            Size dz = SystemInformation.DoubleClickSize;
+            bool dbl = edge == lastEdge && (uint)unchecked(Environment.TickCount - lastEdgeTick) <= (uint)SystemInformation.DoubleClickTime
+                && Math.Abs(p.X - lastEdgePt.X) <= dz.Width && Math.Abs(p.Y - lastEdgePt.Y) <= dz.Height;
+            lastEdge = edge; lastEdgeTick = Environment.TickCount; lastEdgePt = p;
+            if (dbl) Stretch(edge); else BeginDrag(EdgeHit(edge));
+        }
+
+        void Stretch(string edge)
+        {
+            lastEdge = null;
+            Form f = quickShown ? (Form)quick : this;     // the quick memo stretches itself
+            if (string.IsNullOrEmpty(edge) || Native.IsZoomed(f.Handle) || f.WindowState == FormWindowState.Minimized) return;
+            if (stretchWnd != f.Handle) { stretchWnd = f.Handle; Array.Clear(stretched, 0, 4); }
+            Rectangle b = f.Bounds, wa = Screen.FromHandle(f.Handle).WorkingArea;
+            int[] cur = { b.Left, b.Top, b.Right, b.Bottom }, lim = { wa.Left, wa.Top, wa.Right, wa.Bottom };
+            bool[] on = { edge.IndexOf('l') >= 0, edge.IndexOf('t') >= 0, edge.IndexOf('r') >= 0, edge.IndexOf('b') >= 0 };
+            bool atLimit = true, any = false;
+            for (int i = 0; i < 4; i++) if (on[i]) { if (cur[i] != lim[i]) atLimit = false; if (stretched[i]) any = true; }
+            bool back = atLimit && any;                   // every clicked edge already stretched: put them back
+            int[] next = (int[])cur.Clone();
+            for (int i = 0; i < 4; i++)
+            {
+                if (!on[i]) continue;
+                if (back) { if (stretched[i]) next[i] = stretchFrom[i]; }
+                else next[i] = lim[i];
+            }
+            Size min = f.MinimumSize;
+            if (next[2] - next[0] < min.Width || next[3] - next[1] < min.Height) { Array.Clear(stretched, 0, 4); return; }   // stale "before"
+            for (int i = 0; i < 4; i++)
+            {
+                if (!on[i]) continue;
+                if (back) stretched[i] = false;
+                else if (cur[i] != lim[i]) { stretchFrom[i] = cur[i]; stretched[i] = true; }
+            }
+            f.Bounds = Rectangle.FromLTRB(next[0], next[1], next[2], next[3]);
         }
 
         // ---------- show / hide / focus ----------
@@ -1221,7 +1270,8 @@ namespace SuperSpeedNote
                 case "back": GoBack(); break;                    // Esc in the search window: back to where you were
                 case "show": ShowApp(); break;                   // search window -> "open this note"
                 case "drag": BeginDrag(HTCAPTION); break;
-                case "resize": BeginDrag(EdgeHit(a)); break;
+                case "resize": EdgeDown(a); break;
+                case "stretch": Stretch(a); break;
                 // native ShowWindow: WinForms' WindowState setter re-adds a frame we removed and grows the window
                 case "min": Native.ShowWindow(Handle, 6 /*SW_MINIMIZE*/); break;
                 case "max": Native.ShowWindow(Handle, Native.IsZoomed(Handle) ? 9 /*SW_RESTORE*/ : 3 /*SW_MAXIMIZE*/); break;

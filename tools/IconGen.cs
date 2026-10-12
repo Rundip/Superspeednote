@@ -89,12 +89,13 @@ static class IconGen
 
             using (GraphicsPath tilePath = RoundRect(tile, radius))
             {
-                // navy -> white gradient (transition concentrated mid-tile so both words stay legible)
+                // navy -> white gradient drawn out over the whole tile (a long, soft fade rather than a band
+                // in the middle); small sizes keep it a little tighter around the split "S" so both halves still read
                 using (var br = new LinearGradientBrush(new PointF(0, tile.Top - 1), new PointF(0, tile.Bottom + 1), NavyDeep, White))
                 {
                     var cb = new ColorBlend();
                     cb.Colors = new[] { NavyDeep, Navy, Blue, Mist, White };
-                    cb.Positions = small ? new[] { 0f, 0.38f, 0.52f, 0.66f, 1f } : new[] { 0f, 0.36f, 0.5f, 0.62f, 1f };
+                    cb.Positions = small ? new[] { 0f, 0.24f, 0.5f, 0.74f, 1f } : new[] { 0f, 0.18f, 0.48f, 0.8f, 1f };
                     br.InterpolationColors = cb;
                     g.FillPath(br, tilePath);
                 }

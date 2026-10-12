@@ -223,7 +223,7 @@ body.sb-off #sidebar{display:none}
 #editor blockquote{margin:.5em 0;padding:.35em 1em;border-left:3px solid var(--accent);background:var(--accent-soft);border-radius:0 10px 10px 0;color:var(--ink-2)}
 #editor pre{margin:.5em 0;padding:.8em 1em;border-radius:10px;background:#0d1a36;color:#dbe6ff;font:.9em/1.6 var(--mono);white-space:pre-wrap}
 [data-theme=dark] #editor pre{background:#060d20}
-#editor hr{border:0;height:2px;margin:1.1em 0;background:linear-gradient(90deg,var(--accent),transparent)}
+#editor hr{border:0;height:14px;margin:.6em 0;background:linear-gradient(90deg,var(--accent),transparent) center/100% 2px no-repeat}   /* 14px tall: easy to click and select */
 #editor a{color:var(--accent-ink);text-decoration:underline;text-underline-offset:2px}
 #editor img{max-width:100%;border-radius:8px;vertical-align:bottom}
 #editor table.t{border-collapse:collapse;margin:1.6em 0;display:block;width:max-content;max-width:100%;overflow-x:auto}
@@ -238,38 +238,47 @@ body.sb-off #sidebar{display:none}
 #status .fill{flex:1}
 #stZoom{cursor:pointer}
 
-/* table overlay (+ buttons on the four edges) */
+/* table overlay: + in the left / top margin inserts at the nearest border, full-length bars add at the end
+   (drag them for several), a grip selects the whole table */
 #tblOv{position:absolute;pointer-events:none;z-index:3;display:none}
 #tblOv.show{display:block}
-/* small round buttons sitting just outside each edge of the table */
-.tadd{position:absolute;pointer-events:auto;width:18px;height:18px;border-radius:50%;background:var(--paper);color:var(--accent);border:1.5px solid color-mix(in srgb,var(--accent) 50%,transparent);display:grid;place-items:center;box-shadow:0 2px 6px rgba(30,70,180,.16);opacity:.8;transition:transform .12s,opacity .12s,background .12s,color .12s}
-.tadd .i{width:11px;height:11px;stroke-width:3}
-.tadd:hover{transform:scale(1.15);opacity:1;background:var(--accent);border-color:var(--accent);color:#fff}
-.tadd.t{left:50%;top:-24px;margin-left:-9px}
-.tadd.b{left:50%;bottom:-24px;margin-left:-9px}
-.tadd.l{top:50%;left:-26px;margin-top:-9px}
-.tadd.r{top:50%;right:-26px;margin-top:-9px}
-.tguide{position:absolute;background:var(--accent);opacity:0;transition:opacity .1s;border-radius:2px}
-.tguide.t{left:0;right:0;top:-2px;height:3px}.tguide.b{left:0;right:0;bottom:-2px;height:3px}
-.tguide.l{top:0;bottom:0;left:-2px;width:3px}.tguide.r{top:0;bottom:0;right:-2px;width:3px}
-#tblOv.g-t .tguide.t,#tblOv.g-b .tguide.b,#tblOv.g-l .tguide.l,#tblOv.g-r .tguide.r{opacity:1}
+.tbar{position:absolute;pointer-events:auto;border-radius:7px;display:grid;place-items:center;color:var(--accent);background:color-mix(in srgb,var(--accent) 6%,transparent);border:1px dashed color-mix(in srgb,var(--accent) 38%,transparent);opacity:.6;transition:opacity .12s,background .12s,border-color .12s;touch-action:none}
+.tbar .i{width:12px;height:12px;stroke-width:2.6}
+.tbar:hover,.tbar.drag{opacity:1;background:var(--accent-soft);border:1px solid var(--accent)}
+.tbar.b{left:0;right:0;bottom:-24px;height:16px;cursor:row-resize}
+.tbar.r{top:0;bottom:0;right:-24px;width:16px;cursor:col-resize}
+.tghost{position:absolute;display:none;pointer-events:none;border:1.5px dashed var(--accent);border-radius:4px}
+.tghost span{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);padding:2px 9px;border-radius:999px;background:var(--accent);color:#fff;font:700 11.5px "Segoe UI",var(--ui);white-space:nowrap}
+.tins{position:absolute;pointer-events:auto;width:18px;height:18px;margin:-9px 0 0 -9px;border-radius:50%;background:var(--accent);color:#fff;display:none;place-items:center;box-shadow:0 2px 6px rgba(30,70,180,.3);transition:transform .1s}
+.tins.show{display:grid}
+.tins:hover{transform:scale(1.15)}
+.tins .i{width:11px;height:11px;stroke-width:3}
+.tinsln{position:absolute;display:none;background:var(--accent);opacity:.7;border-radius:2px}
+.tinsln.show{display:block}
+.tgrip{position:absolute;pointer-events:auto;left:-28px;top:-27px;width:18px;height:18px;border-radius:5px;display:grid;place-items:center;color:var(--ink-3);background:var(--paper);border:1px solid var(--line-2);opacity:.8}
+.tgrip:hover{color:var(--accent);border-color:var(--accent);opacity:1}
+.tgrip .i{width:11px;height:11px;stroke-width:2.2}
 #cellbox{position:absolute;border:2px solid var(--accent);border-radius:3px;display:none;pointer-events:none}
 #cellbox.nav{background:rgba(59,108,246,.08)}
 #cellbox.edit{box-shadow:0 0 0 3px var(--accent-soft)}
-#editor.cellnav{caret-color:transparent}
+#editor.cellnav,#editor.objsel{caret-color:transparent}
+#editor.cellnav ::selection{background:transparent}   /* a selected cell keeps its text selected (IME types over it) - unseen */
+/* selected image / divider / table */
+#objbox{position:absolute;display:none;pointer-events:none;z-index:4;border:2px solid var(--accent);border-radius:5px;box-shadow:0 0 0 4px var(--accent-soft)}
 
 /* ---------- popovers, menus, modals ---------- */
 .pop{position:fixed;z-index:100;min-width:190px;padding:6px;border-radius:13px;background:var(--menu);border:1px solid var(--line);box-shadow:var(--sh-pop);color:var(--ink);font-size:13px;animation:pop .1s ease-out}
 @keyframes pop{from{opacity:0;transform:translateY(-4px)}}
-.mi{display:flex;align-items:center;gap:10px;width:100%;height:32px;padding:0 10px;border-radius:8px;text-align:left;white-space:nowrap}
-.mi:hover{background:var(--hover)}
-.mi .i{width:16px;height:16px;color:var(--ink-2)}
-.mi>i{width:16px;flex:none}
-.mi span{flex:1}
-.mi kbd{color:var(--ink-3)}
-.mi.danger,.mi.danger .i{color:#e5484d}
-.mi:disabled{opacity:.38;pointer-events:none}
-.mi.on{color:var(--accent-ink)}
+/* menu rows: not ".mi" - that name is the masked icon above, whose background:currentColor painted the rows solid */
+.mit{display:flex;align-items:center;gap:10px;width:100%;height:32px;padding:0 10px;border-radius:8px;text-align:left;white-space:nowrap;color:var(--ink);background:transparent}
+.mit:hover,.mit.cur{background:var(--hover)}
+.mit .i{width:16px;height:16px;color:var(--ink-2)}
+.mit>i{width:16px;flex:none}
+.mit span{flex:1}
+.mit kbd{color:var(--ink-3);margin-left:18px}
+.mit.danger,.mit.danger .i{color:#e5484d}
+.mit:disabled{opacity:.38;pointer-events:none}
+.mit.on{color:var(--accent-ink)}
 .msep{height:1px;background:var(--line);margin:5px 4px}
 .mlabel{padding:5px 10px 3px;font-size:11px;color:var(--ink-3);font-weight:650}
 .swatches{display:flex;gap:7px;padding:6px 10px 8px;flex-wrap:wrap;max-width:236px}
@@ -559,13 +568,15 @@ body.maxed .rz,body.web .rz{display:none}
         <div id="sheet">
           <div id="editor" contenteditable="true" spellcheck="false" data-ph="여기에 바로 입력하세요.&#10;엑셀에서 셀을 복사해 붙여넣으면 표가 됩니다 · # 제목  - 목록  [] 체크"></div>
           <div id="tblOv">
-            <i class="tguide t"></i><i class="tguide b"></i><i class="tguide l"></i><i class="tguide r"></i>
             <div id="cellbox"></div>
-            <button class="tadd t" data-op="rowTop" title="맨 위에 행 추가"><svg class="i"><use href="#i-plus"/></svg></button>
-            <button class="tadd b" data-op="rowBottom" title="맨 아래에 행 추가"><svg class="i"><use href="#i-plus"/></svg></button>
-            <button class="tadd l" data-op="colLeft" title="맨 왼쪽에 열 추가"><svg class="i"><use href="#i-plus"/></svg></button>
-            <button class="tadd r" data-op="colRight" title="맨 오른쪽에 열 추가"><svg class="i"><use href="#i-plus"/></svg></button>
+            <i class="tinsln"></i>
+            <button class="tins"><svg class="i"><use href="#i-plus"/></svg></button>
+            <div class="tghost"><span></span></div>
+            <button class="tbar b" data-dir="row" title="클릭: 맨 아래에 행 추가 · 아래로 끌면 여러 행"><svg class="i"><use href="#i-plus"/></svg></button>
+            <button class="tbar r" data-dir="col" title="클릭: 맨 오른쪽에 열 추가 · 오른쪽으로 끌면 여러 열"><svg class="i"><use href="#i-plus"/></svg></button>
+            <button class="tgrip" title="표 선택 · Delete로 삭제"><svg class="i"><use href="#i-grid"/></svg></button>
           </div>
+          <div id="objbox"></div>
         </div>
       </div>
       <footer id="status"><span id="stSave">저장됨</span><span id="stCount"></span><span class="fill"></span><span id="stHint">Esc 보드 · Ctrl+K 이동</span><span id="stZoom" title="클릭하면 100%">100%</span></footer>
@@ -1186,7 +1197,7 @@ function openNote(id, o = {}) {
   const same = cur === id && view === 'editor';
   if (!same) {
     if (cur) leaveNote();
-    clearNav();
+    clearNav(); clearObj();
     cur = id; selId = id;
     editor.innerHTML = bodies[id] || '<div><br></div>';
     if (!editor.firstChild) editor.innerHTML = '<div><br></div>';
@@ -1219,7 +1230,7 @@ function leaveNote() {
 function showBoard() {
   if (cur) leaveNote();
   cur = null;
-  clearNav();
+  clearNav(); clearObj();
   closePop(); hideOv(); findClose(true);
   setView('board');
   $('#tbMid').textContent = '';
@@ -1499,7 +1510,7 @@ function redo() {
   applySnap(e.h, e.s);
 }
 function applySnap(h, sel) {
-  clearNav();
+  clearNav(); clearObj();
   editor.innerHTML = h;
   setBig(h.length);
   if (!editor.firstChild) editor.innerHTML = '<div><br></div>';
@@ -1530,6 +1541,7 @@ editor.addEventListener('beforeinput', e => {
   if (e.inputType.startsWith('insert')) editor.classList.remove('is-empty');   // hide the hint on the first keystroke
 });
 editor.addEventListener('input', e => {
+  if (objSel && !objSel.isConnected) clearObj();
   if (!composing && needsRoot()) ensureRoot();
   if (editor.classList.contains('is-empty') && editor.textContent) editor.classList.remove('is-empty');
   if (e.inputType === 'insertParagraph') {
@@ -1545,6 +1557,7 @@ editor.addEventListener('input', e => {
 editor.addEventListener('compositionstart', () => { composing = true; editor.classList.remove('is-empty'); });
 editor.addEventListener('compositionend', () => { composing = false; if (needsRoot()) ensureRoot(); histSoon(); });
 editor.addEventListener('keydown', e => {
+  if (objSel && !e.isComposing && objKey(e)) return;   // a selected picture / divider / table
   if (!e.isComposing) {                           // table cells first (Excel-style navigation / editing)
     if (editCell) { if (!editCell.isConnected) clearNav(); else if (e.keyCode !== 229 && editKey(e)) return; }
     else if (navLive() && navKey(e)) return;
@@ -1576,6 +1589,7 @@ editor.addEventListener('keydown', e => {
   if (e.key === 'Enter' && !e.shiftKey && hrShortcut()) { e.preventDefault(); return; }
 });
 editor.addEventListener('mousedown', e => {
+  if (e.button === 0) mouseSel = true;
   const td = e.button === 0 && e.target.closest && e.target.closest('td');
   if (td && editor.contains(td) && td !== editCell) {
     if (e.shiftKey && nav && nav.t === td.closest('table')) {   // Shift+click extends the cell range
@@ -1893,10 +1907,14 @@ function onTableKey(e, td) {
   }
   if (e.key === 'Tab') {
     e.preventDefault();
+    const tr = td.parentElement;
+    if (!e.shiftKey && td.cellIndex >= tableCols(t) - 1) {   // past the last column: a new column
+      edit(() => { addCol(t, tableCols(t)); placeCaret(tr.cells[td.cellIndex + 1] || td, false); });
+      return true;
+    }
     const cells = Array.from(t.querySelectorAll('td'));
     const i = cells.indexOf(td) + (e.shiftKey ? -1 : 1);
-    if (i >= cells.length) edit(() => { const tr = addRow(t, t.rows.length); placeCaret(tr.cells[0], false); });
-    else if (i >= 0) placeCaret(cells[i], true);
+    if (i >= 0 && i < cells.length) placeCaret(cells[i], true);
     return true;
   }
   return false;
@@ -1904,9 +1922,15 @@ function onTableKey(e, td) {
 function tableOp(op, t, cell) {
   if (!t || !t.isConnected) return;
   if (cell && !t.contains(cell)) cell = null;
+  // deleting with several cells selected takes all their rows / columns, like Excel
+  const rc = cell && nav && nav.t === t ? navRect() : null;
+  const inRc = !!rc && cell.parentElement.rowIndex >= rc.r0 && cell.parentElement.rowIndex <= rc.r1 && cell.cellIndex >= rc.c0 && cell.cellIndex <= rc.c1;
+  clearObj(); clearNav();                          // the caret landing on the target cell selects it afresh
   edit(() => {
-    const ri = cell ? cell.parentElement.rowIndex : 0, ci = cell ? cell.cellIndex : 0;
+    let ri = cell ? cell.parentElement.rowIndex : 0, ci = cell ? cell.cellIndex : 0;
     let target = null;
+    if (inRc && op === 'delRow') { for (let k = rc.r1; k > rc.r0; k--) t.deleteRow(k); ri = rc.r0; }
+    if (inRc && op === 'delCol') { for (const tr of Array.from(t.rows)) for (let k = Math.min(rc.c1, tr.cells.length - 1); k > rc.c0; k--) tr.deleteCell(k); ci = rc.c0; }
     switch (op) {
       case 'rowTop': target = addRow(t, 0).cells[ci]; break;
       case 'rowBottom': target = addRow(t, t.rows.length).cells[ci]; break;
@@ -1932,18 +1956,26 @@ function tableOp(op, t, cell) {
     if (target) placeCaret(target, false);
   });
 }
+// table shortcuts (Settings > 단축키): the cell being edited / selected, else the one holding the caret
+function tblAct(op) {
+  const td = editCell && editCell.isConnected ? editCell : navLive() ? cellAt(nav.t, nav.fr, nav.fc) : closestSel('td');
+  if (!td) { toast('표 안에서 쓰는 단축키예요'); return; }
+  tableOp(op, td.closest('table'), td);
+}
 
 // ---------------------------------------------------------------- table cells work like Excel
 // "nav": one cell (or a range) is selected - arrows move it, typing replaces the value, Delete clears,
 // F2 / double-click edit it with the caret at the end, Esc while editing restores the old value.
 let nav = null;                                   // { t, ar, ac, fr, fc }  anchor / focus row + column
 let editCell = null, editKind = '', editOrig = '';
+let tabFrom = -1;                                 // column a run of Tabs started in: Enter goes back to it, like Excel
+let parked = null, mouseSel = false, parkAfterMouse = false;
 const ARROWS = { ArrowUp: [-1, 0], ArrowDown: [1, 0], ArrowLeft: [0, -1], ArrowRight: [0, 1] };
 function cellAt(t, r, c) { const tr = t.rows[r]; return tr ? tr.cells[Math.min(c, tr.cells.length - 1)] || null : null; }
 function navRect() { return { t: nav.t, r0: Math.min(nav.ar, nav.fr), r1: Math.max(nav.ar, nav.fr), c0: Math.min(nav.ac, nav.fc), c1: Math.max(nav.ac, nav.fc) }; }
 function navLive() { if (nav && !nav.t.isConnected) clearNav(); return !!nav && !editCell; }
 function rectCells(rc) { const out = []; for (let i = rc.r0; i <= rc.r1; i++) for (let j = rc.c0; j <= rc.c1; j++) { const c = rc.t.rows[i] && rc.t.rows[i].cells[j]; if (c) out.push(c); } return out; }
-function clearNav() { nav = null; editCell = null; editor.classList.remove('cellnav'); posOvSoon(); }
+function clearNav() { nav = null; editCell = null; tabFrom = -1; parked = null; editor.classList.remove('cellnav'); posOvSoon(); }
 function endPoint(td) {                           // just after the last character of a cell
   const w = document.createTreeWalker(td, NodeFilter.SHOW_TEXT);
   let n, last = null;
@@ -1956,13 +1988,26 @@ function parkCaret(td) {
   const r = document.createRange(); r.setStart(n, o); r.collapse(true);
   const s = getSelection(); s.removeAllRanges(); s.addRange(r);
 }
+// A selected cell keeps its whole text selected (unseen, see .cellnav ::selection). Typing then replaces it, and the
+// Korean IME composes its first syllable straight over it: touching the DOM or the selection on that first key
+// (keyCode 229) makes the IME commit the lone jamo, so "ㅎㅏㄴ" came out as "ㅎ안".
+function parkNav(td) {
+  if (document.activeElement !== editor) editor.focus({ preventScroll: true });
+  const r = document.createRange();
+  if (td.textContent || td.querySelector('img')) r.selectNodeContents(td);
+  else { const [n, o] = endPoint(td); r.setStart(n, o); r.collapse(true); }
+  const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+  const g = s.rangeCount ? s.getRangeAt(0) : r;    // as Chrome normalized it
+  parked = { sc: g.startContainer, so: g.startOffset, ec: g.endContainer, eo: g.endOffset };
+}
+function isParked(r) { return !!parked && r.startContainer === parked.sc && r.startOffset === parked.so && r.endContainer === parked.ec && r.endOffset === parked.eo; }
 function setNav(t, r, c, extend) {
   r = clamp(r, 0, t.rows.length - 1); c = clamp(c, 0, Math.max(0, tableCols(t) - 1));
   if (extend && nav && nav.t === t) { nav.fr = r; nav.fc = c; } else nav = { t, ar: r, ac: c, fr: r, fc: c };
-  editCell = null;
+  editCell = null; tabFrom = -1;
   editor.classList.add('cellnav');
   const td = cellAt(t, r, c);
-  if (td) { parkCaret(td); td.scrollIntoView({ block: 'nearest', inline: 'nearest' }); }
+  if (td) { parkNav(td); td.scrollIntoView({ block: 'nearest', inline: 'nearest' }); }
   showOv(t); posOv(); updateToolbar();
 }
 function startEdit(kind, td, keepCaret) {
@@ -1987,6 +2032,16 @@ function beginReplace() {                         // a key typed on a selected c
   editOrig = orig;
   markDirty();
 }
+// the IME's first key on a selected cell: no DOM or selection change here (see parkNav) - the composition replaces
+// the parked selection by itself; we only switch the cell to editing
+function imeReplace() {
+  const td = cellAt(nav.t, nav.fr, nav.fc);
+  if (!td) return;
+  editCell = td; editKind = 'type'; editOrig = td.innerHTML;
+  nav = { t: nav.t, ar: nav.fr, ac: nav.fc, fr: nav.fr, fc: nav.fc };
+  editor.classList.remove('cellnav');
+  posOvSoon();
+}
 function leaveTable(t, up) {
   clearNav();
   let n = up ? t.previousElementSibling : t.nextElementSibling;
@@ -1999,20 +2054,20 @@ function moveNav(dr, dc, extend, jump) {
   if (jump) { if (dr) r = dr < 0 ? 0 : R - 1; if (dc) c = dc < 0 ? 0 : C - 1; }
   setNav(t, r, c, extend);
 }
-function navDown(t) {                             // Enter: next row; on the last row a new row
-  const r = nav.fr, c = nav.fc;
+function navDown(t) {                             // Enter: next row (back in the column the Tabs began in); on the last row a new row
+  const r = nav.fr, c = tabFrom >= 0 ? tabFrom : nav.fc;
   if (r < t.rows.length - 1) { setNav(t, r + 1, c); return; }
   edit(() => addRow(t, t.rows.length));
   setNav(t, t.rows.length - 1, c);
 }
 function navTab(t, back) {
-  const C = tableCols(t);
+  const C = tableCols(t), from = tabFrom >= 0 ? tabFrom : nav.fc;
   let r = nav.fr, c = nav.fc + (back ? -1 : 1);
-  if (c >= C) { c = 0; r++; }
+  if (c >= C) edit(() => addCol(t, C));           // Tab on the last column adds a column
   if (c < 0) { c = C - 1; r--; }
   if (r < 0) { setNav(t, 0, 0); return; }
-  if (r >= t.rows.length) { edit(() => addRow(t, t.rows.length)); r = t.rows.length - 1; }
   setNav(t, r, c);
+  if (!back) tabFrom = from;
 }
 function navKey(e) {
   const t = nav.t, mod = e.ctrlKey || e.metaKey, k = e.key;
@@ -2040,7 +2095,8 @@ function navKey(e) {
     clearNav(); return false;
   }
   if (mod) return false;
-  if (k.length === 1 || e.keyCode === 229) beginReplace();   // the key itself is then typed into the emptied cell
+  if (e.keyCode === 229 || k === 'Process') imeReplace();     // IME: composes over the parked text by itself
+  else if (k.length === 1) beginReplace();                    // the key itself is then typed into the emptied cell
   return false;
 }
 function editKey(e) {
@@ -2083,12 +2139,18 @@ function syncNav() {
   if (!a && !b) { if (nav || editCell) clearNav(); return; }
   if (a !== b) return;                            // dragging across cells: decided on mouseup
   if (editCell === a) return;
-  if (!r.collapsed) { startEdit('f2', a, true); return; }   // text selected inside one cell = editing it
   const t = a.closest('table'), ri = a.parentElement.rowIndex, ci = a.cellIndex;
-  if (nav && !editCell && nav.t === t && nav.fr === ri && nav.fc === ci) return;   // our own parked caret
+  if (nav && !editCell && nav.t === t && nav.fr === ri && nav.fc === ci) {   // the selected cell itself
+    if (isParked(r)) return;                      // our own parked selection
+    if (!r.collapsed) startEdit('f2', a, true);   // text selected in it (double-click) = editing it
+    else if (mouseSel) parkAfterMouse = true; else parkNav(a);   // a stray caret (right-click ...): park again
+    return;
+  }
+  if (!r.collapsed) { startEdit('f2', a, true); return; }   // text selected inside one cell = editing it
   nav = { t, ar: ri, ac: ci, fr: ri, fc: ci };
-  editCell = null;
+  editCell = null; tabFrom = -1;
   editor.classList.add('cellnav');
+  if (mouseSel) parkAfterMouse = true; else parkNav(a);    // a click: park once the button is up (not mid-drag)
   showOv(t); posOv();
 }
 // formatting a selected cell / range applies to the whole cells (Excel-style); false if not in cell mode
@@ -2103,7 +2165,7 @@ function onCells(fn, after) {
   nav = keep;
   editor.classList.add('cellnav');
   const f = cellAt(nav.t, nav.fr, nav.fc);
-  if (f) parkCaret(f);
+  if (f) parkNav(f);
   posOv(); updateToolbar();
   return true;
 }
@@ -2115,35 +2177,43 @@ editor.addEventListener('dblclick', e => {
   if (cr && td.contains(cr.startContainer)) { const s = getSelection(); s.removeAllRanges(); s.addRange(cr); }
 });
 document.addEventListener('mouseup', () => {
+  const park = parkAfterMouse;
+  mouseSel = parkAfterMouse = false;
   if (view !== 'editor' || editCell) return;
   const rc = domCellRect();                       // a mouse drag across cells becomes a cell range
-  if (!rc) return;
+  if (!rc) { const f = park && navLive() && cellAt(nav.t, nav.fr, nav.fc); if (f) parkNav(f); return; }
   const s = getSelection(), fa = cellOf(s.anchorNode), ff = cellOf(s.focusNode);
   const inRect = c => c && c.closest('table') === rc.t;
   const a = inRect(fa) ? [fa.parentElement.rowIndex, fa.cellIndex] : [rc.r0, rc.c0];
   const f = inRect(ff) ? [ff.parentElement.rowIndex, ff.cellIndex] : [rc.r1, rc.c1];
   nav = { t: rc.t, ar: clamp(a[0], rc.r0, rc.r1), ac: clamp(a[1], rc.c0, rc.c1), fr: clamp(f[0], rc.r0, rc.r1), fc: clamp(f[1], rc.c0, rc.c1) };
-  editCell = null;
+  editCell = null; tabFrom = -1;
   editor.classList.add('cellnav');
-  parkCaret(cellAt(nav.t, nav.fr, nav.fc));
+  parkNav(cellAt(nav.t, nav.fr, nav.fc));
   showOv(rc.t); posOv();
 });
 
-// + buttons on the four edges of the table under the mouse / caret
+// ---------------------------------------------------------------- table overlay (the table under the mouse / caret)
+// A + in the left / top margin inserts a row / column at the nearest border, the full-length bars on the bottom /
+// right edge add rows / columns at the end (drag them for several), and the grip selects the whole table.
+// Only the margins next to a table are hit-tested, so typing and scrolling cost nothing extra.
 let ovTable = null, ovHover = false, ovHideT = 0, ovRaf = 0;
+const tins = $('.tins', ov), tinsln = $('.tinsln', ov), tghost = $('.tghost', ov), tgrip = $('.tgrip', ov);
+let insAt = null, insRaf = 0, insEv = null, barDrag = null;   // insAt: { row: bool, i: border index }
 function showOv(t) {
   if (!t || !editor.contains(t)) return;
   clearTimeout(ovHideT);
+  if (t !== ovTable) insAt = null;
   ovTable = t;
   ov.classList.add('show');
   posOv();
 }
-function hideOv() { clearTimeout(ovHideT); ovTable = null; ov.classList.remove('show', 'g-t', 'g-b', 'g-l', 'g-r'); }
+function hideOv() { clearTimeout(ovHideT); ovTable = null; insAt = null; placeIns(); ov.classList.remove('show'); }
 function hideOvSoon() {
   clearTimeout(ovHideT);
-  ovHideT = setTimeout(() => { if (!ovHover && !(nav && nav.t === ovTable) && !(closestSel('td') && ovTable && ovTable.contains(closestSel('td')))) hideOv(); }, 700);
+  ovHideT = setTimeout(() => { if (!ovHover && !barDrag && objSel !== ovTable && !(nav && nav.t === ovTable) && !(closestSel('td') && ovTable && ovTable.contains(closestSel('td')))) hideOv(); }, 700);
 }
-function posOvSoon() { if (!ovRaf) ovRaf = requestAnimationFrame(() => { ovRaf = 0; posOv(); }); }
+function posOvSoon() { if (!ovRaf) ovRaf = requestAnimationFrame(() => { ovRaf = 0; posOv(); posObj(); }); }
 function posOv() {
   if (!ovTable) return;
   if (!ovTable.isConnected) { hideOv(); return; }
@@ -2160,25 +2230,221 @@ function posOv() {
     cellbox.className = editCell ? 'edit' : 'nav';
     Object.assign(cellbox.style, { display: 'block', left: (L - tr.left - 1) + 'px', top: (T - tr.top - 1) + 'px', width: (Rr - L + 2) + 'px', height: (B - T + 2) + 'px' });
   } else cellbox.style.display = 'none';
+  placeIns();
 }
 function caretTable() {
   const td = closestSel('td');
   if (td) showOv(td.closest('table'));
   else if (ovTable) { posOv(); if (!ovHover) hideOvSoon(); }
 }
-editor.addEventListener('mousemove', e => {
-  const t = e.target.closest && e.target.closest('table.t');
-  if (t && editor.contains(t)) { if (t !== ovTable) showOv(t); else clearTimeout(ovHideT); }
-  else if (ovTable && !ovHover) hideOvSoon();
-});
-editor.addEventListener('mouseleave', () => { if (ovTable && !ovHover) hideOvSoon(); });
-for (const b of $$('.tadd', ov)) {
-  const side = b.classList[1];
-  b.addEventListener('mouseenter', () => { ovHover = true; clearTimeout(ovHideT); ov.classList.add('g-' + side); });
-  b.addEventListener('mouseleave', () => { ovHover = false; ov.classList.remove('g-' + side); hideOvSoon(); });
-  b.addEventListener('mousedown', e => e.preventDefault());
-  b.addEventListener('click', () => tableOp(b.dataset.op, ovTable, closestSel('td')));
+// the row / column border nearest to y / x (binary search: big tables stay cheap)
+function rowBorder(t, y) {
+  const rows = t.rows;
+  let lo = 0, hi = rows.length - 1;
+  while (lo < hi) { const m = (lo + hi) >> 1; if (rows[m].getBoundingClientRect().bottom <= y) lo = m + 1; else hi = m; }
+  const b = rows[lo].getBoundingClientRect();
+  return y < (b.top + b.bottom) / 2 ? lo : lo + 1;
 }
+function colBorder(t, x) {
+  const cells = t.rows[0].cells;
+  let lo = 0, hi = cells.length - 1;
+  while (lo < hi) { const m = (lo + hi) >> 1; if (cells[m].getBoundingClientRect().right <= x) lo = m + 1; else hi = m; }
+  const b = cells[lo].getBoundingClientRect();
+  return x < (b.left + b.right) / 2 ? lo : lo + 1;
+}
+function insHit(t, x, y) {
+  if (!t.rows.length || !t.rows[0].cells.length) return null;
+  const r = t.getBoundingClientRect();
+  if (x < r.left + 3 && x >= r.left - 44 && y >= r.top - 6 && y <= r.bottom + 6) return { row: true, i: rowBorder(t, y) };
+  if (y < r.top + 3 && y >= r.top - 26 && x >= r.left - 6 && x <= r.right + 6) return { row: false, i: colBorder(t, x) };
+  return null;
+}
+function placeIns() {
+  const t = ovTable;
+  let ok = !!insAt && !!t && t.isConnected && !barDrag && t.rows.length > 0;
+  if (ok) {
+    const tr = t.getBoundingClientRect();
+    if (insAt.row) {
+      const rows = t.rows, i = Math.min(insAt.i, rows.length);
+      const y = (i < rows.length ? rows[i].getBoundingClientRect().top : rows[rows.length - 1].getBoundingClientRect().bottom) - tr.top;
+      tins.style.cssText = `left:-22px;top:${y}px`;
+      tinsln.style.cssText = `left:0;top:${y - 1.5}px;width:${tr.width}px;height:3px`;
+      tins.title = i === 0 ? '맨 위에 행 삽입' : i >= rows.length ? '맨 아래에 행 삽입' : '여기에 행 삽입';
+    } else {
+      const cells = t.rows[0].cells, j = Math.min(insAt.i, cells.length);
+      const x = (j < cells.length ? cells[j].getBoundingClientRect().left : cells[cells.length - 1].getBoundingClientRect().right) - tr.left;
+      ok = x >= -2 && x <= tr.width + 2;            // a wide table scrolled sideways: border out of view
+      tins.style.cssText = `left:${x}px;top:-15px`;
+      tinsln.style.cssText = `top:0;left:${x - 1.5}px;height:${tr.height}px;width:3px`;
+      tins.title = j === 0 ? '맨 왼쪽에 열 삽입' : j >= cells.length ? '맨 오른쪽에 열 삽입' : '여기에 열 삽입';
+    }
+  }
+  tins.classList.toggle('show', ok); tinsln.classList.toggle('show', ok);
+}
+// pointer in the margin beside / above a table it isn't over yet
+function probeTable(e) {
+  for (const [dx, dy] of [[46, 0], [0, 28]]) {
+    const el = document.elementFromPoint(e.clientX + dx, e.clientY + dy);
+    const t = el && el.closest && el.closest('table.t');
+    if (t && editor.contains(t)) return t;
+  }
+  return null;
+}
+function trackIns(e) {
+  if (view !== 'editor' || barDrag) return;
+  if (e.buttons) { if (insAt) { insAt = null; placeIns(); } return; }   // selecting text: stay out of the way
+  let t = e.target.closest && e.target.closest('table.t');
+  if (t && !editor.contains(t)) t = null;
+  if (!t && ovTable && ov.contains(e.target)) t = ovTable;
+  if (!t && ovTable) { const r = ovTable.getBoundingClientRect(); if (e.clientX >= r.left - 46 && e.clientX <= r.right + 30 && e.clientY >= r.top - 30 && e.clientY <= r.bottom + 30) t = ovTable; }
+  if (!t && e.target === editor) t = probeTable(e);
+  if (!t) { if (insAt) { insAt = null; placeIns(); } if (ovTable && !ovHover) hideOvSoon(); return; }
+  if (t !== ovTable) showOv(t); else clearTimeout(ovHideT);
+  const h = insHit(t, e.clientX, e.clientY);
+  if (h && ov.contains(e.target) && e.target.closest('.tins')) return;   // on the + itself: keep it where it is
+  if (!h ? !insAt : insAt && insAt.row === h.row && insAt.i === h.i) return;
+  insAt = h; placeIns();
+}
+sheet.addEventListener('mousemove', e => { insEv = e; if (!insRaf) insRaf = requestAnimationFrame(() => { insRaf = 0; trackIns(insEv); }); });
+sheet.addEventListener('mouseleave', () => { if (insAt) { insAt = null; placeIns(); } if (ovTable && !ovHover) hideOvSoon(); });
+for (const b of [tins, tgrip, ...$$('.tbar', ov)]) {
+  b.addEventListener('mouseenter', () => { ovHover = true; clearTimeout(ovHideT); });
+  b.addEventListener('mouseleave', () => { ovHover = false; hideOvSoon(); });
+  b.addEventListener('mousedown', e => e.preventDefault());   // keep the caret / cell selection where it is
+}
+tins.addEventListener('click', () => {
+  const t = ovTable, at = insAt;
+  if (!t || !at || !t.isConnected) return;
+  const r = nav && nav.t === t ? nav.fr : 0, c = nav && nav.t === t ? nav.fc : 0;
+  clearObj();
+  edit(() => { if (at.row) addRow(t, at.i); else addCol(t, at.i); });
+  if (at.row) setNav(t, at.i, c); else setNav(t, r >= t.rows.length ? 0 : r, at.i);
+});
+tgrip.addEventListener('click', () => { if (ovTable) selectObj(ovTable); });
+// add bars: a click adds one row / column, dragging adds as many as the dashed preview shows
+function lastColWidth(t) {
+  let w = 0;
+  for (const tr of t.rows) { const c = tr.cells[tr.cells.length - 1]; if (c) { w = c.getBoundingClientRect().width; break; } }
+  return w;
+}
+function showGhost() {
+  const d = barDrag;
+  if (!d) { tghost.style.display = 'none'; return; }
+  const len = d.n * d.step, line = 'color-mix(in srgb,var(--accent) 35%,transparent)';
+  Object.assign(tghost.style, d.row
+    ? { display: 'block', left: '0', right: '0', top: 'calc(100% + 2px)', bottom: '', width: '', height: len + 'px', background: `repeating-linear-gradient(180deg,transparent 0 ${d.step - 1}px,${line} ${d.step - 1}px ${d.step}px),var(--accent-soft)` }
+    : { display: 'block', top: '0', bottom: '0', left: 'calc(100% + 2px)', right: '', height: '', width: len + 'px', background: `repeating-linear-gradient(90deg,transparent 0 ${d.step - 1}px,${line} ${d.step - 1}px ${d.step}px),var(--accent-soft)` });
+  tghost.firstChild.textContent = `+${d.n}${d.row ? '행' : '열'}`;
+}
+function finishBar(commit) {
+  const d = barDrag;
+  if (!d) return;
+  barDrag = null;
+  d.b.classList.remove('drag');
+  showGhost();
+  const t = d.t;
+  if (!commit || !t.isConnected) { posOvSoon(); return; }
+  const r = nav && nav.t === t ? nav.fr : 0, c = nav && nav.t === t ? nav.fc : 0;
+  clearObj();
+  if (d.row) { const r0 = t.rows.length; edit(() => { for (let k = 0; k < d.n; k++) addRow(t, t.rows.length); }); setNav(t, r0, c); }
+  else { const c0 = tableCols(t); edit(() => { for (let k = 0; k < d.n; k++) addCol(t, tableCols(t)); }); setNav(t, r, c0); }
+  if (d.n > 1) toast(`${d.n}${d.row ? '행' : '열'}을 추가했어요`);
+}
+for (const b of $$('.tbar', ov)) {
+  b.addEventListener('pointerdown', e => {
+    if (e.button !== 0 || !ovTable || !ovTable.rows.length) return;
+    e.preventDefault();
+    const t = ovTable, row = b.dataset.dir === 'row';
+    const step = Math.round(clamp(row ? t.rows[t.rows.length - 1].getBoundingClientRect().height : lastColWidth(t), 24, 400));
+    barDrag = { t, row, step, b, x: e.clientX, y: e.clientY, n: 1 };
+    insAt = null; placeIns();
+    b.setPointerCapture(e.pointerId);
+    b.classList.add('drag');
+    showGhost();
+  });
+  b.addEventListener('pointermove', e => {
+    const d = barDrag;
+    if (!d || d.b !== b) return;
+    const n = clamp(Math.round((d.row ? e.clientY - d.y : e.clientX - d.x) / d.step), 1, d.row ? 200 : 50);
+    if (n !== d.n) { d.n = n; showGhost(); }
+  });
+  b.addEventListener('pointerup', () => { if (barDrag && barDrag.b === b) finishBar(true); });
+  b.addEventListener('pointercancel', () => finishBar(false));
+  b.addEventListener('lostpointercapture', () => finishBar(false));
+}
+
+// ---------------------------------------------------------------- objects: click an image / divider (or a table's
+// grip) to select it, Delete / Backspace removes it as one undo step. The frame is an overlay: the note is untouched.
+const objbox = $('#objbox');
+let objSel = null;
+function selectObj(el) {
+  if (!el || !editor.contains(el)) return;
+  clearNav();
+  objSel = el;
+  editor.classList.add('objsel');
+  if (document.activeElement !== editor) editor.focus({ preventScroll: true });
+  const r = document.createRange();
+  if (el.nodeName === 'TABLE') {                  // caret parked after the table: a key typed lands there, not in a cell
+    const n = el.nextElementSibling;
+    if (n && !/^(TABLE|HR)$/.test(n.nodeName)) r.setStart(n, 0); else r.setStartAfter(el);
+    r.collapse(true);
+    showOv(el);
+  } else r.selectNode(el);
+  const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+  posObj();
+}
+function clearObj() {
+  if (!objSel) return;
+  objSel = null;
+  editor.classList.remove('objsel');
+  objbox.style.display = 'none';
+}
+function posObj() {
+  if (!objSel) return;
+  if (!objSel.isConnected) { clearObj(); return; }
+  const sr = sheet.getBoundingClientRect(), r = objSel.getBoundingClientRect();
+  Object.assign(objbox.style, { display: 'block', left: (r.left - sr.left - 4) + 'px', top: (r.top - sr.top - 4) + 'px', width: (r.width + 8) + 'px', height: (r.height + 8) + 'px' });
+}
+function deleteObj() {
+  const el = objSel;
+  clearObj();
+  if (!el || !el.isConnected) return;
+  edit(() => {
+    if (el.nodeName === 'TABLE') { removeTable(el); return; }
+    const p = el.parentNode;
+    if (p === editor) {                           // a divider (or a picture on its own line)
+      const next = el.nextElementSibling, prev = el.previousElementSibling;
+      el.remove();
+      if (!editor.firstChild) editor.innerHTML = '<div><br></div>';
+      placeCaret(next || prev || editor.firstChild, !next);
+      return;
+    }
+    const i = Array.prototype.indexOf.call(p.childNodes, el);
+    el.remove();
+    if (!p.firstChild) p.innerHTML = '<br>';        // the emptied line stays a line
+    const r = document.createRange(); r.setStart(p, Math.min(i, p.childNodes.length)); r.collapse(true);
+    const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+  });
+}
+function objKey(e) {
+  if (!objSel.isConnected) { clearObj(); return false; }
+  const mod = e.ctrlKey || e.metaKey;
+  if ((e.key === 'Delete' || e.key === 'Backspace') && !mod && !e.altKey) { e.preventDefault(); deleteObj(); return true; }
+  if (/^(Control|Shift|Alt|Meta)$/.test(e.key) || (mod && /^Key[CX]$/.test(e.code))) return false;   // copy / cut keep it
+  const el = objSel;
+  clearObj();
+  if (e.key !== 'Escape') return false;           // anything else: let go, the key does its usual job
+  e.preventDefault(); e.stopPropagation();
+  if (el.nodeName !== 'TABLE') { const s = getSelection(); if (s.rangeCount) s.collapseToEnd(); }
+  return true;
+}
+// any click elsewhere lets go (a click on the same picture selects it again)
+document.addEventListener('mousedown', e => { if (objSel && !(e.target.closest && e.target.closest('.tgrip'))) clearObj(); }, true);
+editor.addEventListener('click', e => {
+  if (e.button !== 0 || e.shiftKey || e.ctrlKey || e.metaKey) return;
+  const o = e.target.closest && e.target.closest('img, hr');
+  if (o && editor.contains(o)) selectObj(o);
+});
 scroller.addEventListener('scroll', () => { if (ovTable) posOvSoon(); }, { passive: true });
 window.addEventListener('resize', posOvSoon);
 editor.addEventListener('scroll', posOvSoon, true);   // horizontally scrolled wide tables
@@ -2203,7 +2469,7 @@ function doPaste(text, html, files, plain) {
     const val = text.replace(/\r\n?/g, '\n').replace(/\n+$/, '');
     const keep = Object.assign({}, nav), cells = rectCells(navRect());
     edit(() => { for (const c of cells) c.innerHTML = cellHTML(val); });
-    nav = keep; editor.classList.add('cellnav'); parkCaret(cellAt(nav.t, nav.fr, nav.fc)); posOv();
+    nav = keep; editor.classList.add('cellnav'); parkNav(cellAt(nav.t, nav.fr, nav.fc)); posOv();
     return;
   }
   edit(() => {
@@ -2225,18 +2491,33 @@ function gridFromHtml(html) {
   const rest = doc.body.cloneNode(true);
   rest.querySelector('table').remove();
   if (rest.textContent.trim()) return null;          // a table inside other content: paste as rich HTML instead
+  const rows = tableGrid(tables[0], cellText, '');
+  return rows.length && rows[0].length ? rows : null;
+}
+// An HTML table as a full grid. Merged cells are spread out (the value stays in the top-left cell, like Excel's
+// unmerge) - skipping rowspan shifted every cell under a merge one column left. Excel's hidden helper row
+// (<tr style='display:none'> under "supportMisalignedColumns") is left out.
+function tableGrid(table, read, blank) {
   const rows = [];
-  for (const tr of tables[0].rows) {
-    const row = [];
+  let r = 0;
+  for (const tr of table.rows) {
+    if (tr.hidden || (tr.style && tr.style.display === 'none')) continue;
+    const row = rows[r] || (rows[r] = []);
+    let c = 0;
     for (const td of tr.cells) {
-      row.push(cellText(td));
-      for (let k = 1; k < Math.min(+td.colSpan || 1, 50); k++) row.push('');
+      while (row[c] !== undefined) c++;           // slot taken by a merge from a row above
+      const cs = clamp(+td.colSpan || 1, 1, 50), rs = clamp(+td.rowSpan || 1, 1, 500);
+      for (let i = 0; i < rs; i++) {
+        const rr = rows[r + i] || (rows[r + i] = []);
+        for (let j = 0; j < cs; j++) rr[c + j] = i || j ? blank : read(td);
+      }
+      c += cs;
     }
-    rows.push(row);
+    r++;
   }
-  if (!rows.length) return null;
-  const w = Math.max(...rows.map(r => r.length));
-  rows.forEach(r => { while (r.length < w) r.push(''); });
+  rows.length = r;                                // a rowspan reaching past the last row adds nothing
+  const w = Math.max(0, ...rows.map(x => x.length));
+  for (const x of rows) for (let j = 0; j < w; j++) if (x[j] === undefined) x[j] = blank;
   return rows;
 }
 function cellText(td) {
@@ -2308,13 +2589,15 @@ function gridToClipboard(cd, rows) {
   cd.setData('text/plain', rowsText(rows));
   cd.setData('text/html', rowsHTML(rows));
 }
+function wholeTable(t) { return { t, r0: 0, r1: t.rows.length - 1, c0: 0, c1: Math.max(0, tableCols(t) - 1) }; }
 editor.addEventListener('copy', e => {
-  const rc = selCellRect();
+  const rc = objSel && objSel.nodeName === 'TABLE' ? wholeTable(objSel) : selCellRect();
   if (!rc) return;
   e.preventDefault();
   gridToClipboard(e.clipboardData, rectRows(rc));
 });
 editor.addEventListener('cut', e => {
+  if (objSel && objSel.nodeName === 'TABLE') { e.preventDefault(); gridToClipboard(e.clipboardData, rectRows(wholeTable(objSel))); deleteObj(); return; }
   const rc = selCellRect();
   if (!rc) return;
   e.preventDefault();
@@ -2341,9 +2624,9 @@ function pasteGrid(rows) {
       });
       // like Excel: the pasted block stays selected
       nav = { t, ar: r0, ac: c0, fr: r0 + rows.length - 1, fc: c0 + w - 1 };
-      editCell = null;
+      editCell = null; tabFrom = -1;
       editor.classList.add('cellnav');
-      parkCaret(cellAt(t, nav.fr, nav.fc));
+      parkNav(cellAt(t, nav.fr, nav.fc));
     } else {
       const t = buildTable(rows, true);
       placeBlock(t);
@@ -2368,6 +2651,7 @@ function sanitize(html) {
       if (n.nodeType !== 1) continue;
       let tag = n.nodeName.toUpperCase();
       if (DROP.has(tag)) continue;
+      if (tag === 'TR' && (n.hidden || (n.style && n.style.display === 'none'))) continue;   // Excel's hidden helper row
       tag = RENAME[tag] || tag;
       const stl = n.style || {};
       const fw = stl.fontWeight || '';
@@ -2392,16 +2676,26 @@ function sanitize(html) {
         continue;
       }
       if (tag === 'TABLE') el.className = 't';
+      if (tag === 'TD') { if (n.colSpan > 1) el.colSpan = n.colSpan; if (n.rowSpan > 1) el.rowSpan = n.rowSpan; }   // spread out below
       dst.appendChild(el);
       walk(n, el, pre || tag === 'PRE');
     }
   };
   walk(doc.body, out, false);
   out.querySelectorAll('table').forEach(t => {
-    const w = tableCols(t);
-    for (const tr of t.rows) { while (tr.cells.length < w) newCell(tr, -1); }
-    for (const td of t.querySelectorAll('td')) if (!td.firstChild) td.innerHTML = '<br>';
-    if (!t.rows.length) t.remove();
+    if (!t.rows.length) { t.remove(); return; }
+    // one cell per slot: merged cells spread out, short rows padded (the editor's tables are plain grids)
+    const g = tableGrid(t, td => td, null), tb = document.createElement('tbody');
+    for (const row of g) {
+      const tr = tb.insertRow();
+      for (const v of row) {
+        const td = v || document.createElement('td');
+        td.removeAttribute('colspan'); td.removeAttribute('rowspan');
+        if (!td.firstChild) td.innerHTML = '<br>';
+        tr.appendChild(td);
+      }
+    }
+    t.replaceChildren(tb);
   });
   out.querySelectorAll('tr').forEach(tr => { if (!tr.closest('table')) unwrap(tr); });
   return out;
@@ -2454,7 +2748,7 @@ editor.addEventListener('contextmenu', e => {
   if (!inSel) { const cr = document.caretRangeFromPoint(e.clientX, e.clientY); if (cr) { s.removeAllRanges(); s.addRange(cr); } }
   const img = e.target.closest && e.target.closest('img');
   const td = e.target.closest && e.target.closest('td');
-  const has = !getSelection().isCollapsed;
+  const has = !getSelection().isCollapsed || !!td;   // a cell: cut / copy take the selected cell(s)
   const items = [];
   if (img) {
     const size = w => () => edit(() => { if (w) img.style.width = w; else img.removeAttribute('style'); });
@@ -2469,13 +2763,14 @@ editor.addEventListener('contextmenu', e => {
   if (td) {
     const t = td.closest('table');
     items.push({ sep: true },
-      { label: '위에 행 삽입', icon: 'i-plus', action: () => tableOp('rowAbove', t, td) },
-      { label: '아래에 행 삽입', action: () => tableOp('rowBelow', t, td) },
-      { label: '왼쪽에 열 삽입', action: () => tableOp('colBefore', t, td) },
-      { label: '오른쪽에 열 삽입', action: () => tableOp('colAfter', t, td) },
-      { label: '행 삭제', action: () => tableOp('delRow', t, td) },
-      { label: '열 삭제', action: () => tableOp('delCol', t, td) },
+      { label: '위에 행 삽입', icon: 'i-plus', kbd: kl('rowAbove'), action: () => tableOp('rowAbove', t, td) },
+      { label: '아래에 행 삽입', kbd: kl('rowBelow'), action: () => tableOp('rowBelow', t, td) },
+      { label: '왼쪽에 열 삽입', kbd: kl('colBefore'), action: () => tableOp('colBefore', t, td) },
+      { label: '오른쪽에 열 삽입', kbd: kl('colAfter'), action: () => tableOp('colAfter', t, td) },
+      { label: '행 삭제', kbd: kl('delRow'), action: () => tableOp('delRow', t, td) },
+      { label: '열 삭제', kbd: kl('delCol'), action: () => tableOp('delCol', t, td) },
       { label: t.classList.contains('hdr') ? '머리글 행 끄기' : '머리글 행 켜기', action: () => tableOp('header', t, td) },
+      { label: '표 전체 선택', icon: 'i-grid', action: () => selectObj(t) },
       { label: '표 삭제', icon: 'i-trash', danger: true, action: () => tableOp('delTable', t, td) });
   } else {
     items.push({ sep: true },
@@ -2497,7 +2792,7 @@ function openFind() {
   if (view !== 'editor') return;
   findOpen = true;
   $('#findbar').classList.add('show');
-  const s = getSelection().toString();
+  const s = navLive() ? '' : getSelection().toString();   // a selected cell's parked text isn't a search
   if (s && s.length < 80 && !s.includes('\n')) findIn.value = s;
   findIn.focus(); findIn.select();
   runFind(true);
@@ -2566,6 +2861,7 @@ $('#findX').onclick = () => findClose();
 
 // ---------------------------------------------------------------- popovers & menus
 let popPick = null;
+let menuOn = false;                               // a showMenu() list is open: arrows / Enter drive it
 function showPop(x, y, html, onPick) {
   pop.innerHTML = html;
   pop.hidden = false;
@@ -2574,7 +2870,7 @@ function showPop(x, y, html, onPick) {
   pop.style.left = clamp(x, 8, innerWidth - w - 8) + 'px';
   pop.style.top = (y + h > innerHeight - 8 ? Math.max(8, y - h - 12) : y) + 'px';
 }
-function closePop() { if (pop.hidden) return; pop.hidden = true; pop.innerHTML = ''; popPick = null; }
+function closePop() { if (pop.hidden) return; pop.hidden = true; pop.innerHTML = ''; popPick = null; menuOn = false; }
 pop.addEventListener('mousedown', e => { if (!e.target.closest('input')) e.preventDefault(); });
 pop.addEventListener('click', e => {
   const b = e.target.closest('[data-v],[data-i]');
@@ -2589,13 +2885,39 @@ function showMenu(x, y, items) {
   const html = items.map((it, i) => {
     if (it.sep) return '<div class="msep"></div>';
     if (it.colors) return `<div class="mlabel">색상</div><div class="swatches">${COLOR_KEYS.map(k => `<button class="sw${it.value === k ? ' on' : ''}" data-i="${i}" data-c="${k}" title="${k}" style="background:${NOTE_COLORS[k]}"></button>`).join('')}</div>`;
-    return `<button class="mi${it.danger ? ' danger' : ''}" data-i="${i}"${it.disabled ? ' disabled' : ''}>${it.icon ? ic(it.icon) : '<i></i>'}<span>${esc(it.label)}</span>${it.kbd ? `<kbd>${esc(it.kbd)}</kbd>` : ''}</button>`;
+    return `<button class="mit${it.danger ? ' danger' : ''}" data-i="${i}"${it.disabled ? ' disabled' : ''}>${it.icon ? ic(it.icon) : '<i></i>'}<span>${esc(it.label)}</span>${it.kbd ? `<kbd>${esc(it.kbd)}</kbd>` : ''}</button>`;
   }).join('');
   showPop(x, y, html, b => {
     const it = items[+b.dataset.i];
     if (it.colors) it.pick(b.dataset.c); else if (it.action) it.action();
   });
+  menuOn = true;
 }
+function menuMove(d) {
+  const rows = $$('.mit:not(:disabled)', pop);
+  if (!rows.length) return;
+  const i = rows.findIndex(b => b.classList.contains('cur'));
+  rows.forEach(b => b.classList.remove('cur'));
+  rows[i < 0 ? (d > 0 ? 0 : rows.length - 1) : (i + d + rows.length) % rows.length].classList.add('cur');
+}
+pop.addEventListener('mousemove', e => {
+  const b = e.target.closest('.mit');
+  if (b && !b.classList.contains('cur')) { $$('.mit.cur', pop).forEach(x => x.classList.remove('cur')); b.classList.add('cur'); }
+});
+// While a menu is open the keyboard drives it; any other key closes it and then does its usual job,
+// so the shortcuts printed in the menu (Ctrl+C, Ctrl+B ...) work right there.
+document.addEventListener('keydown', e => {
+  if (pop.hidden || e.isComposing || e.keyCode === 229) return;
+  if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closePop(); return; }
+  if (!menuOn) return;
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); e.stopPropagation(); menuMove(e.key === 'ArrowDown' ? 1 : -1); return; }
+  if (e.key === 'Enter' && !e.ctrlKey && !e.altKey && !e.metaKey) {
+    const b = $('.mit.cur', pop);
+    if (b) { e.preventDefault(); e.stopPropagation(); b.click(); return; }
+  }
+  if (/^(Control|Shift|Alt|Meta|AltGraph|HangulMode|HanjaMode)$/.test(e.key)) return;
+  closePop();
+}, true);
 function colorMenu(id, x, y) {
   const n = noteById(id);
   if (n) showMenu(x, y, [{ colors: true, value: n.color, pick: c => setColor(id, c) }]);
@@ -3385,7 +3707,13 @@ const ACTIONS = [
   { id: 'h1', s: 'ed', g: '편집 (메모 안)', n: '제목 1', k: null, run: () => setBlock('h1') },
   { id: 'h2', s: 'ed', g: '편집 (메모 안)', n: '제목 2', k: null, run: () => setBlock('h2') },
   { id: 'h3', s: 'ed', g: '편집 (메모 안)', n: '제목 3', k: null, run: () => setBlock('h3') },
-  { id: 'para', s: 'ed', g: '편집 (메모 안)', n: '본문으로', k: null, run: () => setBlock('div') }
+  { id: 'para', s: 'ed', g: '편집 (메모 안)', n: '본문으로', k: null, run: () => setBlock('div') },
+  { id: 'rowAbove', s: 'ed', g: '표 (셀 안에서)', n: '위에 행 삽입', k: [5, 'ArrowUp'], run: () => tblAct('rowAbove') },
+  { id: 'rowBelow', s: 'ed', g: '표 (셀 안에서)', n: '아래에 행 삽입', k: [5, 'ArrowDown'], run: () => tblAct('rowBelow') },
+  { id: 'colBefore', s: 'ed', g: '표 (셀 안에서)', n: '왼쪽에 열 삽입', k: [5, 'ArrowLeft'], run: () => tblAct('colBefore') },
+  { id: 'colAfter', s: 'ed', g: '표 (셀 안에서)', n: '오른쪽에 열 삽입', k: [5, 'ArrowRight'], run: () => tblAct('colAfter') },
+  { id: 'delRow', s: 'ed', g: '표 (셀 안에서)', n: '행 삭제 (선택한 행 모두)', k: [6, 'Minus'], run: () => tblAct('delRow') },
+  { id: 'delCol', s: 'ed', g: '표 (셀 안에서)', n: '열 삭제 (선택한 열 모두)', k: [3, 'Minus'], run: () => tblAct('delCol') }
 ];
 const ACT = new Map(ACTIONS.map(a => [a.id, a]));
 const QUICK_OK = new Set(['find', 'save', 'zoomIn', 'zoomOut', 'zoomReset', 'help', 'theme', 'palette', 'sendPaste', 'sendCopy']);
@@ -3572,7 +3900,8 @@ function showHelp() {
     ${g('찾아 붙여넣기 검색창', [['원래 창에 바로 붙여넣기', 'Enter / 클릭'], ['N번째 결과 바로 붙여넣기', 'Alt+1~9'], ['칸 · 단어만 골라 붙여넣기', 'Tab / Shift+Tab'], ['복사만 하고 돌아가기', 'Shift+Enter'], ['그 메모 열기', 'Ctrl+Enter'], ['그냥 돌아가기', 'Esc'], ['초성으로 찾기', 'ㄱㅊㅅ → 김철수']])}
     ${g('메모 보드', [['선택 이동', '← ↑ → ↓'], ['열기', 'Enter / 더블클릭'], ['이름 바꾸기', 'F2'], ['삭제 (되돌리기 · 휴지통에서 복원)', 'Del'], ['여러 개 선택', 'Shift+클릭·방향키 / Ctrl+클릭 / Ctrl+A'], ['새 메모', k('newNote')], ['N번째 메모 열기', 'Ctrl+1~9'], ['빠른 이동', k('switcher')], ['검색', k('find')]])}
     ${g('편집', [['굵게 / 밑줄 / 기울임', join('bold', 'underline', 'italic')], ['취소선', k('strike')], ['글자색', k('fgColor')], ['형광펜', k('hl')], ['서식 지우기', k('clearFmt')], ['글머리 / 번호 목록', join('ul', 'ol')], ['체크리스트', k('chk')], ['제목 1 / 2 / 3', join('h1', 'h2', 'h3')], ['구분선', k('hr')], ['날짜·시간', k('stamp')], ['서식 없이 붙여넣기', 'Ctrl+Shift+V'], ['찾기', k('find')], ['확대 / 축소', ['Ctrl+휠', join('zoomIn', 'zoomOut')].filter(Boolean).join(', ')], ['보드로', 'Esc'], ['다음 / 이전 메모', join('nextNote', 'prevNote')], ['실행 취소 / 다시', 'Ctrl+Z / Ctrl+Y'], ['끄기 (단축키는 대기)', k('quit')]])}
-    ${g('표 (엑셀처럼)', [['칸 선택·이동', '클릭 / 방향키'], ['범위 선택', 'Shift+방향키 / 드래그'], ['선택한 칸에 바로 입력', '기존 값을 새로 씀'], ['칸 편집 (끝에 커서)', 'F2 / 더블클릭'], ['편집 취소', 'Esc'], ['칸 지우기', 'Delete'], ['아래 칸 / 마지막 행이면 행 추가', 'Enter'], ['칸 안 줄바꿈', 'Shift+Enter (편집 중)'], ['다음 / 이전 칸', 'Tab / Shift+Tab'], ['표 전체 선택', 'Ctrl+A'], ['표 넣기 / 빠져나가기', [k('table'), 'Ctrl+Enter'].filter(Boolean).join(' / ')], ['행·열 추가', '표 바깥 + 버튼'], ['엑셀 붙여넣기 · 범위 복사', 'Ctrl+V / Ctrl+C'], ['행·열 삭제', '오른쪽 클릭']])}
+    ${g('표 (엑셀처럼)', [['칸 선택·이동', '클릭 / 방향키'], ['범위 선택', 'Shift+방향키 / 드래그'], ['선택한 칸에 바로 입력', '기존 값을 새로 씀'], ['칸 편집 (끝에 커서)', 'F2 / 더블클릭'], ['편집 취소', 'Esc'], ['칸 지우기', 'Delete'], ['아래 칸 / 마지막 행이면 행 추가', 'Enter'], ['칸 안 줄바꿈', 'Shift+Enter (편집 중)'], ['다음 / 이전 칸 (마지막 열이면 열 추가)', 'Tab / Shift+Tab'], ['표 전체 선택', 'Ctrl+A'], ['표 넣기 / 빠져나가기', [k('table'), 'Ctrl+Enter'].filter(Boolean).join(' / ')], ['위 / 아래에 행 삽입', join('rowAbove', 'rowBelow')], ['왼쪽 / 오른쪽에 열 삽입', join('colBefore', 'colAfter')], ['행 / 열 삭제', join('delRow', 'delCol')], ['중간에 행·열 넣기', '표 왼쪽·위쪽 여백의 +'], ['끝에 행·열 추가 (끌면 여러 개)', '표 아래·오른쪽 막대'], ['엑셀 붙여넣기 · 범위 복사', 'Ctrl+V / Ctrl+C']])}
+    ${g('개체 (그림 · 구분선 · 표)', [['선택', '클릭 (표는 왼쪽 위 손잡이)'], ['삭제', 'Delete / Backspace'], ['선택 풀기', 'Esc / 다른 곳 클릭']])}
     ${g('꺼내 쓰기', [['한 줄 찾아 붙여넣기 (앱 안)', k('palette')], ['복사 → 원래 창에 바로 붙여넣기', k('sendPaste')], ['복사 → 원래 창으로', k('sendCopy')], ['보낼 내용', '선택 > 칸 > 현재 줄 (보드: 메모 전체)'], ['메모 전체 복사 (보드)', 'Ctrl+C / 카드 복사 버튼'], ['검색한 곳으로 바로 이동', (k('switcher') || '빠른 이동') + ' → Enter']])}
     ${g('빠른 서식 (줄 맨 앞에서 입력 후 Space)', [['제목 1 / 2 / 3', '# / ## / ###'], ['글머리 목록', '-'], ['번호 목록', '1.'], ['체크리스트', '[]'], ['인용', '>'], ['코드', '```'], ['구분선', '--- 후 Enter']])}
     </div></div><div class="dlg-foot"><span style="flex:1"></span><button class="btn" id="helpKeys">단축키 바꾸기</button><button class="btn primary" id="helpDone">닫기</button></div></div>`);
@@ -3598,7 +3927,7 @@ let dragArm = null;
 document.addEventListener('mousedown', e => {
   if (e.button !== 0) return;
   const rz = e.target.closest('.rz');
-  if (rz) { e.preventDefault(); host.send('resize', rz.dataset.edge); return; }
+  if (rz) { e.preventDefault(); host.send(e.detail === 2 ? 'stretch' : 'resize', rz.dataset.edge); return; }   // double-click: stretch that way
   const d = e.target.closest('[data-drag]');
   if (!d || e.target.closest('button,input,select,a,label,.search')) return;
   if (e.detail === 2 && d.id === 'titlebar') { host.send('max'); return; }
@@ -3693,7 +4022,7 @@ function welcome() {
   const html = '<h2>⚡ 메모장보다 빠른 메모</h2>' +
     '<div>메모마다 <b>전역 단축키</b>를 지정하면 어떤 프로그램을 쓰고 있든 그 메모가 바로 앞으로 나옵니다. 같은 단축키를 <u>한 번 더 누르면 방금 쓰던 창으로</u> 돌아가요.</div><div><br></div>' +
     '<ul class="checklist"><li data-checked="true">카드를 더블클릭하거나 Enter로 열기</li><li data-checked="false">위쪽 <b>⌨ 단축키 지정</b>으로 Ctrl+Alt+1 같은 키 붙이기</li><li data-checked="false">엑셀에서 셀을 복사해 여기에 붙여넣기 → 표로 변환</li></ul><div><br></div>' +
-    '<table class="t hdr"><tbody><tr><td>하고 싶은 것</td><td>방법</td></tr><tr><td>행 추가</td><td>마지막 행에서 Enter · 표 바깥 + 버튼</td></tr><tr><td>열 추가</td><td>표 왼쪽 / 오른쪽 + 버튼</td></tr><tr><td>빠른 이동</td><td>Ctrl+K</td></tr><tr><td>앱 부르기</td><td>Ctrl+Alt+N</td></tr></tbody></table>' +
+    '<table class="t hdr"><tbody><tr><td>하고 싶은 것</td><td>방법</td></tr><tr><td>행 추가</td><td>마지막 행에서 Enter · 표 아래 막대 (끌면 여러 행)</td></tr><tr><td>열 추가</td><td>마지막 칸에서 Tab · 표 오른쪽 막대</td></tr><tr><td>빠른 이동</td><td>Ctrl+K</td></tr><tr><td>앱 부르기</td><td>Ctrl+Alt+N</td></tr></tbody></table>' +
     '<div><span style="background-color: rgb(255, 241, 118);">형광펜</span>, <font color="#d92d20">잘 보이는 글자색</font>, <b>굵게</b>, <u>밑줄</u>을 지원합니다. 모든 단축키는 F1.</div>';
   const n = { id: uid(), title: 'Super Speed Note 시작하기', color: 'navy', pinned: true, hotkey: null, created: now(), updated: now(), preview: previewOf(frag(html)) };
   S.notes.push(n);

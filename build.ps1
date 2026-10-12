@@ -29,15 +29,20 @@ if (-not (Test-Path $coreDll)) {
     Remove-Item $nupkg
 }
 
-# 2) App icon (navy -> white gradient, "Super Speed" logo)
+# 2) App icon (navy -> white gradient, "Super Speed" logo) - redrawn whenever tools\IconGen.cs changes
 $ico = Join-Path $assets 'app.ico'
-if ($Icon -or -not (Test-Path $ico)) {
+$genSrc = Join-Path $root 'tools\IconGen.cs'
+$genStamp = Join-Path $obj 'icongen.sha256'
+$genHash = (Get-FileHash $genSrc -Algorithm SHA256).Hash
+$genOld = if (Test-Path $genStamp) { (Get-Content $genStamp -Raw).Trim() } else { '' }
+if ($Icon -or -not (Test-Path $ico) -or $genOld -ne $genHash) {
     Write-Host 'Generating icon ...'
     $gen = Join-Path $obj 'IconGen.exe'
-    & $csc /nologo /optimize+ /out:$gen /reference:System.Drawing.dll (Join-Path $root 'tools\IconGen.cs')
+    & $csc /nologo /optimize+ /out:$gen /reference:System.Drawing.dll $genSrc
     if ($LASTEXITCODE) { throw 'IconGen compile failed' }
     & $gen $ico $assets
     if ($LASTEXITCODE) { throw 'IconGen failed' }
+    Set-Content -Path $genStamp -Value $genHash -Encoding ascii
 }
 
 # 3) A running copy locks the exe: ask it to save and exit first. Notes live in %APPDATA%, never in dist\,
