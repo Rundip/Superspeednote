@@ -410,7 +410,10 @@ body.quick #quickBar{display:flex;align-items:center;gap:7px;height:34px;flex:no
 body.quick #titlebar,body.quick #board,body.quick #sidebar,body.quick #noteHead,body.quick #toolbar,body.quick #status{display:none!important}
 body.quick #pane{background:var(--paper)}
 body.quick #doc{margin:0;border:0;border-radius:0;box-shadow:none}
-body.quick #editor{padding:14px 18px 40px}
+body.quick #editor{padding:14px 26px 40px 30px}
+body.quick #editor.is-empty::before{left:30px;top:14px;right:26px}
+body.quick .tgrip{left:-26px;top:-22px}
+body.quick .tbar.r{right:-20px}
 body.quick .rz{display:block}
 body.quick .rz.t{top:0;height:3px}
 /* the search window on its own, over another program */
@@ -2560,7 +2563,7 @@ function placeIns() {
     if (insAt.row) {
       const rows = t.rows, i = Math.min(insAt.i, rows.length);
       y = (i < rows.length ? rows[i].getBoundingClientRect().top : rows[rows.length - 1].getBoundingClientRect().bottom) - tr.top;
-      x = -22;
+      x = quickOn ? -15 : -22;                    // the quick memo's narrow margin
       tinsln.style.translate = `0 ${y - 1.5}px`;
       ln = `${tr.width}px 3px`;
       tip = i === 0 ? '맨 위에 행 삽입' : i >= rows.length ? '맨 아래에 행 삽입' : '여기에 행 삽입';
@@ -3678,7 +3681,7 @@ function openPalette(mode) {
 // The page itself becomes the small window: just a bar and the editor on a new note. It stays put while
 // you work elsewhere. Put away (hotkey again / X): an empty memo is dropped and the app goes back to what
 // it showed before. Opening the app meanwhile carries the memo on in the app window.
-let quickOn = false, quickId = null, quickPrev = null;
+let quickOn = false, quickId = null, quickPrev = null, quickNag = 0, mainPh = '';
 function emptyHtml(h) { return !/<(img|table|hr)\b/i.test(h || '') && !frag(h).textContent.trim(); }
 function noteEmpty(id) {
   const n = noteById(id);
@@ -3698,9 +3701,14 @@ function quickStart() {
   quickPrev = { view, cur };
   quickOn = true;
   app.classList.add('quick');
+  mainPh = editor.dataset.ph;
+  editor.dataset.ph = '바로 입력하세요 · 자동으로 저장돼요';
   newNote(true);
   quickId = cur;
-  $('#qbHint').textContent = '자동 저장' + (st.quickHotkey ? ' · ' + st.quickHotkey.label + ' 닫기' : '');
+  const hk = st.quickHotkey && st.quickHotkey.label;   // 'Ctrl+Alt+M으로', 'F8로'
+  $('#qbHint').textContent = '자동 저장 · Esc' + (hk ? ' 또는 ' + hk + (/([036MN]|Tab|Home|Pg(Up|Dn))$/i.test(hk) ? '으로' : '로') : '로') + ' 닫기';
+  $('#qbOpen').title = '앱에서 이어서 쓰기' + (st.appHotkey ? ` (${st.appHotkey.label})` : '');
+  $('#qbClose').title = '닫기 (Esc) · 내용은 자동으로 저장돼요';
   host.send('quick', '1');
 }
 // how: 'close' = put away, 'main' = keep writing in the app window
@@ -3708,6 +3716,7 @@ function quickEnd(how) {
   if (!quickOn) return;
   quickOn = false;
   app.classList.remove('quick');
+  if (mainPh) editor.dataset.ph = mainPh;
   closeModal();
   const id = quickId, here = cur === id;
   if (here) flushNote();
@@ -4407,8 +4416,12 @@ document.addEventListener('keydown', e => {
   if (quickOn) {                                    // the little memo window: no switching notes or views
     if (act && QUICK_OK.has(act.id)) { e.preventDefault(); act.run(); return; }
     if (act && act.id === 'closeView') { e.preventDefault(); $('#qbClose').click(); return; }
-    if (act || (mod && /^Digit[1-9]$/.test(code))) { e.preventDefault(); return; }
-    if (e.key === 'Escape') { e.preventDefault(); if (findOpen) findClose(); }
+    if (act || (mod && /^Digit[1-9]$/.test(code))) {
+      e.preventDefault();
+      if (now() - quickNag > 3000) { quickNag = now(); toast('빠른 메모에서는 쓸 수 없는 키예요 · ↗ 앱에서 이어서 쓰기'); }
+      return;
+    }
+    if (e.key === 'Escape') { e.preventDefault(); if (findOpen) findClose(); else $('#qbClose').click(); }   // tables, menus, a picked object took theirs already
     return;
   }
   if (act) { e.preventDefault(); act.run(); return; }

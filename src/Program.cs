@@ -648,7 +648,18 @@ namespace SuperSpeedNote
             }
             if (key == QuickKey)                   // a new note in a small window in the screen corner
             {
-                if (quickOpen) { EndQuick("close", true); return; }   // pressed again: put it away
+                if (quickOpen)
+                {
+                    IntPtr fg = Native.GetForegroundWindow();
+                    if (quickShown && fg != quick.Handle)          // clicked away (it's not in Alt+Tab): back to the memo
+                    {
+                        if (IsExternalWindow(fg)) quickRet = fg;   // and later back to the window you were in now
+                        ForceForeground(quick.Handle);
+                        Post("quick", "focus");
+                    }
+                    else EndQuick("close", true);                  // pressed in the memo: put it away
+                    return;
+                }
                 if (front) { if (webReady) Post("new"); return; }      // already in the app: just a new note there
                 OpenQuick();
                 return;
