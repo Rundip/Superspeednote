@@ -249,11 +249,11 @@ body.sb-off #sidebar{display:none}
 .tbar.r{top:0;bottom:0;right:-24px;width:16px;cursor:col-resize}
 .tghost{position:absolute;display:none;pointer-events:none;border:1.5px dashed var(--accent);border-radius:4px}
 .tghost span{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);padding:2px 9px;border-radius:999px;background:var(--accent);color:#fff;font:700 11.5px "Segoe UI",var(--ui);white-space:nowrap}
-.tins{position:absolute;pointer-events:auto;width:18px;height:18px;margin:-9px 0 0 -9px;border-radius:50%;background:var(--accent);color:#fff;display:none;place-items:center;box-shadow:0 2px 6px rgba(30,70,180,.3);transition:transform .1s}
+.tins{position:absolute;left:-9px;top:-9px;pointer-events:auto;width:18px;height:18px;border-radius:50%;background:var(--accent);color:#fff;display:none;place-items:center;box-shadow:0 2px 6px rgba(30,70,180,.3);transition:scale .1s}
 .tins.show{display:grid}
-.tins:hover{transform:scale(1.15)}
+.tins:hover{scale:1.15}
 .tins .i{width:11px;height:11px;stroke-width:3}
-.tinsln{position:absolute;display:none;background:var(--accent);opacity:.7;border-radius:2px}
+.tinsln{position:absolute;left:0;top:0;display:none;background:var(--accent);opacity:.7;border-radius:2px}
 .tinsln.show{display:block}
 .tgrip{position:absolute;pointer-events:auto;left:-28px;top:-27px;width:18px;height:18px;border-radius:5px;display:grid;place-items:center;color:var(--ink-3);background:var(--paper);border:1px solid var(--line-2);opacity:.8}
 .tgrip:hover{color:var(--accent);border-color:var(--accent);opacity:1}
@@ -2259,27 +2259,35 @@ function insHit(t, x, y) {
   if (y < r.top + 3 && y >= r.top - 26 && x >= r.left - 6 && x <= r.right + 6) return { row: false, i: colBorder(t, x) };
   return null;
 }
+// the marker and its guide line move by transform only (no layout); size / tooltip are written only when they change
+let insLn = '', insTip = '';
 function placeIns() {
   const t = ovTable;
   let ok = !!insAt && !!t && t.isConnected && !barDrag && t.rows.length > 0;
   if (ok) {
     const tr = t.getBoundingClientRect();
+    let x, y, ln, tip;
     if (insAt.row) {
       const rows = t.rows, i = Math.min(insAt.i, rows.length);
-      const y = (i < rows.length ? rows[i].getBoundingClientRect().top : rows[rows.length - 1].getBoundingClientRect().bottom) - tr.top;
-      tins.style.cssText = `left:-22px;top:${y}px`;
-      tinsln.style.cssText = `left:0;top:${y - 1.5}px;width:${tr.width}px;height:3px`;
-      tins.title = i === 0 ? '맨 위에 행 삽입' : i >= rows.length ? '맨 아래에 행 삽입' : '여기에 행 삽입';
+      y = (i < rows.length ? rows[i].getBoundingClientRect().top : rows[rows.length - 1].getBoundingClientRect().bottom) - tr.top;
+      x = -22;
+      tinsln.style.transform = `translate(0,${y - 1.5}px)`;
+      ln = `${tr.width}px 3px`;
+      tip = i === 0 ? '맨 위에 행 삽입' : i >= rows.length ? '맨 아래에 행 삽입' : '여기에 행 삽입';
     } else {
       const cells = t.rows[0].cells, j = Math.min(insAt.i, cells.length);
-      const x = (j < cells.length ? cells[j].getBoundingClientRect().left : cells[cells.length - 1].getBoundingClientRect().right) - tr.left;
+      x = (j < cells.length ? cells[j].getBoundingClientRect().left : cells[cells.length - 1].getBoundingClientRect().right) - tr.left;
+      y = -15;
       ok = x >= -2 && x <= tr.width + 2;            // a wide table scrolled sideways: border out of view
-      tins.style.cssText = `left:${x}px;top:-15px`;
-      tinsln.style.cssText = `top:0;left:${x - 1.5}px;height:${tr.height}px;width:3px`;
-      tins.title = j === 0 ? '맨 왼쪽에 열 삽입' : j >= cells.length ? '맨 오른쪽에 열 삽입' : '여기에 열 삽입';
+      tinsln.style.transform = `translate(${x - 1.5}px,0)`;
+      ln = `3px ${tr.height}px`;
+      tip = j === 0 ? '맨 왼쪽에 열 삽입' : j >= cells.length ? '맨 오른쪽에 열 삽입' : '여기에 열 삽입';
     }
+    tins.style.transform = `translate(${x}px,${y}px)`;
+    if (ln !== insLn) { insLn = ln; const [w, h] = ln.split(' '); tinsln.style.width = w; tinsln.style.height = h; }
+    if (tip !== insTip) { insTip = tip; tins.title = tip; }
   }
-  tins.classList.toggle('show', ok); tinsln.classList.toggle('show', ok);
+  if (tins.classList.contains('show') !== ok) { tins.classList.toggle('show', ok); tinsln.classList.toggle('show', ok); }
 }
 // pointer in the margin beside / above a table it isn't over yet
 function probeTable(e) {
