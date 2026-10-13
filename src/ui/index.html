@@ -264,9 +264,15 @@ body.sb-off #sidebar{display:none}
 #editor pre+pre,#editor blockquote+blockquote{margin-top:-.5em;padding-top:0;border-top-left-radius:0;border-top-right-radius:0}
 #editor hr{border:0;height:14px;margin:.6em 0;background:linear-gradient(90deg,var(--accent),transparent) center/100% 2px no-repeat}   /* 14px tall: easy to click and select */
 #editor a{color:var(--accent-ink);text-decoration:underline;text-underline-offset:2px}
+#editor.ctrl a{cursor:pointer;text-decoration-thickness:2px}
 #editor img{max-width:100%;border-radius:8px;vertical-align:bottom}
 #editor table.t{border-collapse:collapse;margin:max(1.6em,26px) 0;display:block;width:max-content;max-width:100%;overflow-x:auto}
 #editor table.t td{border:1px solid var(--line-2);padding:.42em .8em;min-width:5.5em;vertical-align:top;line-height:1.55}
+/* wide pastes keep each column's natural width (the block scrolls sideways) instead of crushing every column */
+#editor table.t>tbody{display:table;width:max-content}
+#editor table.t td{max-width:min(22em,60vw);word-break:keep-all}
+#editor table.t{background:linear-gradient(90deg,var(--paper) 30%,transparent) left/28px 100% no-repeat local,linear-gradient(270deg,var(--paper) 30%,transparent) right/28px 100% no-repeat local,radial-gradient(farthest-side at 0 50%,rgba(16,26,48,.16),transparent) left/12px 100% no-repeat scroll,radial-gradient(farthest-side at 100% 50%,rgba(16,26,48,.16),transparent) right/12px 100% no-repeat scroll}
+[data-theme=dark] #editor table.t{background:linear-gradient(90deg,var(--paper) 30%,transparent) left/28px 100% no-repeat local,linear-gradient(270deg,var(--paper) 30%,transparent) right/28px 100% no-repeat local,radial-gradient(farthest-side at 0 50%,rgba(0,0,0,.55),transparent) left/12px 100% no-repeat scroll,radial-gradient(farthest-side at 100% 50%,rgba(0,0,0,.55),transparent) right/12px 100% no-repeat scroll}
 #editor table.t.hdr tr:first-child td{background:var(--th-bg);color:var(--th-ink);font-weight:700}
 ::highlight(ssn-find){background-color:rgba(255,200,40,.45)}
 ::highlight(ssn-cur){background-color:#ff9f1c;color:#111}
@@ -285,8 +291,9 @@ body.sb-off #sidebar{display:none}
 .tbar .i{width:12px;height:12px;stroke-width:2.6}
 .tbar:hover,.tbar.drag{opacity:1;background:var(--accent-soft);border:1px solid var(--accent)}
 .tbar.b{left:0;right:0;bottom:-22px;height:16px;cursor:row-resize}
-.tbar.r{top:0;bottom:0;right:-24px;width:16px;cursor:col-resize}
-.tghost{position:absolute;display:none;pointer-events:none;border:1.5px dashed var(--accent);border-radius:4px}
+.tbar.r{top:0;bottom:0;right:-22px;width:16px;cursor:col-resize}
+.tghost{position:absolute;display:none;pointer-events:none;border:1.5px dashed var(--accent);border-radius:4px;box-shadow:0 8px 20px -10px rgba(10,22,50,.35)}
+.tghost.none{border-color:var(--ink-3);background:var(--paper)!important}
 .tghost span{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);padding:2px 9px;border-radius:999px;background:var(--accent);color:#fff;font:700 11.5px "Segoe UI",var(--ui);white-space:nowrap}
 .tins{position:absolute;left:-9px;top:-9px;pointer-events:auto;width:18px;height:18px;border-radius:50%;background:var(--accent);color:#fff;display:none;place-items:center;box-shadow:0 2px 6px rgba(30,70,180,.3);transition:scale .1s}
 .tins.show{display:grid}
@@ -296,12 +303,23 @@ body.sb-off #sidebar{display:none}
 .tinsln.show{display:block}
 .tgrip{position:absolute;pointer-events:auto;left:-28px;top:-24px;width:18px;height:18px;border-radius:5px;display:grid;place-items:center;color:var(--ink-3);background:var(--paper);border:1px solid var(--line-2);opacity:.8}
 .tgrip:hover{color:var(--accent);border-color:var(--accent);opacity:1}
+.tgrip{color:var(--ink-2);opacity:1}
+.tgrip.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.tgrip.hide{opacity:0;pointer-events:none}
 .tgrip .i{width:11px;height:11px;stroke-width:2.2}
 #cellbox{position:absolute;border:2px solid var(--accent);border-radius:3px;display:none;pointer-events:none}
-#cellbox.nav{background:rgba(59,108,246,.08)}
-#cellbox.edit{box-shadow:0 0 0 3px var(--accent-soft)}
+#cellbox.nav{background:color-mix(in srgb,var(--accent) 12%,transparent)}   /* selected: tinted - typing replaces */
+#cellbox.edit{background:none;box-shadow:0 0 0 4px var(--accent-soft)}      /* editing: a halo, no tint - typing adds */
+#stHint.tbl{color:var(--accent-ink);font-weight:600}
+#cellbox.copied,#objbox.copied{border-style:dashed}
+.tflash{position:absolute;pointer-events:none;display:none;border-radius:3px;background:var(--accent-soft)}
+.tflash.go{display:block;animation:tflash .7s ease-out forwards}
+@keyframes tflash{from{opacity:1}to{opacity:0}}
+#tblOv.cold .tbar{opacity:.18}
+#tblOv.cold .tgrip{opacity:0;pointer-events:none}
+.tbar,.tgrip{transition:opacity .15s,background .12s,border-color .12s}
 #editor.cellnav,#editor.objsel{caret-color:transparent}
-#editor.cellnav ::selection{background:transparent}   /* a selected cell keeps its text selected (IME types over it) - unseen */
+#editor.cellnav ::selection,#editor.objsel ::selection,#editor img::selection{background:transparent}   /* a selected cell keeps its text selected (IME types over it) - unseen */
 /* selected image / divider / table */
 #objbox{position:absolute;display:none;pointer-events:none;z-index:4;border:2px solid var(--accent);border-radius:5px;box-shadow:0 0 0 4px var(--accent-soft)}
 
@@ -327,6 +345,9 @@ body.sb-off #sidebar{display:none}
 .sw.none{background:linear-gradient(135deg,transparent 44%,#e5484d 44% 56%,transparent 56%),var(--paper)}
 .sw.txt{display:grid;place-items:center;font:800 13px "Segoe UI";background:var(--paper)}
 .blk{display:flex;align-items:center;width:100%;padding:6px 10px;border-radius:8px;text-align:left;gap:10px}
+.blk.mit{height:auto;min-height:34px}
+.blk-on{color:var(--accent);font-weight:800;margin-left:auto}
+.blk-on+kbd{margin-left:10px}
 .blk:hover{background:var(--hover)}
 .blk kbd{margin-left:auto;color:var(--ink-2)}
 .tgrid{display:grid;grid-template-columns:repeat(8,19px);gap:3px;padding:8px 8px 4px}
@@ -626,7 +647,7 @@ body.maxed:not(.quick) .rz,body.web .rz{display:none}
         <span class="tsep"></span>
         <button class="tb" data-list="ul" data-k="ul" data-t="글머리 목록" title="글머리 목록 (Ctrl+Shift+8)"><svg class="i"><use href="#i-list"/></svg></button>
         <button class="tb" data-list="ol" data-k="ol" data-t="번호 목록" title="번호 목록 (Ctrl+Shift+7)"><svg class="i"><use href="#i-olist"/></svg></button>
-        <button class="tb" data-list="chk" data-k="chk" data-t="체크리스트" title="체크리스트 (Ctrl+Shift+L)"><svg class="i"><use href="#i-check"/></svg></button>
+        <button class="tb" data-list="chk" data-k="chk" data-t="체크리스트 · 체크 Ctrl+Enter" title="체크리스트 (Ctrl+Shift+L) · 체크 Ctrl+Enter"><svg class="i"><use href="#i-check"/></svg></button>
         <span class="tsep"></span>
         <button class="tb" data-pop="table" data-k="table" data-t="표 넣기 · 엑셀 붙여넣기 지원" title="표 넣기 (Ctrl+Shift+T) · 엑셀 붙여넣기 지원"><svg class="i"><use href="#i-table"/></svg></button>
         <button class="tb" id="tbHr" title="구분선 (--- 입력 후 Enter)"><svg class="i"><use href="#i-hr"/></svg></button>
@@ -640,13 +661,13 @@ body.maxed:not(.quick) .rz,body.web .rz{display:none}
         <div id="sheet">
           <div id="editor" contenteditable="true" spellcheck="false" data-ph="여기에 바로 입력하세요.&#10;엑셀에서 셀을 복사해 붙여넣으면 표가 됩니다 · # 제목  - 목록  [] 체크"></div>
           <div id="tblOv">
-            <div id="cellbox"></div>
+            <div id="cellbox"></div><i class="tflash"></i>
             <i class="tinsln"></i>
             <button class="tins"><svg class="i"><use href="#i-plus"/></svg></button>
             <div class="tghost"><span></span></div>
             <button class="tbar b" data-dir="row" title="클릭: 맨 아래에 행 추가 · 아래로 끌면 여러 행"><svg class="i"><use href="#i-plus"/></svg></button>
             <button class="tbar r" data-dir="col" title="클릭: 맨 오른쪽에 열 추가 · 오른쪽으로 끌면 여러 열"><svg class="i"><use href="#i-plus"/></svg></button>
-            <button class="tgrip" title="표 선택 · Delete로 삭제"><svg class="i"><use href="#i-grid"/></svg></button>
+            <button class="tgrip" title="표 선택 · Ctrl+C 복사 · Delete 삭제"><svg class="i"><use href="#i-table"/></svg></button>
           </div>
           <div id="objbox"></div>
         </div>
@@ -1787,7 +1808,7 @@ editor.addEventListener('input', e => {
   if (findOpen) findSoon();
 });
 editor.addEventListener('compositionstart', () => { composing = true; editor.classList.remove('is-empty'); });
-editor.addEventListener('compositionend', () => { composing = false; if (needsRoot()) ensureRoot(); histSoon(); });
+editor.addEventListener('compositionend', () => { composing = false; if (needsRoot()) ensureRoot(); histSoon(); if (tipAfterIme) { tipAfterIme = false; tipReplace(); } });
 editor.addEventListener('keydown', e => {
   if (objSel && !e.isComposing && objKey(e)) return;   // a selected picture / divider / table
   if (!e.isComposing) {                           // table cells first (Excel-style navigation / editing)
@@ -1803,7 +1824,12 @@ editor.addEventListener('keydown', e => {
     let done = true;
     if (code === 'KeyZ' && !sh) undo();
     else if (code === 'KeyY' || (code === 'KeyZ' && sh)) redo();
-    else if (code === 'Enter' && !sh) { const td = closestSel('td'); if (td) { clearNav(); exitTable(td.closest('table')); } else done = false; }
+    else if (code === 'Enter' && !sh) {
+      const td = closestSel('td'), chk = !td && closestSel('ul.checklist > li');
+      if (td) { clearNav(); exitTable(td.closest('table')); }
+      else if (chk) keepSel(() => edit(() => { chk.dataset.checked = chk.dataset.checked === 'true' ? 'false' : 'true'; }));   // tick a to-do
+      else done = false;
+    }
     else if (/^Key[BIU]$/.test(code) && !sh) { /* the browser's own bold/italic/underline would bypass undo: these keys were moved */ }
     else { done = false; if (code === 'KeyV' && sh) plainNext = true; }
     if (done) { e.preventDefault(); return; }
@@ -1817,8 +1843,11 @@ editor.addEventListener('keydown', e => {
     else if (!e.shiftKey) edit(() => exec('insertText', '\t'));
     return;
   }
+  if (e.key === ' ' || e.key === 'Enter') linkifyBefore();   // a typed address becomes a link (the key still goes in)
   if (e.key === 'Enter' && !e.shiftKey && boxEnter()) { e.preventDefault(); return; }
+  if (e.key === 'Backspace' && !e.shiftKey && blockBackspace()) { e.preventDefault(); return; }
   if (e.key === 'Backspace' && !e.shiftKey && listBackspace()) { e.preventDefault(); return; }
+  if ((e.key === 'Backspace' || e.key === 'Delete') && !e.shiftKey && besideTable(e.key === 'Backspace')) { e.preventDefault(); return; }
   if (e.key === ' ' && mdShortcut()) { e.preventDefault(); return; }
   if (e.key === 'Enter' && !e.shiftKey && hrShortcut()) { e.preventDefault(); return; }
 });
@@ -1855,8 +1884,32 @@ editor.addEventListener('click', e => {
 });
 editor.addEventListener('mouseover', e => {
   const a = e.target.closest && e.target.closest('a[href]');
-  if (a && !a.title) a.title = 'Ctrl+클릭으로 열기';
+  if (a && !a.title) a.title = 'Ctrl+클릭으로 열기 · ' + a.getAttribute('href');
 });
+// Ctrl held: links look clickable
+editor.addEventListener('keydown', e => { if (e.key === 'Control') editor.classList.add('ctrl'); });
+document.addEventListener('keyup', e => { if (e.key === 'Control') editor.classList.remove('ctrl'); });
+window.addEventListener('blur', () => editor.classList.remove('ctrl'));
+function linkifyBefore() {
+  const r = selRange();
+  if (!r || !r.collapsed || r.startContainer.nodeType !== 3 || editCell || navLive()) return;
+  const n = r.startContainer;
+  if (n.parentNode.closest('a,pre,code')) return;
+  const before = n.nodeValue.slice(Math.max(0, r.startOffset - 300), r.startOffset);
+  const m = /(?:https?:\/\/|www\.)[^\s<>"]+$/i.exec(before);
+  if (!m) return;
+  const url = m[0].replace(/[.,)\]'"]+$/, '');
+  if (url.length < 8) return;
+  const start = r.startOffset - before.length + m.index, end = start + url.length, caret = r.startOffset;
+  edit(() => {
+    const rr = document.createRange(); rr.setStart(n, start); rr.setEnd(n, end);
+    const a = document.createElement('a'); a.setAttribute('href', /^www\./i.test(url) ? 'https://' + url : url);
+    rr.surroundContents(a);
+    const nx = a.nextSibling, c = document.createRange();
+    if (nx && nx.nodeType === 3) c.setStart(nx, Math.min(caret - end, nx.nodeValue.length)); else c.setStartAfter(a);
+    c.collapse(true); const s2 = getSelection(); s2.removeAllRanges(); s2.addRange(c);
+  });
+}
 function openUrl(u) { if (!/^(https?:|mailto:)/i.test(u)) return; if (HOST) host.send('openUrl', u); else window.open(u, '_blank'); }
 document.addEventListener('selectionchange', () => {
   if (view !== 'editor') return;
@@ -1876,6 +1929,11 @@ function stats() {
 // ---------------------------------------------------------------- formatting
 function fmt(cmd) {
   ensureEditorFocus();
+  if (cmd === 'bold' && !closestSel('b,strong')) {      // headings and header cells already look bold
+    const hc = navLive() ? navRect().r0 === 0 && navRect().r1 === 0 && nav.t.classList.contains('hdr') : !!closestSel('table.t.hdr tr:first-child > td');
+    if (hc) { toast('머리글 행은 이미 굵게 보여요 · 끄려면 오른쪽 클릭 › 머리글 행 끄기'); return; }
+    if (!navLive() && closestSel('h1,h2,h3')) { toast('제목은 이미 굵게 보여요'); return; }
+  }
   let on = null;                                  // on cells: follow the first cell's state so the range ends up uniform
   if (onCells(() => { const s = document.queryCommandState(cmd); if (on === null) on = s; if (s === on) exec(cmd); })) return;
   edit(() => exec(cmd)); updateToolbar();
@@ -1953,9 +2011,8 @@ function liAtLineStart() {
 function listBackspace() {
   const li = liAtLineStart();
   if (!li) return false;
-  const top = !isList(li.parentElement.parentElement) && li.parentElement.parentElement.nodeName !== 'LI';
   edit(() => {
-    if (!li.classList.contains('nob') && !(top && emptyHtml(li.innerHTML))) {
+    if (!li.classList.contains('nob') && !emptyHtml(li.innerHTML)) {
       li.classList.add('nob'); delete li.dataset.checked;
       placeCaret(li, false);
     } else liftItem(li);
@@ -2117,8 +2174,10 @@ function mdShortcut() {
   const map = { '#': 'h1', '##': 'h2', '###': 'h3', '-': 'ul', '*': 'ul', '1.': 'ol', '[]': 'chk', '[ ]': 'chk', '>': 'blockquote', '```': 'pre' };
   const kind = map[pre.toString()];
   if (!kind) return false;
+  exec('insertText', ' '); histCommit();          // Ctrl+Z brings back what you typed ("# "), not an empty line
   edit(() => {
-    const s = getSelection(); s.removeAllRanges(); s.addRange(pre);
+    const r2 = selRange(), pre2 = document.createRange(); pre2.setStart(blk, 0); pre2.setEnd(r2.startContainer, r2.startOffset);
+    const s = getSelection(); s.removeAllRanges(); s.addRange(pre2);
     exec('delete');
     if (kind === 'ul' || kind === 'ol') { exec(kind === 'ul' ? 'insertUnorderedList' : 'insertOrderedList'); liftList(); }
     else if (kind === 'chk') { exec('insertUnorderedList'); const li = closestSel('li'); if (li) li.parentElement.classList.add('checklist'); liftList(); }
@@ -2153,6 +2212,34 @@ function boxEnter() {
   } else edit(() => exec('insertLineBreak'));
   return true;
 }
+// Backspace at the start of the line after a table (Delete at the end of the line before one) used to do nothing:
+// an empty line goes away into the table's last cell, otherwise the table gets selected (pressed again: deleted)
+function besideTable(back) {
+  const r = selRange();
+  if (!r || !r.collapsed || cellOf(r.startContainer)) return false;
+  const blk = topLevel(r.startContainer);
+  if (!blk || blk.nodeType !== 1 || /^(TABLE|HR|UL|OL)$/.test(blk.nodeName)) return false;
+  const t = back ? blk.previousElementSibling : blk.nextElementSibling;
+  if (!t || t.nodeName !== 'TABLE' || !t.rows.length) return false;
+  const off = textOffset(blk, r.startContainer, r.startOffset);
+  if (back ? off !== 0 : off !== blk.textContent.length) return false;
+  if (back && !blk.textContent && !blk.querySelector('img,hr') && blk.nextElementSibling) {
+    edit(() => blk.remove());
+    setNav(t, t.rows.length - 1, t.rows[t.rows.length - 1].cells.length - 1);
+    return true;
+  }
+  selectObj(t);
+  return true;
+}
+function blockBackspace() {
+  const r = selRange();
+  if (!r || !r.collapsed) return false;
+  const blk = blockOf(r.startContainer);
+  if (!blk || blk.parentNode !== editor || !/^(H1|H2|H3|BLOCKQUOTE|PRE)$/.test(blk.nodeName) || textOffset(blk, r.startContainer, r.startOffset)) return false;
+  edit(() => exec('formatBlock', 'div'));
+  updateToolbar();
+  return true;
+}
 function hrShortcut() {
   const blk = blockOf(selNode());
   if (!blk || blk.nodeName !== 'DIV' || blk.textContent !== '---') return false;
@@ -2174,7 +2261,8 @@ function hrShortcut() {
 }
 function updateToolbar() {
   if (view !== 'editor' || document.activeElement !== editor) return;
-  for (const b of $$('[data-cmd]', toolbar)) b.classList.toggle('on', document.queryCommandState(b.dataset.cmd));
+  const boldShown = closestSel('h1,h2,h3') || closestSel('table.t.hdr tr:first-child > td');   // bold by style: only a real <b> counts
+  for (const b of $$('[data-cmd]', toolbar)) b.classList.toggle('on', b.dataset.cmd === 'bold' && boldShown ? !!closestSel('b,strong') : document.queryCommandState(b.dataset.cmd));
   const blk = (document.queryCommandValue('formatBlock') || 'div').toLowerCase();
   $('#tbBlockLbl').textContent = (BLOCKS.find(x => x[0] === blk) || BLOCKS[0])[1];
   const li = closestSel('li'), L = li && li.parentElement;
@@ -2206,8 +2294,10 @@ function toolPop(kind, anchor) {
   const r = anchor.getBoundingClientRect();
   if (kind === 'block') {
     const look = { div: 'font-size:13.5px', h1: 'font-size:19px;font-weight:800', h2: 'font-size:16.5px;font-weight:750', h3: 'font-size:14.5px;font-weight:700', blockquote: 'font-size:13.5px;border-left:3px solid var(--accent);padding-left:8px', pre: 'font:12.5px var(--mono)' };
-    showPop(r.left, r.bottom + 6, BLOCKS.map(([t, l, k]) => `<button class="blk" data-v="${t}"${t === 'blockquote' || t === 'pre' ? ' title="빈 줄에서 Enter를 누르면 빠져나가요"' : ''}><span style="${look[t]}">${l}</span><kbd>${esc(k.trim())}</kbd></button>`).join(''),
+    const now0 = (document.queryCommandValue('formatBlock') || 'div').toLowerCase();
+    showPop(r.left, r.bottom + 6, BLOCKS.map(([t, l, k]) => `<button class="mit blk${t === now0 ? ' on' : ''}" data-v="${t}"${t === 'blockquote' || t === 'pre' ? ' title="빈 줄에서 Enter를 누르면 빠져나가요"' : ''}><span style="${look[t]}">${l}</span>${t === now0 ? '<b class="blk-on">✓</b>' : ''}<kbd>${esc(k.trim())}</kbd></button>`).join(''),
       b => { setBlock(b.dataset.v); });
+    menuOn = true;                                 // ↑ / ↓ / Enter / Esc, like the other menus
   } else if (kind === 'fg') {
     showPop(r.left, r.bottom + 6, `<div class="mlabel">글자색 · 잘 보이는 색만 골랐어요</div><div class="swatches">${FG.map(c => c.v
       ? `<button class="sw txt${st.fg === c.v ? ' on' : ''}" data-v="${c.v}" title="${c.n}" style="color:${c.v}">A</button>`
@@ -2218,14 +2308,24 @@ function toolPop(kind, anchor) {
   } else if (kind === 'table') {
     let cells = '';
     for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) cells += `<i data-x="${x}" data-y="${y}"></i>`;
-    showPop(r.left, r.bottom + 6, `<div class="tgrid">${cells}</div><div class="tglabel" id="tgl">표 크기 선택</div><div class="tghint">엑셀·구글시트에서 셀을 복사해 붙여넣으면 그대로 표가 돼요.</div>`, null);
+    showPop(r.left, r.bottom + 6, `<div class="tgrid">${cells}</div><div class="tglabel" id="tgl"></div><div class="tghint">방향키로 크기, Enter로 넣기 · 엑셀·구글시트에서 복사한 셀을 붙여넣어도 표가 돼요.</div>`, null);
     const tg = pop.querySelector('.tgrid');
-    tg.addEventListener('mousemove', e => {
-      const c = e.target.closest('i');
-      if (!c) return;
-      const X = +c.dataset.x, Y = +c.dataset.y;
+    let X = 2, Y = 2;                              // starts on 3 × 3, the size most tables begin with
+    const hl = (x, y) => {
+      X = clamp(x, 0, 7); Y = clamp(y, 0, 7);
       for (const i of tg.children) i.classList.toggle('on', +i.dataset.x <= X && +i.dataset.y <= Y);
       $('#tgl').textContent = `${Y + 1}행 × ${X + 1}열`;
+    };
+    hl(2, 2);
+    popKey = e => {
+      const d = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key];
+      if (d) { hl(X + d[0], Y + d[1]); return true; }
+      if (e.key === 'Enter') { closePop(); insertTable(Y + 1, X + 1); return true; }
+      return false;
+    };
+    tg.addEventListener('mousemove', e => {
+      const c = e.target.closest('i');
+      if (c) hl(+c.dataset.x, +c.dataset.y);
     });
     tg.addEventListener('click', e => {
       const c = e.target.closest('i');
@@ -2345,6 +2445,7 @@ function onTableKey(e, td) {
 }
 function tableOp(op, t, cell) {
   if (!t || !t.isConnected) return;
+  let gone = '';                                   // what to tell afterwards (with undo)
   if (cell && !t.contains(cell)) cell = null;
   // deleting with several cells selected takes all their rows / columns, like Excel
   const rc = cell && nav && nav.t === t ? navRect() : null;
@@ -2355,6 +2456,7 @@ function tableOp(op, t, cell) {
     let target = null;
     if (inRc && op === 'delRow') { for (let k = rc.r1; k > rc.r0; k--) t.deleteRow(k); ri = rc.r0; }
     if (inRc && op === 'delCol') { for (const tr of Array.from(t.rows)) for (let k = Math.min(rc.c1, tr.cells.length - 1); k > rc.c0; k--) tr.deleteCell(k); ci = rc.c0; }
+    if (op === 'delTable') gone = 'table';
     switch (op) {
       case 'rowTop': target = addRow(t, 0).cells[ci]; break;
       case 'rowBottom': target = addRow(t, t.rows.length).cells[ci]; break;
@@ -2379,6 +2481,9 @@ function tableOp(op, t, cell) {
     }
     if (target) placeCaret(target, false);
   });
+  if (gone || !t.isConnected) toast('표를 삭제했어요', '되돌리기', undo);
+  else if (inRc && (op === 'delRow' || op === 'delCol') && (op === 'delRow' ? rc.r1 > rc.r0 : rc.c1 > rc.c0))
+    toast(`${op === 'delRow' ? '행' : '열'} ${op === 'delRow' ? rc.r1 - rc.r0 + 1 : rc.c1 - rc.c0 + 1}개를 삭제했어요`, '되돌리기', undo);
 }
 // table shortcuts (Settings > 단축키): the cell being edited / selected, else the one holding the caret
 function tblAct(op) {
@@ -2393,13 +2498,24 @@ function tblAct(op) {
 let nav = null;                                   // { t, ar, ac, fr, fc }  anchor / focus row + column
 let editCell = null, editKind = '', editOrig = '';
 let tabFrom = -1;                                 // column a run of Tabs started in: Enter goes back to it, like Excel
+// the status bar says what a key will do in a table (written only when the mode changes)
+let hintMode = '', defaultHint = '', tipAfterIme = false;
+function tblHint(m) {
+  if (m === hintMode) return;
+  hintMode = m;
+  const h = $('#stHint');
+  h.classList.toggle('tbl', !!m);
+  h.textContent = m === 'nav' ? '칸 선택 · 입력하면 새로 씀 · F2 이어 쓰기 · Delete 지우기 · Ctrl+Enter 표 밖으로'
+    : m === 'edit' ? '칸 편집 중 · Enter 확정 · Esc 취소 · Shift+Enter 줄바꿈'
+    : m === 'obj' ? '표 선택됨 · Ctrl+C 복사 · Delete 삭제 · Esc 해제' : defaultHint;
+}
 let parked = null, mouseSel = false, parkAfterMouse = false, dragFrom = null;   // dragFrom: the cell a mouse drag began in
 const ARROWS = { ArrowUp: [-1, 0], ArrowDown: [1, 0], ArrowLeft: [0, -1], ArrowRight: [0, 1] };
 function cellAt(t, r, c) { const tr = t.rows[r]; return tr ? tr.cells[Math.min(c, tr.cells.length - 1)] || null : null; }
 function navRect() { return { t: nav.t, r0: Math.min(nav.ar, nav.fr), r1: Math.max(nav.ar, nav.fr), c0: Math.min(nav.ac, nav.fc), c1: Math.max(nav.ac, nav.fc) }; }
 function navLive() { if (nav && !nav.t.isConnected) clearNav(); return !!nav && !editCell; }
 function rectCells(rc) { const out = []; for (let i = rc.r0; i <= rc.r1; i++) for (let j = rc.c0; j <= rc.c1; j++) { const c = rc.t.rows[i] && rc.t.rows[i].cells[j]; if (c) out.push(c); } return out; }
-function clearNav() { nav = null; editCell = null; tabFrom = -1; parked = null; editor.classList.remove('cellnav'); posOvSoon(); }
+function clearNav() { nav = null; editCell = null; tabFrom = -1; parked = null; editor.classList.remove('cellnav'); posOvSoon(); if (hintMode !== 'obj') tblHint(''); }
 function endPoint(td) {                           // just after the last character of a cell
   const w = document.createTreeWalker(td, NodeFilter.SHOW_TEXT);
   let n, last = null;
@@ -2432,7 +2548,7 @@ function setNav(t, r, c, extend) {
   editor.classList.add('cellnav');
   const td = cellAt(t, r, c);
   if (td) { parkNav(td); td.scrollIntoView({ block: 'nearest', inline: 'nearest' }); }
-  showOv(t); posOv(); updateToolbar();
+  showOv(t); posOv(); updateToolbar(); tblHint('nav');
 }
 function startEdit(kind, td, keepCaret) {
   td = td || (nav && cellAt(nav.t, nav.fr, nav.fc));
@@ -2442,7 +2558,7 @@ function startEdit(kind, td, keepCaret) {
   editCell = td; editKind = kind; editOrig = td.innerHTML;
   editor.classList.remove('cellnav');
   if (!keepCaret) parkCaret(td);
-  showOv(nav.t); posOv();
+  showOv(nav.t); posOv(); tblHint('edit');
 }
 function beginReplace() {                         // a key typed on a selected cell starts it over, like Excel
   const td = cellAt(nav.t, nav.fr, nav.fc);
@@ -2455,6 +2571,12 @@ function beginReplace() {                         // a key typed on a selected c
   startEdit('type', td);
   editOrig = orig;
   markDirty();
+  if (frag(orig).textContent.trim()) tipReplace();
+}
+function tipReplace() {                           // once: why the cell's text went away
+  if (st.tipReplace) return;
+  st.tipReplace = 1; saveStateSoon();
+  setTimeout(() => toast('선택한 칸에 입력하면 내용이 새로 바뀌어요 · 이어 쓰려면 F2나 더블클릭', '되돌리기', undo), 0);
 }
 // the IME's first key on a selected cell: no DOM or selection change here (see parkNav) - the composition replaces
 // the parked selection by itself; we only switch the cell to editing
@@ -2464,7 +2586,8 @@ function imeReplace() {
   const row = td.parentElement.rowIndex, col = td.cellIndex;
   editCell = td; editKind = 'type'; editOrig = td.innerHTML;
   nav = { t: td.closest('table'), ar: row, ac: col, fr: row, fc: col };
-  requestAnimationFrame(() => { if (editCell === td) editor.classList.remove('cellnav'); });   // not even a class change on this key
+  requestAnimationFrame(() => { if (editCell === td) { editor.classList.remove('cellnav'); tblHint('edit'); } });   // not even a class change on this key
+  if (td.textContent.trim() && !st.tipReplace) tipAfterIme = true;   // the tip waits for the syllable to finish
   posOvSoon();
 }
 function leaveTable(t, up) {
@@ -2504,6 +2627,7 @@ function navKey(e) {
     else moveNav(dr, dc, e.shiftKey, mod);
     return true;
   }
+  if (k === 'Enter' && e.altKey && !mod) { e.preventDefault(); startEdit('f2'); edit(() => exec('insertLineBreak')); return true; }
   if (e.altKey) return false;
   if (k === 'Tab' && !mod) { e.preventDefault(); navTab(t, e.shiftKey); return true; }
   if (k === 'Enter' && !mod) { e.preventDefault(); if (e.shiftKey) moveNav(-1, 0); else navDown(t); return true; }
@@ -2536,6 +2660,7 @@ function editKey(e) {
     setNav(t, r, c);
     return true;
   }
+  if (e.key === 'Enter' && e.altKey && !e.ctrlKey && !e.shiftKey) { e.preventDefault(); edit(() => exec('insertLineBreak')); return true; }   // Excel's in-cell line break
   if (e.ctrlKey || e.metaKey || e.altKey) return false;
   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); back(); navDown(t); return true; }
   if (e.key === 'Tab') { e.preventDefault(); back(); navTab(t, e.shiftKey); return true; }
@@ -2567,6 +2692,7 @@ function syncNav() {
   if (editCell === a) return;
   const t = a.closest('table'), ri = a.parentElement.rowIndex, ci = a.cellIndex;
   if (nav && !editCell && nav.t === t && nav.fr === ri && nav.fc === ci) {   // the selected cell itself
+    tblHint('nav');
     if (isParked(r)) return;                      // our own parked selection
     if (!r.collapsed) startEdit('f2', a, true);   // text selected in it (double-click) = editing it
     else if (mouseSel) parkAfterMouse = true; else parkNav(a);   // a stray caret (right-click ...): park again
@@ -2578,7 +2704,7 @@ function syncNav() {
   editCell = null; tabFrom = -1;
   editor.classList.add('cellnav');
   if (mouseSel) parkAfterMouse = true; else parkNav(a);    // a click: park once the button is up (not mid-drag)
-  showOv(t); posOv();
+  showOv(t); posOv(); tblHint('nav');
 }
 // formatting a selected cell / range applies to the whole cells (Excel-style); false if not in cell mode
 function onCells(fn, after) {
@@ -2614,7 +2740,7 @@ document.addEventListener('mouseup', e => {
     nav = { t, ar: from.parentElement.rowIndex, ac: from.cellIndex, fr: to.parentElement.rowIndex, fc: to.cellIndex };
     editCell = null; tabFrom = -1;
     editor.classList.add('cellnav');
-    parkNav(to); showOv(t); posOv(); updateToolbar();
+    parkNav(to); showOv(t); posOv(); updateToolbar(); tblHint('nav');
     return;
   }
   if (editCell) return;
@@ -2638,10 +2764,11 @@ document.addEventListener('mouseup', e => {
 let ovTable = null, ovHover = false, ovHideT = 0, ovRaf = 0;
 const tins = $('.tins', ov), tinsln = $('.tinsln', ov), tghost = $('.tghost', ov), tgrip = $('.tgrip', ov);
 let insAt = null, insRaf = 0, insEv = null, barDrag = null;   // insAt: { row: bool, i: border index }
+function setCold(c) { if (ov.classList.contains('cold') !== c) ov.classList.toggle('cold', c); }
 function showOv(t) {
   if (!t || !editor.contains(t)) return;
   clearTimeout(ovHideT);
-  if (t !== ovTable) insAt = null;
+  if (t !== ovTable) { insAt = null; setCold(true); }   // brought up by the caret: quiet until the mouse comes near
   ovTable = t;
   ov.classList.add('show');
   posOv();
@@ -2665,7 +2792,7 @@ function posOv() {
   if (a && b) {
     const ra = a.getBoundingClientRect(), rb = b.getBoundingClientRect();
     const L = Math.min(ra.left, rb.left), T = Math.min(ra.top, rb.top), Rr = Math.max(ra.right, rb.right), B = Math.max(ra.bottom, rb.bottom);
-    cellbox.className = editCell ? 'edit' : 'nav';
+    cellbox.className = (editCell ? 'edit' : 'nav') + (cellbox.classList.contains('copied') ? ' copied' : '');
     Object.assign(cellbox.style, { display: 'block', left: (L - tr.left - 1) + 'px', top: (T - tr.top - 1) + 'px', width: (Rr - L + 2) + 'px', height: (B - T + 2) + 'px' });
   } else cellbox.style.display = 'none';
   placeIns();
@@ -2676,6 +2803,15 @@ function caretTable() {
   else if (ovTable) { posOv(); if (!ovHover) hideOvSoon(); }
 }
 // the row / column border nearest to y / x (binary search: big tables stay cheap)
+const tflash = $('.tflash', ov);
+function flashLine(t, row, i) {                   // a soft glow over a row / column just added
+  const tr = t.getBoundingClientRect();
+  let r;
+  if (row) { const x = t.rows[i]; if (!x) return; r = x.getBoundingClientRect(); r = { left: tr.left, top: r.top, width: tr.width, height: r.height }; }
+  else { const a = t.rows[0].cells[i], b = t.rows[t.rows.length - 1].cells[i]; if (!a || !b) return; const ra = a.getBoundingClientRect(), rb = b.getBoundingClientRect(); r = { left: ra.left, top: ra.top, width: ra.width, height: rb.bottom - ra.top }; }
+  Object.assign(tflash.style, { left: (r.left - tr.left) + 'px', top: (r.top - tr.top) + 'px', width: r.width + 'px', height: r.height + 'px' });
+  tflash.classList.remove('go'); void tflash.offsetWidth; tflash.classList.add('go');
+}
 function rowBorder(t, y) {
   const rows = t.rows;
   let lo = 0, hi = rows.length - 1;
@@ -2726,6 +2862,7 @@ function placeIns() {
     if (tip !== insTip) { insTip = tip; tins.title = tip; }
   }
   if (tins.classList.contains('show') !== ok) { tins.classList.toggle('show', ok); tinsln.classList.toggle('show', ok); }
+  tgrip.classList.toggle('hide', ok && insAt.row && insAt.i === 0);   // the top-border "+" sits right below it
 }
 // pointer in the margin beside / above a table it isn't over yet
 function probeTable(e) {
@@ -2744,14 +2881,28 @@ function trackIns(e) {
   if (!t && ovTable && ov.contains(e.target)) t = ovTable;
   if (!t && ovTable) { const r = ovTable.getBoundingClientRect(); if (e.clientX >= r.left - 46 && e.clientX <= r.right + 30 && e.clientY >= r.top - 30 && e.clientY <= r.bottom + 30) t = ovTable; }
   if (!t && e.target === editor) t = probeTable(e);
-  if (!t) { if (insAt) { insAt = null; placeIns(); } if (ovTable && !ovHover) hideOvSoon(); return; }
+  if (!t) { if (insAt) { insAt = null; placeIns(); } setCold(true); if (ovTable && !ovHover) hideOvSoon(); return; }
   if (t !== ovTable) showOv(t); else clearTimeout(ovHideT);
+  setCold(false);
   const h = insHit(t, e.clientX, e.clientY);
   if (h && ov.contains(e.target) && e.target.closest('.tins')) return;   // on the + itself: keep it where it is
   if (!h ? !insAt : insAt && insAt.row === h.row && insAt.i === h.i) return;
   insAt = h; placeIns();
 }
-sheet.addEventListener('mousemove', e => { insEv = e; if (!insRaf) insRaf = requestAnimationFrame(() => { insRaf = 0; trackIns(insEv); }); });
+sheet.addEventListener('mousemove', e => { insEv = e; if (!insRaf) insRaf = requestAnimationFrame(() => { insRaf = 0; if (!dragLive(insEv)) trackIns(insEv); }); });
+// a mouse drag across cells shows its range while you drag (it used to appear only on release)
+function dragLive(e) {
+  if (e.buttons !== 1 || !dragFrom || !dragFrom.isConnected) return false;
+  const to = e.target.closest && e.target.closest('td'), t = dragFrom.closest('table');
+  if (to && to !== dragFrom && to.closest('table') === t) {
+    nav = { t, ar: dragFrom.parentElement.rowIndex, ac: dragFrom.cellIndex, fr: to.parentElement.rowIndex, fc: to.cellIndex };
+    editCell = null;
+    editor.classList.add('cellnav');
+    if (ovTable !== t) showOv(t);
+    posOv(); tblHint('nav');
+  }
+  return true;
+}
 sheet.addEventListener('mouseleave', () => { if (insAt) { insAt = null; placeIns(); } if (ovTable && !ovHover) hideOvSoon(); });
 for (const b of [tins, tgrip, ...$$('.tbar', ov)]) {
   b.addEventListener('mouseenter', () => { ovHover = true; clearTimeout(ovHideT); });
@@ -2765,6 +2916,7 @@ tins.addEventListener('click', () => {
   clearObj();
   edit(() => { if (at.row) addRow(t, at.i); else addCol(t, at.i); });
   if (at.row) setNav(t, at.i, c); else setNav(t, r >= t.rows.length ? 0 : r, at.i);
+  posOv(); flashLine(t, at.row, at.i);
 });
 tgrip.addEventListener('click', () => { if (ovTable) selectObj(ovTable); });
 // add bars: a click adds one row / column, dragging adds as many as the dashed preview shows
@@ -2776,11 +2928,12 @@ function lastColWidth(t) {
 function showGhost() {
   const d = barDrag;
   if (!d) { tghost.style.display = 'none'; return; }
-  const len = d.n * d.step, line = 'color-mix(in srgb,var(--accent) 35%,transparent)';
+  const len = Math.max(d.n, .8) * d.step, line = 'color-mix(in srgb,var(--accent) 35%,transparent)', fill = 'linear-gradient(var(--accent-soft),var(--accent-soft)) var(--paper)';
   Object.assign(tghost.style, d.row
-    ? { display: 'block', left: '0', right: '0', top: 'calc(100% + 2px)', bottom: '', width: '', height: len + 'px', background: `repeating-linear-gradient(180deg,transparent 0 ${d.step - 1}px,${line} ${d.step - 1}px ${d.step}px),var(--accent-soft)` }
-    : { display: 'block', top: '0', bottom: '0', left: 'calc(100% + 2px)', right: '', height: '', width: len + 'px', background: `repeating-linear-gradient(90deg,transparent 0 ${d.step - 1}px,${line} ${d.step - 1}px ${d.step}px),var(--accent-soft)` });
-  tghost.firstChild.textContent = `+${d.n}${d.row ? '행' : '열'}`;
+    ? { display: 'block', left: '0', right: '0', top: 'calc(100% + 2px)', bottom: '', width: '', height: len + 'px', background: `repeating-linear-gradient(180deg,transparent 0 ${d.step - 1}px,${line} ${d.step - 1}px ${d.step}px),${fill}` }
+    : { display: 'block', top: '0', bottom: '0', left: 'calc(100% + 2px)', right: '', height: '', width: len + 'px', background: `repeating-linear-gradient(90deg,transparent 0 ${d.step - 1}px,${line} ${d.step - 1}px ${d.step}px),${fill}` });
+  tghost.classList.toggle('none', !d.n);
+  tghost.firstChild.textContent = d.n ? `+${d.n}${d.row ? '행' : '열'}` : '놓으면 취소';
 }
 function finishBar(commit) {
   const d = barDrag;
@@ -2789,12 +2942,12 @@ function finishBar(commit) {
   d.b.classList.remove('drag');
   showGhost();
   const t = d.t;
-  if (!commit || !t.isConnected || view !== 'editor' || !editor.contains(t)) { posOvSoon(); return; }
+  if (!commit || !d.n || !t.isConnected || view !== 'editor' || !editor.contains(t)) { posOvSoon(); return; }
   const r = nav && nav.t === t ? nav.fr : 0, c = nav && nav.t === t ? nav.fc : 0;
   clearObj();
-  if (d.row) { const r0 = t.rows.length; edit(() => { for (let k = 0; k < d.n; k++) addRow(t, t.rows.length); }); setNav(t, r0, c); }
-  else { const c0 = tableCols(t); edit(() => { for (let k = 0; k < d.n; k++) addCol(t, tableCols(t)); }); setNav(t, r, c0); }
-  if (d.n > 1) toast(`${d.n}${d.row ? '행' : '열'}을 추가했어요`);
+  if (d.row) { const r0 = t.rows.length; edit(() => { for (let k = 0; k < d.n; k++) addRow(t, t.rows.length); }); setNav(t, r0, c); posOv(); flashLine(t, true, r0); }
+  else { const c0 = tableCols(t); edit(() => { for (let k = 0; k < d.n; k++) addCol(t, tableCols(t)); }); setNav(t, r, c0); posOv(); flashLine(t, false, c0); }
+  if (d.n > 1) toast(`${d.row ? '행' : '열'} ${d.n}개를 추가했어요`, '되돌리기', undo);
 }
 document.addEventListener('keydown', e => { if (barDrag && e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); finishBar(false); } }, true);
 for (const b of $$('.tbar', ov)) {
@@ -2812,7 +2965,8 @@ for (const b of $$('.tbar', ov)) {
   b.addEventListener('pointermove', e => {
     const d = barDrag;
     if (!d || d.b !== b) return;
-    const n = clamp(Math.round((d.row ? e.clientY - d.y : e.clientX - d.x) / d.step), 1, d.row ? 200 : 50);
+    const dist = d.row ? e.clientY - d.y : e.clientX - d.x;   // back above where you pressed: nothing (cancel)
+    const n = dist < -d.step / 3 ? 0 : clamp(Math.round(dist / d.step), 1, d.row ? 200 : 50);
     if (n !== d.n) { d.n = n; showGhost(); }
   });
   b.addEventListener('pointerup', () => { if (barDrag && barDrag.b === b) finishBar(true); });
@@ -2836,6 +2990,7 @@ function selectObj(el) {
     if (n && !/^(TABLE|HR)$/.test(n.nodeName)) r.setStart(n, 0); else r.setStartAfter(el);
     r.collapse(true);
     showOv(el);
+    tgrip.classList.add('on'); tblHint('obj');
   } else r.selectNode(el);
   const s = getSelection(); s.removeAllRanges(); s.addRange(r);
   posObj();
@@ -2845,6 +3000,8 @@ function clearObj() {
   objSel = null;
   editor.classList.remove('objsel');
   objbox.style.display = 'none';
+  tgrip.classList.remove('on');
+  if (hintMode === 'obj') tblHint('');
 }
 function posObj() {
   if (!objSel) return;
@@ -2856,8 +3013,8 @@ function deleteObj() {
   const el = objSel;
   clearObj();
   if (!el || !el.isConnected) return;
+  if (el.nodeName === 'TABLE') { edit(() => removeTable(el)); toast('표를 삭제했어요', '되돌리기', undo); return; }
   edit(() => {
-    if (el.nodeName === 'TABLE') { removeTable(el); return; }
     const p = el.parentNode;
     if (p === editor) {                           // a divider (or a picture on its own line)
       const next = el.nextElementSibling, prev = el.previousElementSibling;
@@ -2880,6 +3037,10 @@ function objKey(e) {
   if (/^(Control|Shift|Alt|Meta)$/.test(e.key) || (mod && /^Key[CX]$/.test(e.code))) return false;   // copy / cut keep it
   const el = objSel;
   clearObj();
+  if (el.nodeName === 'TABLE' && e.key.length === 1 && !mod && !e.altKey && e.keyCode !== 229) {
+    edit(() => { const d = document.createElement('div'); d.innerHTML = '<br>'; el.after(d); placeCaret(d, false); });
+    return false;                                 // the key is typed on the new line
+  }
   // a divider / table on its own line: arrows step to the line before / after it
   const back = /^Arrow(Up|Left)$/.test(e.key), fwd = /^Arrow(Down|Right)$/.test(e.key);
   if ((back || fwd) && !mod && !e.altKey && !e.shiftKey && el.parentNode === editor) {
@@ -2916,7 +3077,7 @@ function doPaste(text, html, files, plain) {
   text = text || '';
   if (files.length && !text.trim()) { files.forEach(insertImageFile); return; }
   const g = plain ? null : (html && gridFromHtml(html)) || gridFromTSV(text);
-  if (g && (g.length > 1 || g[0].length > 1)) { pasteGrid(g); return; }
+  if (g && (g.length > 1 || g[0].length > 1)) { pasteGrid(g, text); return; }
   if (g) { text = g[0][0]; html = ''; }          // a single cell pastes as its text
   if (navLive()) {                                // cell(s) selected: the value replaces them, like Excel
     const val = text.replace(/\r\n?/g, '\n').replace(/\n+$/, '');
@@ -3045,11 +3206,15 @@ function gridToClipboard(cd, rows) {
   cd.setData('text/html', rowsHTML(rows));
 }
 function wholeTable(t) { return { t, r0: 0, r1: t.rows.length - 1, c0: 0, c1: Math.max(0, tableCols(t) - 1) }; }
+let copyT = 0;
 editor.addEventListener('copy', e => {
-  const rc = objSel && objSel.nodeName === 'TABLE' ? wholeTable(objSel) : selCellRect();
+  const whole = objSel && objSel.nodeName === 'TABLE', rc = whole ? wholeTable(objSel) : selCellRect();
   if (!rc) return;
   e.preventDefault();
   gridToClipboard(e.clipboardData, rectRows(rc));
+  const box = whole ? objbox : cellbox;           // the copied cells get a dashed frame for a moment
+  box.classList.add('copied'); clearTimeout(copyT); copyT = setTimeout(() => { cellbox.classList.remove('copied'); objbox.classList.remove('copied'); }, 900);
+  if (whole) toast('표를 복사했어요 · 엑셀에 바로 붙여넣을 수 있어요');
 });
 editor.addEventListener('cut', e => {
   if (objSel && objSel.nodeName === 'TABLE') { e.preventDefault(); gridToClipboard(e.clipboardData, rectRows(wholeTable(objSel))); deleteObj(); return; }
@@ -3060,14 +3225,16 @@ editor.addEventListener('cut', e => {
   edit(() => { for (const c of rectCells(rc)) c.innerHTML = '<br>'; });
   setNav(rc.t, rc.r0, rc.c0);
 });
-function pasteGrid(rows) {
+function pasteGrid(rows, src) {
   const rc = selCellRect();                           // pasting over a multi-cell selection starts at its top-left cell
   const td = rc ? rc.t.rows[rc.r0].cells[rc.c0] : closestSel('td');
   const w = Math.max(...rows.map(r => r.length));
+  let grew = false;
   edit(() => {
     if (td) {                      // fill the existing table from the caret cell, growing it as needed
       const t = td.closest('table');
       const r0 = td.parentElement.rowIndex, c0 = td.cellIndex;
+      grew = t.rows.length < r0 + rows.length || tableCols(t) < c0 + w;
       while (t.rows.length < r0 + rows.length) addRow(t, t.rows.length);
       while (tableCols(t) < c0 + w) addCol(t, tableCols(t));
       rows.forEach((r, i) => {
@@ -3082,13 +3249,15 @@ function pasteGrid(rows) {
       editCell = null; tabFrom = -1;
       editor.classList.add('cellnav');
       parkNav(cellAt(t, nav.fr, nav.fc));
-    } else {
-      const t = buildTable(rows, true);
+    } else {                       // a header row only when the first row reads like one (words, not numbers)
+      const hdr = rows.length > 1 && rows[0].every(v => v.trim() && !/^[-+]?[\d,.]+%?$/.test(v.trim()));
+      const t = buildTable(rows, hdr);
       placeBlock(t);
       placeCaret(t.nextElementSibling || t.rows[0].cells[0], false);
     }
   });
-  toast(`표로 붙여넣기 · ${rows.length}행 × ${w}열`);
+  if (td) toast(`${rows.length}행 × ${w}열을 붙여넣었어요${grew ? ' · 표를 늘렸어요' : ''}`, '되돌리기', undo);
+  else toast(`표로 붙여넣었어요 · ${rows.length}행 × ${w}열`, '텍스트로', () => { undo(); doPaste(src || rowsText(rows), '', [], true); });
 }
 const KEEP = new Set(['B', 'I', 'U', 'S', 'BR', 'P', 'DIV', 'H1', 'H2', 'H3', 'UL', 'OL', 'LI', 'A', 'BLOCKQUOTE', 'PRE', 'CODE', 'HR', 'TABLE', 'TBODY', 'TR', 'TD', 'IMG', 'SUB', 'SUP']);
 const DROP = new Set(['SCRIPT', 'STYLE', 'META', 'LINK', 'TITLE', 'HEAD', 'IFRAME', 'OBJECT', 'EMBED', 'NOSCRIPT', 'TEMPLATE', 'SVG', 'BUTTON', 'INPUT', 'SELECT', 'TEXTAREA', 'FORM', 'CANVAS', 'VIDEO', 'AUDIO', 'COLGROUP', 'COL']);
@@ -3169,7 +3338,10 @@ function insertImageFile(file) {
       src = IMG_URL + name;
     }
     ensureEditorFocus();
-    edit(() => exec('insertHTML', `<img src="${src}">`));
+    const r = selRange(), line = r && !cellOf(r.startContainer) && blockOf(r.startContainer);
+    if (line && line.parentNode === editor && line.textContent.trim()) {   // a picture on its own line, not inside the sentence
+      edit(() => { const d = document.createElement('div'); d.innerHTML = `<img src="${src}">`; line.after(d); const nx = document.createElement('div'); nx.innerHTML = '<br>'; d.after(nx); placeCaret(nx, false); });
+    } else edit(() => exec('insertHTML', `<img src="${src}">`));
   };
   rd.readAsDataURL(file);
 }
@@ -3208,10 +3380,15 @@ editor.addEventListener('contextmenu', e => {
   const td = e.target.closest && e.target.closest('td');
   const has = !getSelection().isCollapsed || !!td;   // a cell: cut / copy take the selected cell(s)
   const items = [];
-  if (img) {
-    const size = w => () => edit(() => { if (w) img.style.width = w; else img.removeAttribute('style'); });
-    items.push({ label: '이미지 작게 (33%)', icon: 'i-image', action: size('33%') }, { label: '이미지 중간 (66%)', action: size('66%') },
-      { label: '원래 크기', action: size('') }, { label: '이미지 삭제', icon: 'i-trash', danger: true, action: () => edit(() => img.remove()) }, { sep: true });
+  if (img) {                                      // sizes from the line width, never larger than the picture itself
+    const lineW = editor.clientWidth - 104, natW = img.naturalWidth || lineW, curW = img.getBoundingClientRect().width;
+    const px = f => Math.round(Math.min(natW, lineW * f));
+    const size = f => () => edit(() => { if (f) img.style.width = px(f) + 'px'; else img.removeAttribute('style'); });
+    const near = w => Math.abs(curW - w) < 2;
+    items.push({ label: '작게 (⅓)', disabled: px(1 / 3) >= natW, on: near(px(1 / 3)), action: size(1 / 3) },
+      { label: '중간 (⅔)', disabled: px(2 / 3) >= natW, on: near(px(2 / 3)), action: size(2 / 3) },
+      { label: '원래 크기', on: !img.getAttribute('style'), action: size(0) }, { sep: true },
+      { label: '이미지 삭제', icon: 'i-trash', danger: true, action: () => edit(() => img.remove()) }, { sep: true });
   }
   items.push(
     { label: '잘라내기', icon: 'i-cut', kbd: 'Ctrl+X', disabled: !has, action: () => edit(() => exec('cut')) },
@@ -3220,17 +3397,18 @@ editor.addEventListener('contextmenu', e => {
     { label: '서식 없이 붙여넣기', kbd: 'Ctrl+Shift+V', action: () => pasteFromClipboard(true) });
   if (td) {
     const t = td.closest('table');
+    const rc = inNavRect(td) ? navRect() : null, nr = rc ? rc.r1 - rc.r0 + 1 : 1, nc = rc ? rc.c1 - rc.c0 + 1 : 1;
     items.push({ sep: true },
-      { label: '위에 행 삽입', icon: 'i-plus', kbd: kl('rowAbove'), action: () => tableOp('rowAbove', t, td) },
+      { label: '위에 행 삽입', kbd: kl('rowAbove'), action: () => tableOp('rowAbove', t, td) },
       { label: '아래에 행 삽입', kbd: kl('rowBelow'), action: () => tableOp('rowBelow', t, td) },
       { label: '왼쪽에 열 삽입', kbd: kl('colBefore'), action: () => tableOp('colBefore', t, td) },
-      { label: '오른쪽에 열 삽입', kbd: kl('colAfter'), action: () => tableOp('colAfter', t, td) },
-      { label: '행 삭제', kbd: kl('delRow'), action: () => tableOp('delRow', t, td) },
-      { label: '열 삭제', kbd: kl('delCol'), action: () => tableOp('delCol', t, td) },
+      { label: '오른쪽에 열 삽입', kbd: kl('colAfter'), action: () => tableOp('colAfter', t, td) }, { sep: true },
+      { label: nr > 1 ? `행 ${nr}개 삭제` : '행 삭제', kbd: kl('delRow'), action: () => tableOp('delRow', t, td) },
+      { label: nc > 1 ? `열 ${nc}개 삭제` : '열 삭제', kbd: kl('delCol'), action: () => tableOp('delCol', t, td) }, { sep: true },
       { label: t.classList.contains('hdr') ? '머리글 행 끄기' : '머리글 행 켜기', action: () => tableOp('header', t, td) },
-      { label: '표 전체 선택', icon: 'i-grid', action: () => selectObj(t) },
+      { label: '표 통째로 선택', icon: 'i-table', action: () => selectObj(t) },
       { label: '표 삭제', icon: 'i-trash', danger: true, action: () => tableOp('delTable', t, td) });
-  } else {
+  } else if (!img) {                             // text formatting means nothing for a picture
     items.push({ sep: true },
       { label: '굵게', kbd: kl('bold'), action: () => fmt('bold') },
       { label: '밑줄', kbd: kl('underline'), action: () => fmt('underline') },
@@ -3320,6 +3498,7 @@ $('#findX').onclick = () => findClose();
 // ---------------------------------------------------------------- popovers & menus
 let popPick = null;
 let menuOn = false;                               // a showMenu() list is open: arrows / Enter drive it
+let popKey = null;                                // a popover's own keys (the table size picker)
 function showPop(x, y, html, onPick) {
   pop.innerHTML = html;
   pop.hidden = false;
@@ -3328,7 +3507,7 @@ function showPop(x, y, html, onPick) {
   pop.style.left = clamp(x, 8, innerWidth - w - 8) + 'px';
   pop.style.top = (y + h > innerHeight - 8 ? Math.max(8, y - h - 12) : y) + 'px';
 }
-function closePop() { if (pop.hidden) return; pop.hidden = true; pop.innerHTML = ''; popPick = null; menuOn = false; }
+function closePop() { if (pop.hidden) return; pop.hidden = true; pop.innerHTML = ''; popPick = null; menuOn = false; popKey = null; }
 pop.addEventListener('mousedown', e => { if (!e.target.closest('input')) e.preventDefault(); });
 pop.addEventListener('click', e => {
   const b = e.target.closest('[data-v],[data-i]');
@@ -3343,7 +3522,7 @@ function showMenu(x, y, items) {
   const html = items.map((it, i) => {
     if (it.sep) return '<div class="msep"></div>';
     if (it.colors) return `<div class="mlabel">색상</div><div class="swatches">${COLOR_KEYS.map(k => `<button class="sw${it.value === k ? ' on' : ''}" data-i="${i}" data-c="${k}" title="${k}" style="background:${NOTE_COLORS[k]}"></button>`).join('')}</div>`;
-    return `<button class="mit${it.danger ? ' danger' : ''}" data-i="${i}"${it.disabled ? ' disabled' : ''}>${it.icon ? ic(it.icon) : '<i></i>'}<span>${esc(it.label)}</span>${it.kbd ? `<kbd>${esc(it.kbd)}</kbd>` : ''}</button>`;
+    return `<button class="mit${it.danger ? ' danger' : ''}${it.on ? ' on' : ''}" data-i="${i}"${it.disabled ? ' disabled' : ''}>${it.icon ? ic(it.icon) : '<i></i>'}<span>${esc(it.label)}</span>${it.kbd ? `<kbd>${esc(it.kbd)}</kbd>` : ''}</button>`;
   }).join('');
   showPop(x, y, html, b => {
     const it = items[+b.dataset.i];
@@ -3370,7 +3549,8 @@ document.addEventListener('keydown', e => {
   // a row that prints this very key (Enter / F2 / Del / Esc in the note menus) runs, wherever the menu was opened
   const row = menuOn && plain ? $$('.mit:not(:disabled)', pop).find(b => { const k = b.querySelector('kbd'); return k && k.textContent === (e.key === 'Escape' ? 'Esc' : keyName(codeOf(e))); }) : null;
   if (e.key === 'Escape' && !row) { e.preventDefault(); e.stopPropagation(); closePop(); return; }
-  if (!menuOn) return;
+  if (popKey && popKey(e)) { e.preventDefault(); e.stopPropagation(); return; }
+  if (!menuOn) { if (!/^(Control|Shift|Alt|Meta|AltGraph|HangulMode|HanjaMode)$/.test(e.key)) closePop(); return; }   // a color picker: any other key lets go
   if (plain && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) { e.preventDefault(); e.stopPropagation(); menuMove(e.key === 'ArrowDown' ? 1 : -1); return; }
   const cur = plain && e.key === 'Enter' && $('.mit.cur', pop);
   if (cur || row) { e.preventDefault(); e.stopPropagation(); (cur || row).click(); return; }
@@ -4408,7 +4588,8 @@ function updateKeyHints() {
     if (!t) el.hidden = !k;
   }
   const sw = kl('switcher'), nx = kl('nextNote');
-  $('#stHint').textContent = ['Esc 보드', sw && sw + ' 이동'].filter(Boolean).join(' · ');
+  defaultHint = ['Esc 보드', sw && sw + ' 이동'].filter(Boolean).join(' · ');
+  if (!hintMode) $('#stHint').textContent = defaultHint;
   $('#sbFoot').textContent = [nx && nx + ' 다음 메모', sw && sw + ' 찾기'].filter(Boolean).join(' · ');
 }
 
@@ -4527,8 +4708,8 @@ function showHelp() {
     ${g('어디서든 (전역)', [['앱 부르기 / 원래 창으로', kl0(st.appHotkey)], ['한 줄 찾아 바로 붙여넣기', kl0(st.findHotkey)], ['빠른 메모 (화면 구석에 새 메모 / 닫기)', kl0(st.quickHotkey)], ['메모별 단축키', '누르면 열기 · 다시 누르면 이전 창']])}
     ${g('찾아 붙여넣기 검색창', [['원래 창에 바로 붙여넣기', 'Enter / 클릭'], ['N번째 결과 바로 붙여넣기', 'Alt+1~9'], ['칸 · 단어만 골라 붙여넣기', 'Tab / Shift+Tab'], ['복사만 하고 돌아가기', 'Shift+Enter'], ['그 메모 열기', 'Ctrl+Enter'], ['그냥 돌아가기', 'Esc'], ['초성으로 찾기', 'ㄱㅊㅅ → 김철수']])}
     ${g('메모 보드', [['선택 이동', '← ↑ → ↓'], ['열기', 'Enter / 더블클릭'], ['이름 바꾸기', 'F2'], ['삭제 (되돌리기 · 휴지통에서 복원)', 'Del'], ['여러 개 선택', 'Shift+클릭·방향키 / Ctrl+클릭 / Ctrl+A'], ['새 메모', k('newNote')], ['N번째 메모 열기', 'Ctrl+1~9'], ['빠른 이동', k('switcher')], ['검색', k('find')]])}
-    ${g('편집', [['굵게 / 밑줄 / 기울임', join('bold', 'underline', 'italic')], ['취소선', k('strike')], ['글자색', k('fgColor')], ['형광펜', k('hl')], ['서식 지우기', k('clearFmt')], ['글머리 / 번호 목록', join('ul', 'ol')], ['체크리스트', k('chk')], ['제목 1 / 2 / 3', join('h1', 'h2', 'h3')], ['구분선', k('hr')], ['날짜·시간', k('stamp')], ['서식 없이 붙여넣기', 'Ctrl+Shift+V'], ['찾기', k('find')], ['확대 / 축소', ['Ctrl+휠', join('zoomIn', 'zoomOut')].filter(Boolean).join(', ')], ['보드로', 'Esc'], ['다음 / 이전 메모', join('nextNote', 'prevNote')], ['실행 취소 / 다시', 'Ctrl+Z / Ctrl+Y'], ['끄기 (단축키는 대기)', k('quit')]])}
-    ${g('표 (엑셀처럼)', [['칸 선택·이동', '클릭 / 방향키'], ['범위 선택', 'Shift+방향키 / 드래그'], ['선택한 칸에 바로 입력', '기존 값을 새로 씀'], ['칸 편집 (끝에 커서)', 'F2 / 더블클릭'], ['편집 취소', 'Esc'], ['칸 지우기', 'Delete'], ['아래 칸 / 마지막 행이면 행 추가', 'Enter'], ['칸 안 줄바꿈', 'Shift+Enter (편집 중)'], ['다음 / 이전 칸 (마지막 열이면 열 추가)', 'Tab / Shift+Tab'], ['표 전체 선택', 'Ctrl+A'], ['표 넣기 / 빠져나가기', [k('table'), 'Ctrl+Enter'].filter(Boolean).join(' / ')], ['위 / 아래에 행 삽입', join('rowAbove', 'rowBelow')], ['왼쪽 / 오른쪽에 열 삽입', join('colBefore', 'colAfter')], ['행 / 열 삭제', join('delRow', 'delCol')], ['중간에 행·열 넣기', '표 왼쪽·위쪽 여백의 +'], ['끝에 행·열 추가 (끌면 여러 개)', '표 아래·오른쪽 막대'], ['엑셀 붙여넣기 · 범위 복사', 'Ctrl+V / Ctrl+C']])}
+    ${g('편집', [['굵게 / 밑줄 / 기울임', join('bold', 'underline', 'italic')], ['취소선', k('strike')], ['글자색', k('fgColor')], ['형광펜', k('hl')], ['서식 지우기', k('clearFmt')], ['글머리 / 번호 목록', join('ul', 'ol')], ['체크리스트', k('chk')], ['체크 표시 / 해제', 'Ctrl+Enter'], ['제목 1 / 2 / 3', join('h1', 'h2', 'h3')], ['구분선', k('hr')], ['날짜·시간', k('stamp')], ['서식 없이 붙여넣기', 'Ctrl+Shift+V'], ['찾기', k('find')], ['확대 / 축소', ['Ctrl+휠', join('zoomIn', 'zoomOut')].filter(Boolean).join(', ')], ['보드로', 'Esc'], ['다음 / 이전 메모', join('nextNote', 'prevNote')], ['실행 취소 / 다시', 'Ctrl+Z / Ctrl+Y'], ['끄기 (단축키는 대기)', k('quit')]])}
+    ${g('표 (엑셀처럼)', [['칸 선택·이동', '클릭 / 방향키'], ['범위 선택', 'Shift+방향키 / 드래그'], ['선택한 칸에 바로 입력', '기존 값을 새로 씀'], ['칸 편집 (끝에 커서)', 'F2 / 더블클릭'], ['편집 취소', 'Esc'], ['칸 지우기', 'Delete'], ['아래 칸 / 마지막 행이면 행 추가', 'Enter'], ['칸 안 줄바꿈', 'Shift+Enter / Alt+Enter'], ['다음 / 이전 칸 (마지막 열이면 열 추가)', 'Tab / Shift+Tab'], ['모든 칸 선택 (한 번 더: 메모 전체)', 'Ctrl+A'], ['표 넣기 / 빠져나가기', [k('table'), 'Ctrl+Enter'].filter(Boolean).join(' / ')], ['위 / 아래에 행 삽입', join('rowAbove', 'rowBelow')], ['왼쪽 / 오른쪽에 열 삽입', join('colBefore', 'colAfter')], ['행 / 열 삭제', join('delRow', 'delCol')], ['중간에 행·열 넣기', '표 왼쪽·위쪽 여백의 +'], ['끝에 행·열 추가 (끌면 여러 개)', '표 아래·오른쪽 막대'], ['엑셀 붙여넣기 · 범위 복사', 'Ctrl+V / Ctrl+C']])}
     ${g('개체 (그림 · 구분선 · 표)', [['선택', '클릭 (표는 왼쪽 위 손잡이)'], ['삭제', 'Delete / Backspace'], ['선택 풀기', 'Esc / 다른 곳 클릭']])}
     ${g('꺼내 쓰기', [['한 줄 찾아 붙여넣기 (앱 안)', k('palette')], ['복사 → 원래 창에 바로 붙여넣기', k('sendPaste')], ['복사 → 원래 창으로', k('sendCopy')], ['보낼 내용', '선택 > 칸 > 현재 줄 (보드: 메모 전체)'], ['메모 전체 복사 (보드)', 'Ctrl+C / 카드 복사 버튼'], ['검색한 곳으로 바로 이동', (k('switcher') || '빠른 이동') + ' → Enter']])}
     ${g('빠른 서식 (줄 맨 앞에서 입력 후 Space)', [['제목 1 / 2 / 3', '# / ## / ###'], ['글머리 목록', '-'], ['번호 목록', '1.'], ['체크리스트', '[]'], ['인용', '>'], ['코드', '```'], ['구분선', '--- 후 Enter']])}
