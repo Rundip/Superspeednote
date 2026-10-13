@@ -194,6 +194,7 @@ body.sb-off #sidebar{display:none}
 .sb-item:hover{background:rgba(255,255,255,.06)}
 .sb-item.on{background:rgba(255,255,255,.13)}
 .sb-item.on::before{opacity:1}
+#sbList:focus .sb-item.on{box-shadow:inset 0 0 0 1.5px #9cc0ff}
 .sb-row{display:flex;align-items:center;gap:6px}
 .sb-item .t{flex:1;font-weight:650;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .sb-item .t.ph{color:rgba(220,230,252,.62)!important}
@@ -427,6 +428,15 @@ body.sb-off #sidebar{display:none}
 .seg button{height:28px;padding:0 12px;border-radius:8px;font-size:12.5px;color:var(--ink-2);font-weight:600}
 .seg button.on{background:var(--paper);color:var(--ink);box-shadow:0 1px 3px rgba(10,22,50,.18),0 0 0 1px rgba(10,22,50,.06)}
 [data-theme=dark] .seg button.on{background:#2b3b62;color:#fff;box-shadow:0 1px 2px rgba(0,0,0,.45),inset 0 0 0 1px rgba(255,255,255,.08)}
+/* quick memo corner: a little screen, click a corner */
+.cpick-row{display:flex;align-items:center;gap:12px}
+.cpick-l{font-size:12.5px;font-weight:650;color:var(--ink-2);white-space:nowrap}
+.cpick{position:relative;width:78px;height:50px;border-radius:7px;border:2px solid var(--line-2);background:var(--hover);flex:none;margin-bottom:6px}
+.cpick::after{content:'';position:absolute;left:50%;bottom:-8px;width:20px;height:5px;transform:translateX(-50%);border-radius:0 0 3px 3px;background:var(--line-2)}
+.cpick button{position:absolute;width:24px;height:15px;border-radius:3px;border:1.5px dashed color-mix(in srgb,var(--ink-3) 55%,transparent)}
+.cpick button:hover{border-color:var(--accent);border-style:solid}
+.cpick button.on{background:var(--accent);border:1.5px solid var(--accent)}
+.cpick [data-q=tl]{left:4px;top:4px}.cpick [data-q=tr]{right:4px;top:4px}.cpick [data-q=bl]{left:4px;bottom:4px}.cpick [data-q=br]{right:4px;bottom:4px}
 .seg .val{display:grid;place-items:center;min-width:48px;font:650 12.5px "Segoe UI"}
 select.sel{height:32px;border-radius:9px;border:1px solid var(--line-2);background:var(--paper);padding:0 8px;outline:none}
 .qs{width:min(620px,calc(100vw - 32px))}
@@ -768,6 +778,7 @@ const ic = (id, cls = '') => `<svg class="i ${cls}"><use href="#${id}"/></svg>`;
 
 const NOTE_COLORS = { navy: '#1e3a8a', blue: '#2f6bff', sky: '#0ea5e9', teal: '#0d9488', green: '#16a34a', amber: '#f59e0b', coral: '#f43f5e', violet: '#8b5cf6' };
 const COLOR_KEYS = Object.keys(NOTE_COLORS);
+const CORNERS = { tl: '왼쪽 위', tr: '오른쪽 위', bl: '왼쪽 아래', br: '오른쪽 아래' };   // where the quick memo opens
 const COLOR_NAMES = { navy: '남색', blue: '파랑', sky: '하늘', teal: '청록', green: '초록', amber: '주황', coral: '빨강', violet: '보라' };
 // text colours chosen for contrast on white; dark theme remaps them (see injected CSS)
 const FG = [
@@ -837,7 +848,7 @@ if (!S || !Array.isArray(S.notes)) S = { v: 1, notes: [], settings: {} };
 S.settings = Object.assign({
   theme: 'light', closeToTray: true, onTop: false, fontSize: 15, font: 'ui', sidebar: true,
   appHotkey: { mods: 3, vk: 78, label: 'Ctrl+Alt+N' }, findHotkey: { mods: 3, vk: 70, code: 'KeyF', label: 'Ctrl+Alt+F' },
-  quickHotkey: { mods: 3, vk: 77, code: 'KeyM', label: 'Ctrl+Alt+M' }, fg: '#d92d20', hl: '#fff176'
+  quickHotkey: { mods: 3, vk: 77, code: 'KeyM', label: 'Ctrl+Alt+M' }, fg: '#d92d20', hl: '#fff176', quickCorner: 'br'
 }, S.settings || {});
 const st = S.settings;
 // v1.2: the first default (Ctrl+Alt+Space) is taken by other apps (e.g. Claude desktop) -> F for "find"
@@ -1385,18 +1396,23 @@ function newNoteTitled(t) {                       // searched for a note that is
 function deleteNote(id) { deleteNotes([id]); }
 // Several notes at once: ask first, so a stray Ctrl+A → Del can't clear the board. One note goes straight to
 // the trash (with 되돌리기). Cancel is focused; Del again confirms.
-function askDeleteNotes(ids) {
+// o.confirm: ask for a single note too (the list's Delete); o.after / o.cancel run once the dialog is gone
+function askDeleteNotes(ids, o = {}) {
   ids = ids.filter(id => noteById(id));
-  if (ids.length < 2) { if (ids.length) deleteNotes(ids); return; }
-  const all = ids.length === S.notes.length;
+  if (!ids.length) return;
+  if (ids.length < 2 && !o.confirm) { deleteNotes(ids); return; }
+  const one = ids.length === 1, all = ids.length === S.notes.length && !one;
   const names = ids.slice(0, 6).map(id => `<li>${esc(titleOf(noteById(id)) || '제목 없음')}</li>`).join('') +
     (ids.length > 6 ? `<li class="more">외 ${ids.length - 6}개</li>` : '');
-  openModal(`<div class="dlg confirm"><div class="dlg-head">${ic('i-trash')}<h3>${all ? `메모 ${ids.length}개를 모두 삭제할까요?` : `메모 ${ids.length}개를 삭제할까요?`}</h3></div>` +
-    `<div class="dlg-body"><ul class="del-list">${names}</ul><div class="khint">휴지통으로 옮겨져서 언제든 복원할 수 있어요.</div></div>` +
-    `<div class="dlg-foot"><span class="ver">Del 한 번 더 = 삭제 · Esc = 취소</span><span style="flex:1"></span><button class="btn" id="delNo">취소</button><button class="btn danger-fill" id="delYes">${ids.length}개 삭제</button></div></div>`);
+  const head = one ? `${josa(`‘${titleOf(noteById(ids[0])) || '제목 없음'}’ 메모`, '을', '를')} 삭제할까요?` : all ? `메모 ${ids.length}개를 모두 삭제할까요?` : `메모 ${ids.length}개를 삭제할까요?`;
+  let done = false;
+  openModal(`<div class="dlg confirm"><div class="dlg-head">${ic('i-trash')}<h3>${esc(head)}</h3></div>` +
+    `<div class="dlg-body">${one ? '' : `<ul class="del-list">${names}</ul>`}<div class="khint">휴지통으로 옮겨져서 언제든 복원할 수 있어요.</div></div>` +
+    `<div class="dlg-foot"><span class="ver">Del 한 번 더 = 삭제 · Esc = 취소</span><span style="flex:1"></span><button class="btn" id="delNo">취소</button><button class="btn danger-fill" id="delYes">${one ? '삭제' : `${ids.length}개 삭제`}</button></div></div>`,
+    () => { if (!done && o.cancel) setTimeout(o.cancel, 0); });
   const yes = $('#delYes');
   $('#delNo').onclick = closeModal;
-  yes.onclick = () => { closeModal(); deleteNotes(ids); };
+  yes.onclick = () => { done = true; closeModal(); deleteNotes(ids); if (o.after) setTimeout(o.after, 0); };
   modal.querySelector('.dlg').addEventListener('keydown', e => { if (e.key === 'Delete') { e.preventDefault(); e.stopPropagation(); yes.click(); } });
   $('#delNo').focus();
 }
@@ -1617,8 +1633,9 @@ let sbAnchor = null;
 function markSb() {
   for (const el of sbList.querySelectorAll('.sb-item')) el.classList.toggle('msel', sbMulti.has(el.dataset.id));
   const lbl = $('#sbLabel');
-  lbl.textContent = sbMulti.size ? `${sbMulti.size}개 선택 · Del 삭제 · Esc 해제` : '메모 목록';
-  lbl.classList.toggle('on', sbMulti.size > 0);
+  const keys = document.activeElement === sbList;
+  lbl.textContent = sbMulti.size ? `${sbMulti.size}개 선택 · Del 삭제 · Esc 해제` : keys ? '↑↓ 이동 · Del 삭제 · Enter 쓰기' : '메모 목록';
+  lbl.classList.toggle('on', sbMulti.size > 0 || keys);
 }
 function clearSb() { if (!sbMulti.size) return false; sbMulti.clear(); markSb(); return true; }
 sbList.addEventListener('mousedown', e => { if (e.shiftKey || e.ctrlKey || e.metaKey) e.preventDefault(); });   // no text selection
@@ -1635,24 +1652,48 @@ sbList.addEventListener('click', e => {
   } else if (e.ctrlKey || e.metaKey) {
     if (sbMulti.has(id)) sbMulti.delete(id); else sbMulti.add(id);
     sbAnchor = id;
-  } else { clearSb(); sbAnchor = null; openNote(id); return; }
+  } else {                                        // like a file list: the note opens, the keys stay here (Del deletes it)
+    clearSb(); sbAnchor = null; openNote(id);
+    if (!narrow.matches) sbList.focus({ preventScroll: true });
+    return;
+  }
   markSb();
   sbList.focus({ preventScroll: true });          // so Delete / Esc go to the list
 });
+// Del in the list: ask, then the next note in the list opens and the keys stay here for the next one
+function sbDelete(ids) {
+  const order = $$('.sb-item', sbList).map(x => x.dataset.id), gone = new Set(ids);
+  const last = Math.max(...ids.map(id => order.indexOf(id)));
+  const next = order.slice(last + 1).find(id => !gone.has(id)) || order.slice(0, last).reverse().find(id => !gone.has(id));
+  const stay = () => { if (view === 'editor') sbList.focus({ preventScroll: true }); };
+  askDeleteNotes(ids, { confirm: true, cancel: stay, after: () => { if (next && noteById(next) && (!cur || gone.has(cur) || view !== 'editor')) openNote(next); stay(); } });
+}
 sbList.addEventListener('keydown', e => {
+  if (e.isComposing) return;
+  const mods = e.ctrlKey || e.altKey || e.metaKey;
+  if (e.key === 'Delete' && !mods) {
+    e.preventDefault(); e.stopPropagation();
+    sbDelete(sbMulti.size ? [...sbMulti] : cur && view === 'editor' ? [cur] : []);
+    return;
+  }
   if (!sbMulti.size) {                            // the list has the keys: ↑ / ↓ walk the notes, Enter / Esc go back to writing
-    if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && !e.ctrlKey && !e.altKey && !e.shiftKey) {
+    if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && !mods && !e.shiftKey) {
       e.preventDefault(); e.stopPropagation();
       const ids = $$('.sb-item', sbList).map(x => x.dataset.id), i = ids.indexOf(cur);
       const to = ids[clamp(i + (e.key === 'ArrowDown' ? 1 : -1), 0, ids.length - 1)];
       if (to && to !== cur) openNote(to);
       sbList.focus({ preventScroll: true });
-    } else if (e.key === 'Enter' || e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); refocus(); }
+    } else if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); e.stopPropagation(); refocus(); }
+    else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); showBoard(); }   // as from the note: Esc = the board
+    // a key that writes: into the note (the list can't take Korean input, so this first key only switches over)
+    else if (!mods && (e.key.length === 1 || e.key === 'Backspace' || e.key === 'Process' || e.keyCode === 229)) { e.preventDefault(); e.stopPropagation(); refocus(); }
     return;
   }
-  if (e.key === 'Delete') { e.preventDefault(); e.stopPropagation(); askDeleteNotes([...sbMulti]); }
-  else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); clearSb(); refocus(); }
+  if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); clearSb(); refocus(); }
 });
+// while the list has the keys, its label says which ones
+sbList.addEventListener('focus', () => markSb());
+sbList.addEventListener('blur', () => markSb());
 sbList.addEventListener('contextmenu', e => {
   e.preventDefault();
   const it = e.target.closest('.sb-item');
@@ -4844,6 +4885,7 @@ function openSettings(tab, keep) {               // keep: back from the key reco
     ${row('항상 위에 표시', '', sw('onTop', st.onTop))}
     <h4 class="kh">실행</h4>
     ${row('단축키', `앱 부르기 ${esc(kl0(st.appHotkey))} · 한 줄 찾아 붙여넣기 ${esc(kl0(st.findHotkey))} · 빠른 메모 ${esc(kl0(st.quickHotkey))}`, `<button class="btn" id="setGoKeys">단축키 설정</button>`)}
+    ${row('빠른 메모 위치', '빠른 메모가 뜨는 모니터 모서리 · 지금 쓰고 있는 화면에 떠요', `<div class="cpick-row"><span class="cpick-l" id="setCornerL">${CORNERS[st.quickCorner] || CORNERS.br}</span><div class="cpick" id="setCorner">${Object.entries(CORNERS).map(([c, n]) => `<button data-q="${c}" title="${n}" aria-label="${n}"${(st.quickCorner || 'br') === c ? ' class="on"' : ''}></button>`).join('')}</div></div>`)}
     ${row('닫기(X) → 트레이로 숨기기', '켜 두면 다음에 부를 때 바로 열려요 (권장) · 끄면 X가 앱을 끄고 단축키만 대기해요', sw('closeToTray', st.closeToTray))}
     ${startMode() === 'package'
       ? row('Windows 시작 시', '<span class="wrap">로그인하면 <b>단축키 대기</b>로 켜져서 꺼져 있어도 단축키가 동작해요.<br>끄려면 작업 관리자 › 시작 앱(또는 설정 › 앱 › 시작 프로그램)에서 Super Speed Note를 끄세요.</span>', '')
@@ -4888,6 +4930,14 @@ function openSettings(tab, keep) {               // keep: back from the key reco
     };
     return;
   }
+  const cp = $('#setCorner');
+  if (cp) cp.onclick = e => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    st.quickCorner = b.dataset.q; host.send('quickCorner', st.quickCorner); saveStateSoon();
+    for (const x of cp.children) x.classList.toggle('on', x === b);
+    $('#setCornerL').textContent = CORNERS[st.quickCorner];
+  };
   const segT = $('#setTheme');
   const paintSeg = () => { for (const b of segT.children) b.classList.toggle('on', b.dataset.v === st.theme); };
   paintSeg();
@@ -5137,6 +5187,7 @@ boardSearch.focus({ preventScroll: true });
 host.send('ready');
 warmSearch();
 host.send('closeToTray', st.closeToTray ? '1' : '0');
+host.send('quickCorner', st.quickCorner || 'br');
 host.send('theme', st.theme);
 if (st.onTop) host.send('top', '1');
 applyHotkeys();

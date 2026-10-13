@@ -762,6 +762,8 @@ namespace SuperSpeedNote
         void DetachPop()
         {
             popWanted = false;
+            // hide it first: moving the page out first would leave a bare window on screen for a moment
+            if (pop != null) { pop.Attached = false; if (pop.Visible) pop.Hide(); }
             if (popShown)
             {
                 if (quickOpen && quick != null)
@@ -771,7 +773,6 @@ namespace SuperSpeedNote
                 }
                 else PutWeb(this);
             }
-            if (pop != null) { pop.Attached = false; if (pop.Visible) pop.Hide(); }
         }
 
         // Move the page into one of our windows (main / search / quick memo).
@@ -817,16 +818,26 @@ namespace SuperSpeedNote
             quick.Attached = false;
             quick.Invalidate();
             if (!quick.Visible) quick.Show();
+            SettleQuick();
             ForceForeground(quick.Handle);
             if (webReady) Post("quick", "open");
             else { pendingQuick = true; EnsureWeb(); }   // from standby: the engine starts now (~1 s)
         }
 
-        // bottom-right corner of the screen you are working on, at the size you last left it
+        // The corner the quick memo opens in (Settings: tl / tr / bl / br), kept here so it works from standby too.
+        string QuickCorner()
+        {
+            try { string c = File.ReadAllText(Path.Combine(Program.LocalDir, "quickcorner.txt")).Trim(); if (c == "tl" || c == "tr" || c == "bl" || c == "br") return c; }
+            catch { }
+            return "br";
+        }
+
+        // the chosen corner of the screen you are working on, at the size you last left it
         void PlaceQuick(IntPtr anchor)
         {
             Native.POINT cur;
             Native.GetCursorPos(out cur);
+            if (anchor != IntPtr.Zero && Native.IsIconic(anchor)) anchor = IntPtr.Zero;   // a minimized window sits off-screen
             IntPtr mon = anchor != IntPtr.Zero ? Native.MonitorFromWindow(anchor, 2) : Native.MonitorFromPoint(cur, 2);
             uint dx = 96, dy = 96;
             try { Native.GetDpiForMonitor(mon, 0, out dx, out dy); } catch { }
@@ -840,8 +851,21 @@ namespace SuperSpeedNote
             }
             catch { }
             int w = Math.Min((int)(lw * s), wa.Width - (int)(32 * s)), h = Math.Min((int)(lh * s), wa.Height - (int)(32 * s)), m = (int)(16 * s);
+            string c = QuickCorner();
+            int x = c[1] == 'l' ? wa.Left + m : wa.Right - w - m, y = c[0] == 't' ? wa.Top + m : wa.Bottom - h - m;
             quick.Scale96 = s;
-            quick.Bounds = new Rectangle(wa.Right - w - m, wa.Bottom - h - m, w, h);
+            // Moving onto a screen with another scale makes Windows send WM_DPICHANGED with a re-scaled rectangle of
+            // its own; while placing, the form keeps this one instead (it is already sized for that screen).
+            quick.Want = new Rectangle(x, y, w, h);
+            quick.Placing = true;
+            quick.Bounds = quick.Want;
+        }
+        // after Show: put it exactly in the corner again (in case anything moved it), then let the user move it freely
+        void SettleQuick()
+        {
+            if (quick == null) return;
+            if (quick.Placing && quick.Bounds != quick.Want) quick.Bounds = quick.Want;
+            BeginInvoke(new Action(() => { if (quick != null) { if (quick.Placing && quickOpen && quick.Bounds != quick.Want) quick.Bounds = quick.Want; quick.Placing = false; } }));
         }
 
         // the page has the new note ready: move the WebView in
@@ -849,8 +873,9 @@ namespace SuperSpeedNote
         {
             if (ctl == null || quick == null || !quickOpen) return;
             quick.Attached = true;
+            // the app window goes first, at once: emptied of its page it would fade out as a bare navy box
+            if (Visible && WindowState != FormWindowState.Minimized) { quickHidMain = true; SaveBounds(); Native.NoFade(Handle, true); Hide(); Native.NoFade(Handle, false); }
             PutWeb(quick);
-            if (Visible && WindowState != FormWindowState.Minimized) { quickHidMain = true; SaveBounds(); Hide(); }   // no empty app window meanwhile
             if (!quick.Visible) quick.Show();
             ForceForeground(quick.Handle);
             try { ctl.MoveFocus(CoreWebView2MoveFocusReason.Programmatic); } catch { }
@@ -1310,6 +1335,10 @@ namespace SuperSpeedNote
                 case "quit": Quit(false); break;
                 case "top": TopMost = a == "1"; break;
                 case "closeToTray": closeToTray = a == "1"; break;
+                case "quickCorner":
+                    if (a == "tl" || a == "tr" || a == "bl" || a == "br")
+                        try { File.WriteAllText(Path.Combine(Program.LocalDir, "quickcorner.txt"), a); } catch (Exception ex) { Program.Log(ex); }
+                    break;
                 case "autostart":
                     if (Program.Packaged) break;                 // Store version: Task Manager > Startup apps
                     startupMode = a == "1" ? "tray" : a == "0" ? "off" : a;
@@ -1883,6 +1912,8 @@ namespace SuperSpeedNote
         [DllImport("user32.dll")] public static extern short GetAsyncKeyState(int vk);
         [DllImport("user32.dll")] public static extern void keybd_event(byte vk, byte scan, uint flags, UIntPtr extra);
         [DllImport("dwmapi.dll")] public static extern int DwmSetWindowAttribute(IntPtr hWnd, int attr, ref int value, int size);
+        // DWMWA_TRANSITIONS_FORCEDISABLED: show / hide at once, no fade (a window that lends out its page must never fade empty)
+        public static void NoFade(IntPtr h, bool off) { int v = off ? 1 : 0; try { DwmSetWindowAttribute(h, 3, ref v, 4); } catch { } }
         [DllImport("user32.dll")] public static extern IntPtr MonitorFromWindow(IntPtr hWnd, uint flags);
         [DllImport("user32.dll")] public static extern IntPtr MonitorFromPoint(POINT pt, uint flags);
         [DllImport("shcore.dll")] public static extern int GetDpiForMonitor(IntPtr mon, int type, out uint x, out uint y);
@@ -1921,6 +1952,7 @@ namespace SuperSpeedNote
             base.OnHandleCreated(e);
             int round = 2;                        // Windows 11: rounded corners (ignored on 10)
             try { Native.DwmSetWindowAttribute(Handle, 33 /*DWMWA_WINDOW_CORNER_PREFERENCE*/, ref round, 4); } catch { }
+            Native.NoFade(Handle, true);
         }
 
         protected override void WndProc(ref Message m)
@@ -1951,6 +1983,8 @@ namespace SuperSpeedNote
     {
         public bool Attached;                     // false while the engine is still starting (from standby)
         public float Scale96 = 1f;                // DPI scale it was placed with (its size is saved unscaled)
+        public Rectangle Want;                    // where PlaceQuick put it (the chosen corner, sized for that screen)
+        public bool Placing;                      // being placed: a DPI change must not move it out of the corner
 
         public QuickForm()
         {
@@ -1981,15 +2015,17 @@ namespace SuperSpeedNote
             try { Native.DwmExtendFrameIntoClientArea(Handle, ref m); } catch { }
             int round = 2;
             try { Native.DwmSetWindowAttribute(Handle, 33 /*DWMWA_WINDOW_CORNER_PREFERENCE*/, ref round, 4); } catch { }
+            Native.NoFade(Handle, true);
             Native.SetWindowPos(Handle, IntPtr.Zero, 0, 0, 0, 0, 0x0027 /*FRAMECHANGED|NOMOVE|NOSIZE|NOZORDER*/ | 0x0010);
         }
 
         protected override void WndProc(ref Message m)
         {
             if (m.Msg == 0x0083) { m.Result = IntPtr.Zero; return; }   // WM_NCCALCSIZE: the whole window is client area
-            if (m.Msg == 0x02E0)                                        // WM_DPICHANGED: take the suggested size
+            if (m.Msg == 0x02E0)                                        // WM_DPICHANGED: dragged to another screen - take the suggested size
             {
                 var r = (Native.RECT)Marshal.PtrToStructure(m.LParam, typeof(Native.RECT));
+                if (Placing) r = new Native.RECT { Left = Want.Left, Top = Want.Top, Right = Want.Right, Bottom = Want.Bottom };   // opening: stay in the corner
                 Native.SetWindowPos(Handle, IntPtr.Zero, r.Left, r.Top, r.Right - r.Left, r.Bottom - r.Top, 0x0014 /*NOZORDER|NOACTIVATE*/);
                 Scale96 = (m.WParam.ToInt32() & 0xFFFF) / 96f;
                 m.Result = IntPtr.Zero;
