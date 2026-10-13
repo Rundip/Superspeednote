@@ -648,7 +648,18 @@ namespace SuperSpeedNote
             }
             if (key == QuickKey)                   // a new note in a small window in the screen corner
             {
-                if (quickOpen) { EndQuick("close", true); return; }   // pressed again: put it away
+                if (quickOpen)
+                {
+                    IntPtr fg = Native.GetForegroundWindow();
+                    if (quickShown && fg != quick.Handle)          // clicked away (it's not in Alt+Tab): back to the memo
+                    {
+                        if (IsExternalWindow(fg)) quickRet = fg;   // and later back to the window you were in now
+                        ForceForeground(quick.Handle);
+                        Post("quick", "focus");
+                    }
+                    else EndQuick("close", true);                  // pressed in the memo: put it away
+                    return;
+                }
                 if (front) { if (webReady) Post("new"); return; }      // already in the app: just a new note there
                 OpenQuick();
                 return;
@@ -994,7 +1005,7 @@ namespace SuperSpeedNote
             bool hide = false;
             if (hasReturn && retNote == null && retHwnd != IntPtr.Zero && Native.IsWindow(retHwnd) && !IsShellWindow(retHwnd)) { target = retHwnd; hide = retHidden; }
             else if (lastExternal != IntPtr.Zero && Native.IsWindow(lastExternal) && Native.IsWindowVisible(lastExternal)) target = lastExternal;
-            if (target == IntPtr.Zero) { Post("toast", "복사했어요 · 돌아갈 창이 없어 붙여넣기는 하지 않았어요"); return; }
+            if (target == IntPtr.Zero) { Post("toast", paste ? "복사했어요 · 돌아갈 창이 없어 붙여넣지는 못했어요" : "복사했어요"); return; }
             hasReturn = false;
             if (Native.IsIconic(target)) Native.ShowWindow(target, 9 /*SW_RESTORE*/);
             ForceForeground(target);
