@@ -363,6 +363,7 @@ select.sel{height:32px;border-radius:9px;border:1px solid var(--line-2);backgrou
 .qs-in input{flex:1;border:0;outline:0;background:transparent;font-size:16px}
 .qs-in kbd{color:var(--ink-3)}
 .qs-list{overflow:auto;padding:6px;max-height:52vh}
+#qsList{height:min(52vh,420px)}                     /* Ctrl+K: steady height, so its footer stays put while typing */
 .qs-item{display:flex;align-items:center;gap:12px;padding:9px 12px;border-radius:11px}
 .qs-item.on{background:var(--hover)}
 .qs-item .c-dot{margin:0 2px}
@@ -372,6 +373,8 @@ select.sel{height:32px;border-radius:9px;border:1px solid var(--line-2);backgrou
 .qs-empty{padding:26px;text-align:center;color:var(--ink-3)}
 .pal{width:min(920px,calc(100vw - 32px))}
 .pal-body{display:flex;min-height:0}
+.pal .pal-body{height:min(58vh,420px)}             /* steady while typing: the footer doesn't jump */
+.pal-count{flex:none;font-size:12px;color:var(--ink-3)}
 .pal-body .qs-list{flex:1;min-width:0;max-height:58vh}
 .pal .qs-item{padding:8px 10px}
 .pal .qs-txt b{font-weight:550}
@@ -381,18 +384,25 @@ select.sel{height:32px;border-radius:9px;border:1px solid var(--line-2);backgrou
 .pal-n{flex:none;margin-left:6px;min-width:16px;text-align:center;color:var(--ink-3);opacity:.55;font-weight:600}
 .qs-item.on .pal-n{opacity:1}
 .pal-sec{padding:8px 12px 4px;font-size:11.5px;font-weight:650;color:var(--ink-3)}
+.pal-sec span{float:right;font-weight:400}
+.pal-sec kbd{padding:0 5px;margin-right:5px;border-radius:5px;border:1px solid var(--line-2);color:var(--ink-2)}
 .pick{border-radius:4px;background:var(--accent-soft);box-shadow:0 0 0 1.5px var(--accent);padding:0 1px}
 .cell-sep{font-style:normal;color:var(--ink-3);margin:0 7px}
 .pal-pv{flex:0 0 37%;min-width:0;border-left:1px solid var(--line);padding:12px 14px;overflow:hidden;font-size:12.5px;line-height:1.55;background:linear-gradient(180deg,var(--hover),transparent 140px)}
 .pv-head{display:flex;align-items:center;gap:8px;margin-bottom:8px;min-width:0}
 .pv-head b{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .pv-head small{margin-left:auto;flex:none;color:var(--ink-3);font-size:11px}
+.pv-kv{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;font-size:12.5px;margin:0 0 8px;padding:8px 10px;border-radius:8px;background:var(--hover)}
+.pv-kv span{color:var(--ink-3)}
+.pv-kv b{justify-self:start;min-width:0;font-weight:600;overflow-wrap:anywhere}
 .pv-cols{padding:2px 7px 4px;margin-bottom:2px;font-size:11.5px;font-weight:650;color:var(--accent-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-bottom:1px dashed var(--line-2)}
 .pv-l{padding:2px 7px;border-radius:6px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .pv-l.on{color:var(--ink);font-weight:600;background:var(--accent-soft);white-space:normal;word-break:break-all;margin:2px 0}
 .pv-tip{color:var(--ink-2);font-size:12.5px}
 .pv-tip p{margin:8px 0 0;line-height:1.6}
 .pv-tip i{font-style:normal;padding:0 5px;border-radius:5px;background:var(--hover);color:var(--ink)}
+.pal-tip{padding:0 12px 10px;max-width:520px}
+.qs-empty b{color:var(--ink-2);line-height:2}
 .pal-foot{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;padding:9px 16px;border-top:1px solid var(--line);font-size:11.5px;color:var(--ink-3)}
 .pal-foot .fill{flex:1}
 .pal-foot kbd{padding:1px 6px;margin-right:5px;border-radius:5px;border:1px solid var(--line-2);color:var(--ink-2)}
@@ -427,6 +437,14 @@ body.pal-pop .pal-body .qs-list{max-height:none}
 body.pal-pop .qs-in{padding:15px 18px}
 body.pal-pop .qs-in input{font-size:17px}
 body.pal-pop #toasts{bottom:56px}
+/* find & paste inside the quick memo: the whole window under its bar */
+body.quick #modal.palm{top:34px;padding:0;align-items:stretch;background:transparent}
+body.quick #modal.palm .pal{width:100%;max-height:none;border-radius:0;border:0;box-shadow:none;animation:none}
+body.quick #modal.palm .pal-body{flex:1;height:auto}
+body.quick #modal.palm .qs-list{max-height:none}
+body.quick #modal.palm .pal-foot{padding:9px 12px}
+body.quick #modal.palm .pal-foot .fill{display:none}   /* its four keys on one line at 420px */
+body.quick #modal.palm .pal-foot span:last-child{margin-left:auto}
 .set .dlg-body{max-height:calc(80vh - 140px)}
 .kh{margin:16px 0 4px;font-size:12px;color:var(--accent-ink);letter-spacing:.03em}
 .kh:first-child{margin-top:6px}
@@ -3415,7 +3433,7 @@ function partsOf(x) {
     let at = 0;
     x.c.forEach((v, j) => {
       const d = s.indexOf('\t', at), end = d < 0 ? s.length : d;
-      if (v.trim()) P.push({ a: at, b: end, v: v.trim(), k: x.h && x.h[j] ? x.h[j] : '' });
+      if (v.trim()) P.push({ a: at, b: end, v: v.trim(), k: x.h && x.h[j] ? x.h[j] : '', j });
       at = end + 1;
     });
     if (P.length < 2) P.length = 0;               // one filled cell: the row already is that cell
@@ -3556,15 +3574,17 @@ function openPalette(mode) {
   if (cur) flushNote();
   if (selRange()) lastSel = selSave();            // now, not on the next selectionchange: a line may go in right here
   const isPop = mode === 'pop', inNote = (mode === 'in' || mode === 'key') && view === 'editor' && !!cur;   // inNote: Alt+Enter puts it here
-  openModal(`<div class="dlg qs pal"><div class="qs-in">${ic('i-search')}<input id="palIn" placeholder="${mode === 'quick' ? '다른 메모에서 찾아 넣기 (초성도 돼요)' : '찾을 단어 (초성 ㄱㅊㅅ도 돼요)'}" spellcheck="false" autocomplete="off"><kbd>Esc</kbd></div>` +
+  openModal(`<div class="dlg qs pal"><div class="qs-in">${ic('i-search')}<input id="palIn" placeholder="${mode === 'quick' ? '다른 메모에서 찾아 넣기 (초성도 돼요)' : '찾을 단어 (초성 ㄱㅊㅅ도 돼요)'}" spellcheck="false" autocomplete="off"><span class="pal-count" id="palCount"></span></div>` +
     `<div class="pal-body"><div class="qs-list" id="palList"></div><div class="pal-pv" id="palPv"></div></div>` +
-    (mode === 'quick' ? `<div class="pal-foot"><span><kbd>Enter</kbd>메모에 넣기</span><span><kbd>Tab</kbd>칸·단어만</span><span><kbd>Shift+Enter</kbd>복사만</span><span class="fill"></span><span><kbd>Esc</kbd>닫기</span></div></div>`
+    (mode === 'quick' ? `<div class="pal-foot"><span><kbd>Enter</kbd>넣기</span><span><kbd>Tab</kbd>칸·단어만</span><span><kbd>Shift+Enter</kbd>복사만</span><span class="fill"></span><span><kbd>Esc</kbd>닫기</span></div></div>`
       : `<div class="pal-foot">${inNote ? '<span><kbd>Alt+Enter</kbd>이 메모에 넣기</span>' : ''}<span><kbd>Enter</kbd>${isPop ? '붙여넣기' : '이전 창에 붙여넣기'}</span><span><kbd>Tab</kbd>칸·단어만</span>` +
         `<span><kbd>Shift+Enter</kbd>${isPop ? '복사만' : '복사하고 이전 창으로'}</span><span><kbd>Ctrl+Enter</kbd>메모 열기</span>${inNote ? '' : '<span><kbd>Alt+1~9</kbd>바로 붙여넣기</span>'}<span class="fill"></span><span><kbd>Esc</kbd>${isPop ? '돌아가기' : '닫기'}</span></div></div>`),
-    () => { paletteOn = false; app.classList.remove('pal-pop'); host.send('palette', '0'); });
+    () => { paletteOn = false; app.classList.remove('pal-pop'); modal.classList.remove('palm'); host.send('palette', '0'); });
+  modal.classList.add('palm');                    // the quick memo shows it over the whole window
   paletteOn = true;
   host.send('palette', '1');
   const inp = $('#palIn'), list = $('#palList'), pv = $('#palPv');
+  const tip = '<p>거래처 이름, 계좌, 전화번호처럼 <b>기억나는 단어</b>를 입력하면 모든 메모에서 그 줄을 찾아요.</p><p>띄어쓰기로 단어를 더 넣으면 좁혀져요. 메모 제목·표의 열 이름도 함께 찾아요. 예) <i>한빛 전화</i></p><p><b>ㄱㅊㅅ</b>처럼 초성만 넣어도 돼요.</p><p>표의 한 행은 <b>Tab</b>으로 칸 하나만 골라 붙여넣을 수 있어요.</p>';
   let items = [], idx = 0, terms = [], q = '', fit = 40;   // fit: characters a result row shows (wide Hangul)
   const where = it => [titleOf(it.n) || '제목 없음', !it.x.c && it.x.sec].filter(Boolean).map(esc).join(' › ');
   const itemHTML = (it, i) => {
@@ -3575,12 +3595,19 @@ function openPalette(mode) {
   };
   const preview = () => {
     const it = items[idx];
-    if (!it) { pv.innerHTML = q ? '' : '<div class="pv-tip"><b>이렇게 써 보세요</b><p>거래처 이름, 계좌, 전화번호처럼 <b>기억나는 단어</b>를 입력하면 모든 메모에서 그 줄을 찾아요.</p><p>띄어쓰기로 단어를 더 넣으면 좁혀져요. 메모 제목·표의 열 이름도 함께 찾아요. 예) <i>한빛 전화</i></p><p><b>ㄱㅊㅅ</b>처럼 초성만 넣어도 돼요.</p><p>표의 한 행은 <b>Tab</b>으로 칸 하나만 골라 붙여넣을 수 있어요.</p></div>'; return; }
-    const L = linesOf(it.n.id), i = it.i, a = Math.max(0, i - 4), b = Math.min(L.length, a + 14);
+    if (!it) { pv.innerHTML = q ? `<div class="pv-tip"><b>이렇게 써 보세요</b>${tip}</div>` : ''; return; }
+    const L = linesOf(it.n.id), i = it.i;
     const P = it.part >= 0 ? partsOf(it.x)[it.part] : null;
     let h = `<div class="pv-head"><span class="c-dot" style="--c:${NOTE_COLORS[it.n.color]}"></span><b>${esc(titleOf(it.n) || '제목 없음')}</b><small>${relTime(it.n.updated)}</small></div>`;
-    if (it.x.h) h += `<div class="pv-cols">${it.x.h.map(esc).join('<i class="cell-sep">│</i>')}</div>`;
-    for (let j = a; j < b; j++) h += `<div class="pv-l${j === i ? ' on' : ''}">${lineHTML(L[j].s, terms, j === i ? P : null, j === i ? 600 : 160)}</div>`;
+    if (it.x.c && it.x.h) {                       // a table row: each column name with its value, then rows near it
+      h += '<div class="pv-kv">' + it.x.c.map((v, j) => `<span>${esc(it.x.h[j] || '')}</span><b${P && P.j === j ? ' class="pick"' : ''}>${mark(v, terms) || '&nbsp;'}</b>`).join('') + '</div>';
+      const near = [];
+      for (let d = 1; d < 4; d++) for (const j of [i - d, i + d]) if (L[j] && L[j].h === it.x.h && near.length < 3) near.push(j);   // same table, not its header
+      for (const j of near.sort((x, y) => x - y)) h += `<div class="pv-l">${lineHTML(L[j].s, terms, null, 160)}</div>`;
+    } else {
+      const a = Math.max(0, i - 4), b = Math.min(L.length, a + 14);
+      for (let j = a; j < b; j++) h += `<div class="pv-l${j === i ? ' on' : ''}">${lineHTML(L[j].s, terms, j === i ? P : null, j === i ? 600 : 160)}</div>`;
+    }
     pv.innerHTML = h;
   };
   const render = () => {
@@ -3588,9 +3615,12 @@ function openPalette(mode) {
     terms = termsOf(q);
     items = q ? searchLines(q) : recentLines();
     idx = clamp(idx, 0, Math.max(0, items.length - 1));
+    $('#palCount').textContent = q ? (items.length >= 50 ? '50+' : items.length) + '줄' : '';
+    pv.hidden = !items.length && !q;              // nothing typed, nothing recent: the tips fill the list instead
     fit = Math.max(16, (list.clientWidth - 80) / 14 | 0);   // a hit further right is scrolled into view
-    list.innerHTML = (!q && items.length ? '<div class="pal-sec">최근 붙여넣은 줄</div>' : '') +
-      (items.map(itemHTML).join('') || `<div class="qs-empty">${q ? '일치하는 줄이 없어요' : '찾을 내용을 입력하세요'}</div>`);
+    list.innerHTML = (!q && items.length ? '<div class="pal-sec">최근 붙여넣은 줄<span><kbd>Del</kbd>목록에서 빼기</span></div>' : '') +
+      (items.map(itemHTML).join('') || (q ? '<div class="qs-empty"><b>일치하는 줄이 없어요</b><br>단어를 하나 줄이거나 초성(ㄱㅊㅅ)으로 찾아보세요</div>'
+        : `<div class="pal-sec">처음이라면 이렇게 찾아보세요</div><div class="pv-tip pal-tip">${tip}</div>`));
     const on = list.querySelector('.on');
     if (on) on.scrollIntoView({ block: 'nearest' });
     preview();
@@ -3650,6 +3680,12 @@ function openPalette(mode) {
     it.part = d > 0 ? (it.part + 1 >= P.length ? -1 : it.part + 1) : (it.part <= -1 ? P.length - 1 : it.part - 1);
     redraw(idx);
   };
+  const forget = it => {                          // a recent line you'd rather not see here again (a password ...)
+    const use = st.palUse || {}, key = it.n.id + SEP + it.x.s, old = use[key];
+    if (!old) return;
+    delete use[key]; saveStateSoon(); render();
+    toast('최근 목록에서 뺐어요', '되돌리기', () => { (st.palUse || (st.palUse = {}))[key] = old; saveStateSoon(); if (inp.isConnected && !inp.value.trim()) render(); });
+  };
   const howOf = e => e.ctrlKey ? 'open' : e.shiftKey ? 'copy' : e.altKey && inNote ? 'note' : 'paste';
   let raf = 0;
   inp.addEventListener('input', () => { idx = 0; if (!raf) raf = requestAnimationFrame(() => { raf = 0; render(); }); });
@@ -3661,6 +3697,7 @@ function openPalette(mode) {
     else if (k === 'PageDown') { e.preventDefault(); move(idx + 8); }
     else if (k === 'PageUp') { e.preventDefault(); move(idx - 8); }
     else if (k === 'Tab') { e.preventDefault(); cyclePart(e.shiftKey ? -1 : 1); }
+    else if (k === 'Delete' && !inp.value && items[idx] && items[idx].recent) { e.preventDefault(); forget(items[idx]); }
     else if (k === 'Enter') { e.preventDefault(); if (raf) { cancelAnimationFrame(raf); raf = 0; render(); } pick(idx, howOf(e)); }
     else if (e.altKey && /^Digit[1-9]$/.test(e.code)) { e.preventDefault(); if (raf) { cancelAnimationFrame(raf); raf = 0; render(); } pick(+e.code.slice(5) - 1, 'paste'); }
     else if (e.ctrlKey && e.code === 'KeyC' && inp.selectionStart === inp.selectionEnd && items[idx]) { e.preventDefault(); pick(idx, palMode === 'pop' ? 'copy' : 'clip'); }
@@ -3839,7 +3876,8 @@ function devTrash(cmd, a, b, c) {                 // browser preview: the trash 
 // ---------------------------------------------------------------- quick switcher (Ctrl+K)
 function openSwitcher() {
   flushNote();
-  openModal(`<div class="dlg qs"><div class="qs-in">${ic('i-search')}<input id="qsIn" placeholder="제목이나 내용으로 메모 찾기" spellcheck="false" autocomplete="off"><kbd>Esc</kbd></div><div class="qs-list" id="qsList"></div></div>`);
+  openModal(`<div class="dlg qs"><div class="qs-in">${ic('i-search')}<input id="qsIn" placeholder="제목이나 내용으로 메모 찾기" spellcheck="false" autocomplete="off"></div><div class="qs-list" id="qsList"></div>` +
+    `<div class="pal-foot"><span><kbd>↑↓</kbd>선택</span><span><kbd>Enter</kbd>열기</span><span class="fill"></span><span><kbd>Esc</kbd>닫기</span></div></div>`);
   const inp = $('#qsIn'), list = $('#qsList');
   let items = [], idx = 0, terms = [];
   const render = () => {
@@ -3860,6 +3898,13 @@ function openSwitcher() {
     const on = list.querySelector('.on');
     if (on) on.scrollIntoView({ block: 'nearest' });
   };
+  const move = i => {                             // like the palette: only the highlight moves
+    if (!items.length) return;
+    idx = clamp(i, 0, items.length - 1);
+    for (const el of list.querySelectorAll('.qs-item')) el.classList.toggle('on', +el.dataset.i === idx);
+    const on = list.querySelector('.on');
+    if (on) on.scrollIntoView({ block: 'nearest' });
+  };
   const go = i => {
     const x = items[i];
     if (!x) return;
@@ -3872,10 +3917,11 @@ function openSwitcher() {
   inp.addEventListener('input', () => { idx = 0; render(); });
   inp.addEventListener('keydown', e => {
     if (e.isComposing) return;
-    if (e.key === 'ArrowDown') { e.preventDefault(); idx = Math.min(idx + 1, items.length - 1); render(); }
-    else if (e.key === 'ArrowUp') { e.preventDefault(); idx = Math.max(idx - 1, 0); render(); }
+    const d = { ArrowDown: 1, ArrowUp: -1, PageDown: 8, PageUp: -8 }[e.key];
+    if (d) { e.preventDefault(); move(idx + d); }
     else if (e.key === 'Enter') { e.preventDefault(); go(idx); }
   });
+  list.addEventListener('mousemove', e => { const it = e.target.closest('.qs-item'); if (it && +it.dataset.i !== idx) move(+it.dataset.i); });
   list.addEventListener('click', e => { const it = e.target.closest('.qs-item'); if (it) go(+it.dataset.i); });
   modal.querySelector('.qs').addEventListener('mousedown', e => { if (e.target !== inp) e.preventDefault(); });   // keep typing in the box
   render();
