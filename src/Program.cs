@@ -1070,7 +1070,7 @@ namespace SuperSpeedNote
         {
             if (trayHintShown || tray == null) return;
             trayHintShown = true;
-            tray.ShowBalloonTip(2500, "Super Speed Note", "트레이에서 계속 실행 중입니다. 단축키로 바로 불러오세요.", ToolTipIcon.None);
+            tray.ShowBalloonTip(2500, "Super Speed Note", "트레이에서 계속 실행 중이에요. 단축키로 바로 불러오세요.", ToolTipIcon.None);
         }
 
         // ---------- WebView2 ----------
@@ -1139,7 +1139,7 @@ namespace SuperSpeedNote
             {
                 Program.Log(ex);
                 MessageBox.Show(this,
-                    "화면 엔진(Microsoft Edge WebView2 런타임)을 시작하지 못했습니다.\n\n" +
+                    "화면 엔진(Microsoft Edge WebView2 런타임)을 시작하지 못했어요.\n\n" +
                     "https://go.microsoft.com/fwlink/p/?LinkId=2124703 에서 런타임을 설치한 뒤 다시 실행해 주세요.\n\n" + ex.Message,
                     "Super Speed Note", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 finished = true;

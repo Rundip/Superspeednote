@@ -37,7 +37,7 @@
 }
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;overflow:hidden}
-body{font:14px/1.45 var(--ui);color:var(--ink);background:var(--bg);-webkit-font-smoothing:antialiased;user-select:none;cursor:default}
+body{font:14px/1.45 var(--ui);color:var(--ink);background:var(--bg);-webkit-font-smoothing:antialiased;user-select:none;cursor:default;word-break:keep-all;overflow-wrap:break-word}
 button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
 input,select{font:inherit;color:inherit}
 svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
@@ -241,7 +241,7 @@ body.sb-off #sidebar{display:none}
 #findbar .tb{height:26px;min-width:26px;padding:0}
 #scroller{flex:1;min-height:0;overflow:auto;position:relative}
 #sheet{position:relative;min-height:100%;overflow-x:clip}
-#editor{position:relative;outline:none;min-height:100%;padding:30px 52px 42vh;font-family:var(--ef);font-size:var(--fs);line-height:1.75;color:var(--ink);white-space:pre-wrap;overflow-wrap:break-word;tab-size:4;user-select:text;caret-color:var(--accent);cursor:text}
+#editor{position:relative;outline:none;min-height:100%;padding:30px 52px 42vh;font-family:var(--ef);font-size:var(--fs);line-height:1.75;color:var(--ink);white-space:pre-wrap;overflow-wrap:break-word;word-break:normal;tab-size:4;user-select:text;caret-color:var(--accent);cursor:text}
 #editor.is-empty::before{content:attr(data-ph);position:absolute;left:52px;top:30px;color:var(--ink-3);opacity:.85;pointer-events:none;white-space:pre-line}
 #editor div,#editor p{margin:0}
 #editor>:first-child{margin-top:0}
@@ -665,7 +665,7 @@ body.maxed:not(.quick) .rz,body.web .rz{display:none}
     <section class="hero" data-drag>
       <div class="crumb"><span class="crumb-t">전체 메모</span><span class="pill" id="noteCount">0 / 500</span><span class="pill sel-pill" id="selCount" hidden></span></div>
       <div class="hero-act">
-        <button class="hero-btn" id="btnTrash" data-k="trash" data-t="휴지통 · 지운 메모 복원" title="휴지통 · 지운 메모 복원"><svg class="i"><use href="#i-trash"/></svg><span class="hb-l">휴지통</span></button>
+        <button class="hero-btn" id="btnTrash" data-k="trash" data-t="휴지통 · 삭제한 메모 복원" title="휴지통 · 삭제한 메모 복원"><svg class="i"><use href="#i-trash"/></svg><span class="hb-l">휴지통</span></button>
         <label class="search"><svg class="i"><use href="#i-search"/></svg><input id="boardSearch" placeholder="바로 입력해서 찾기 (초성도 돼요)" spellcheck="false" autocomplete="off"><button class="s-clear" id="sClear" title="검색 지우기 (Esc)" hidden><svg class="i"><use href="#i-close"/></svg></button><kbd data-k="find">Ctrl+F</kbd></label>
         <button class="btn-new" id="btnNew" data-k="newNote" data-t="새 메모"><svg class="i"><use href="#i-plus"/></svg>새 메모</button>
       </div>
@@ -685,7 +685,7 @@ body.maxed:not(.quick) .rz,body.web .rz{display:none}
       </div>
       <div class="sb-label" id="sbLabel">메모 목록</div>
       <div id="sbList" tabindex="-1"></div>
-      <div class="sb-foot" id="sbFoot">Ctrl+Tab 다음 메모 · Ctrl+K 찾기</div>
+      <div class="sb-foot" id="sbFoot">Ctrl+Tab 다음 메모 · Ctrl+K 빠른 이동</div>
     </aside>
     <section id="pane">
       <div id="noteHead">
@@ -722,7 +722,7 @@ body.maxed:not(.quick) .rz,body.web .rz{display:none}
       </div>
       <div id="scroller">
         <div id="sheet">
-          <div id="editor" contenteditable="true" spellcheck="false" data-ph="여기에 바로 입력하세요.&#10;엑셀에서 셀을 복사해 붙여넣으면 표가 됩니다 · # 제목  - 목록  [] 체크"></div>
+          <div id="editor" contenteditable="true" spellcheck="false" data-ph="여기에 바로 입력하세요.&#10;줄 맨 앞에서 # 제목 · - 목록 · [] 체크 · ``` 코드 · 엑셀 셀을 붙여넣으면 표가 돼요"></div>
           <div id="tblOv">
             <div id="cellbox"></div><i class="tflash"></i>
             <i class="tinsln"></i>
@@ -735,7 +735,7 @@ body.maxed:not(.quick) .rz,body.web .rz{display:none}
           <div id="objbox"></div>
         </div>
       </div>
-      <footer id="status"><span id="stSave">저장됨</span><span id="stCount"></span><span class="fill"></span><span id="stHint">Esc 보드 · Ctrl+K 이동</span><span id="stZoom" title="클릭하면 100%로" hidden>100%</span></footer>
+      <footer id="status"><span id="stSave">저장됨</span><span id="stCount"></span><span class="fill"></span><span id="stHint">Esc 보드 · Ctrl+K 빠른 이동</span><span id="stZoom" title="클릭하면 100%로" hidden>100%</span></footer>
       </div>
     </section>
   </main>
@@ -1020,7 +1020,7 @@ function relTime(t) {
   if (d < 86400) return Math.floor(d / 3600) + '시간 전';
   const a = new Date(t), b = new Date();
   if (a >= new Date(b.getFullYear(), b.getMonth(), b.getDate() - 1)) return '어제';
-  return (a.getFullYear() !== b.getFullYear() ? a.getFullYear() + '. ' : '') + (a.getMonth() + 1) + '월 ' + a.getDate() + '일';
+  return (a.getFullYear() !== b.getFullYear() ? a.getFullYear() + '년 ' : '') + (a.getMonth() + 1) + '월 ' + a.getDate() + '일';
 }
 function isTyping(el) { return el && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.nodeName)); }
 function unwrap(el) { const p = el.parentNode; if (!p) return; while (el.firstChild) p.insertBefore(el.firstChild, el); p.removeChild(el); }
@@ -1387,7 +1387,7 @@ function askDeleteNotes(ids) {
   const all = ids.length === S.notes.length;
   const names = ids.slice(0, 6).map(id => `<li>${esc(titleOf(noteById(id)) || '제목 없음')}</li>`).join('') +
     (ids.length > 6 ? `<li class="more">외 ${ids.length - 6}개</li>` : '');
-  openModal(`<div class="dlg confirm"><div class="dlg-head">${ic('i-trash')}<h3>${all ? `메모 ${ids.length}개를 모두 지울까요?` : `메모 ${ids.length}개를 지울까요?`}</h3></div>` +
+  openModal(`<div class="dlg confirm"><div class="dlg-head">${ic('i-trash')}<h3>${all ? `메모 ${ids.length}개를 모두 삭제할까요?` : `메모 ${ids.length}개를 삭제할까요?`}</h3></div>` +
     `<div class="dlg-body"><ul class="del-list">${names}</ul><div class="khint">휴지통으로 옮겨져서 언제든 복원할 수 있어요.</div></div>` +
     `<div class="dlg-foot"><span class="ver">Del 한 번 더 = 삭제 · Esc = 취소</span><span style="flex:1"></span><button class="btn" id="delNo">취소</button><button class="btn danger-fill" id="delYes">${ids.length}개 삭제</button></div></div>`);
   const yes = $('#delYes');
@@ -1427,8 +1427,8 @@ function deleteNotes(ids) {
   markSb();
   if (view === 'board') { const c = grid.querySelector('.card.sel'); if (c) c.scrollIntoView({ block: 'nearest' }); }
   const kept = items.filter(x => !x.empty).length, purged = items.length - kept;
-  const label = items.length === 1 ? (purged ? '빈 메모를 지웠어요' : `‘${titleOf(items[0].meta) || '제목 없음'}’ 메모를 휴지통으로 옮겼어요`)
-    : purged ? `메모 ${items.length}개를 지웠어요 · 빈 메모 ${purged}개는 휴지통에 남기지 않아요` : `메모 ${items.length}개를 휴지통으로 옮겼어요`;
+  const label = items.length === 1 ? (purged ? '빈 메모를 삭제했어요' : `‘${titleOf(items[0].meta) || '제목 없음'}’ 메모를 휴지통으로 옮겼어요`)
+    : purged ? `메모 ${items.length}개를 삭제했어요 · 빈 메모 ${purged}개는 휴지통에 남기지 않아요` : `메모 ${items.length}개를 휴지통으로 옮겼어요`;
   let done = false;
   const undoDel = () => {                         // once only, from the toast or Ctrl+Z on the board
     if (done) return;
@@ -3777,7 +3777,7 @@ function copyNote(id) {
   const p = notePayload(id);
   if (!p) return;
   putClip(p);
-  toast(`복사 완료 · ${p.what} · 원하는 곳에 붙여넣으세요`);
+  toast(`${josa(p.what, '을', '를')} 복사했어요 · 원하는 곳에 붙여넣으세요`);
 }
 // mode 'paste': copy, return to the window you came from and paste there; 'copy': copy and return
 function sendOut(mode) {
@@ -4259,7 +4259,7 @@ function renderTrash() {
   const list = $('#trList');
   if (!list || !trashItems) return;
   const n = trashItems.length, b = $('#trEmpty');
-  $('#trSub').textContent = n ? `지운 메모 ${n}개` : '';
+  $('#trSub').textContent = n ? `삭제한 메모 ${n}개` : '';
   b.hidden = !n; b.classList.remove('arm'); b.textContent = '휴지통 비우기';
   $('#trAll').hidden = n < 2;
   list.innerHTML = trashItems.map((x, i) => {
@@ -4278,7 +4278,7 @@ function renderTrash() {
 }
 function restoreTrash(x, open) {                 // open: restore, then open it (Shift+Enter / double-click)
   if (!x) return;
-  if (S.notes.length >= MAX_NOTES) { toast(`메모는 ${MAX_NOTES}개까지예요 · 다른 메모를 지운 뒤 복원해 주세요`); return; }
+  if (S.notes.length >= MAX_NOTES) { toast(`메모는 ${MAX_NOTES}개까지예요 · 다른 메모를 삭제한 뒤 복원해 주세요`); return; }
   const old = x.m && x.m.id;
   const id = old && /^[A-Za-z0-9_-]{1,64}$/.test(old) && !noteById(old) ? old : uid();
   if (trashItems) trashFocus = trashItems.indexOf(x);
@@ -4303,7 +4303,7 @@ function onTrashRestored(arg) {                   // file name, new id, saved in
   if (view === 'board') selId = id;
   rerender();
   if (trashOpenNext === id) { trashOpenNext = null; closeModal(); openNote(id); return; }
-  if (trashQuiet > 0) { if (--trashQuiet === 0) toast('지운 메모를 모두 복원했어요'); return; }
+  if (trashQuiet > 0) { if (--trashQuiet === 0) toast('삭제한 메모를 모두 복원했어요'); return; }
   toast(`‘${titleOf(n) || '제목 없음'}’ 복원했어요`, '열기', () => { closeModal(); openNote(id); });
 }
 function devTrash(cmd, a, b, c) {                 // browser preview: the trash in localStorage
@@ -4470,8 +4470,8 @@ function hkProblem(c) {
   if (c.mods === 15) return { lvl: 2, msg: '키는 최대 4개까지예요. Ctrl·Alt·Shift·Win 중 3개 이하 + 키 1개로 눌러 주세요.' };
   if (c.mods === 4 && !fkey && c.vk !== 32) return { lvl: 2, msg: 'Shift만 쓰면 글자 입력과 겹쳐요. Ctrl이나 Alt를 함께 눌러 주세요.' };
   const sys = SYS_KEYS.get(c.mods + ':' + c.vk);
-  if (sys && sys.lvl === 2) return { lvl: 2, msg: `Windows 기본 단축키 ‘${sys.name}’(${c.label})라서 쓸 수 없어요.` };
-  if (sys) return { lvl: 1, name: sys.name, msg: `⚠ Windows 기본 단축키 ‘${sys.name}’과 겹쳐요. 저장하면 어디서 누르든 그 기능 대신 이 메모가 열려요.` };
+  if (sys && sys.lvl === 2) return { lvl: 2, msg: `${josa(c.label, '은', '는')} Windows 기본 단축키 ${josa(`‘${sys.name}’`, '이라서', '라서')} 쓸 수 없어요.` };
+  if (sys) return { lvl: 1, name: sys.name, msg: `⚠ Windows 기본 단축키 ${josa(`‘${sys.name}’`, '과', '와')} 겹쳐요. 저장하면 어디서 누르든 그 기능 대신 이 메모가 열려요.` };
   if (c.mods & 8) return { lvl: 1, name: 'Win 키 조합', msg: '⚠ Win 키 조합은 Windows가 예약해 둔 경우가 많아 겹치거나 등록이 안 될 수 있어요.' };
   return null;
 }
@@ -4546,8 +4546,8 @@ function recordHotkey(title, current, owner, onSave, after, local) {
     if (p && p.lvl === 2) { combo = null; say('bad', '✕ ' + esc(p.msg)); return; }
     combo = c;
     const who = local ? '' : hkOwner(c, owner), inApp = local ? null : localOwner(c, null);
-    const warns = [p && p.msg, who && `‘${who}’에 쓰던 단축키예요. 저장하면 이쪽으로 옮겨져요.`,
-      inApp && `앱 안 단축키 ‘${inApp.n}’과(와) 같은 키예요. 저장하면 그쪽은 지정 안 함이 돼요.`].filter(Boolean);
+    const warns = [p && p.msg, who && `‘${who}’에 쓰던 키예요. 저장하면 이쪽으로 옮겨져요.`,
+      inApp && `${josa(`앱 안 단축키 ‘${inApp.n}’`, '과', '와')} 같은 키예요. 저장하면 그쪽은 지정 안 함이 돼요.`].filter(Boolean);
     if (warns.length) say('warn', warns.map(w => '⚠ ' + esc(w)).join('<br>'));
     else say('ok', sameKey(c, current) ? '지금 쓰고 있는 키예요' : '✓ 쓸 수 있는 키예요 · Enter로 저장');
   };
@@ -4555,8 +4555,8 @@ function recordHotkey(title, current, owner, onSave, after, local) {
   const done = () => { recording = false; document.removeEventListener('keydown', onKey, true); window.removeEventListener('blur', onBlur); host.send('hkSuspend', '0'); if (after) after(); };
   openModal(`<div class="dlg"><div class="dlg-head">${ic('i-key')}<h3>${local ? '앱 안 단축키' : '전역 단축키'}</h3><span class="dlg-sub">${esc(title)}</span></div>
     <div class="dlg-body"><div class="hk-cap" id="hkCap">${current ? '지금 단축키' : '새 단축키'}</div><div class="keys" id="hkKeys"></div><div class="hint" id="hkHint">${local
-      ? '원하는 키 조합을 누르세요 (Ctrl·Alt·Shift 중 최대 3개 + 키 1개)<br>예) Ctrl+Alt+B, Ctrl+Shift+1, F7 · 이 앱 안에서만 동작해요'
-      : '원하는 키 조합을 누르세요 (Ctrl·Alt·Shift·Win 중 최대 3개 + 키 1개)<br>예) Ctrl+Alt+1, Ctrl+Alt+Shift+K, F8 · 누르면 앞으로 나오고, 한 번 더 누르면 직전 창으로 돌아가요'}</div></div>
+      ? '쓰고 싶은 키 조합을 한 번에 눌러 주세요.<br>예) Ctrl+Alt+B · Ctrl+Shift+1 · F7 — 이 앱 안에서만 동작해요.'
+      : '쓰고 싶은 키 조합을 한 번에 눌러 주세요.<br>예) Ctrl+Alt+1 · Ctrl+Shift+F9 · F8 — 누르면 이 메모가 앞으로 나오고, 한 번 더 누르면 쓰던 창으로 돌아가요.'}</div></div>
     <div class="dlg-foot"><span class="ver">Enter 저장 · Esc 취소${current ? ' · Backspace 해제' : ''}</span><span style="flex:1"></span>${current ? '<button class="btn ghost" id="hkClear">단축키 해제</button>' : ''}<button class="btn" id="hkCancel">취소</button><button class="btn primary" id="hkSave">저장</button></div></div>`, done);
   const keys = $('#hkKeys'), hint = $('#hkHint'), cap = $('#hkCap');
   const show = c => { keys.innerHTML = c ? c.label.split('+').map(k => `<kbd>${esc(k || '+')}</kbd>`).join('<span class="plus">+</span>') : '<kbd class="ghost">?</kbd>'; };
@@ -4565,7 +4565,7 @@ function recordHotkey(title, current, owner, onSave, after, local) {
     const snap = hkSnap(), who = c && !local ? hkOwner(c, owner) : '', inApp = c && !local ? localOwner(c, null) : null;
     onSave(c);
     closeModal();
-    toast(c ? `‘${title}’ → ${c.label}${who ? ` · ‘${who}’의 단축키는 해제됐어요` : ''}${inApp ? ` · ‘${inApp.n}’은(는) 지정 안 함` : ''}` : `‘${title}’ 단축키를 해제했어요`,
+    toast(c ? `‘${title}’ → ${c.label}${who ? ` · ‘${who}’의 단축키는 해제됐어요` : ''}${inApp ? ` · ${josa(`‘${inApp.n}’`, '은', '는')} 지정 안 함` : ''}` : `‘${title}’ 단축키를 해제했어요`,
       '되돌리기', () => hkRestore(snap));
   };
   const save = () => {
@@ -4622,14 +4622,14 @@ function onHotkeyStatus(list) {
     if (!next) continue;
     st[A.prop] = Object.assign({}, next);
     saveStateSoon(); applyHotkeys();
-    toast(`${curK.label}은(는) 다른 프로그램이 쓰고 있어서 ‘${A.name}’을(를) ${next.label}(으)로 정했어요 · 설정에서 바꿀 수 있어요`);
+    toast(`${josa(curK.label, '은', '는')} 다른 프로그램이 쓰고 있어서 ${josa(`‘${A.name}’`, '을', '를')} ${josa(next.label, '으로')} 정했어요 · 설정에서 바꿀 수 있어요`);
     return;
   }
   if (hkJustSet) {
     const c = hotkeyOf(hkJustSet), label = c && c.label, clash = hkConflictName(c);
-    if (hkFailed.has(hkJustSet)) toast(`‘${label}’은(는) Windows나 다른 프로그램이 이미 쓰고 있어 등록되지 않았어요. 다른 조합을 골라 주세요.`);
-    else if (clash) toast(`‘${label}’ 지정 완료 · ⚠ Windows 기본 단축키 ‘${clash}’과 겹쳐요`);
-    else if (label) toast(`‘${label}’ 지정 완료 · 어디서든 눌러 보세요`);
+    if (hkFailed.has(hkJustSet)) toast(`${josa(label, '은', '는')} Windows나 다른 프로그램이 이미 쓰고 있어 등록하지 못했어요. 다른 조합을 골라 주세요.`);
+    else if (clash) toast(`${josa(label, '으로')} 정했어요 · ⚠ Windows 기본 단축키 ${josa(`‘${clash}’`, '과', '와')} 겹쳐요`);
+    else if (label) toast(`${josa(label, '으로')} 정했어요 · 어디서든 눌러 보세요`);
     hkWarned.add(hkJustSet + ':' + label);
     hkJustSet = null;
   }
@@ -4637,7 +4637,7 @@ function onHotkeyStatus(list) {
   const lost = [...hkFailed].map(k => ({ k, c: hotkeyOf(k) })).filter(x => x.c && !hkWarned.has(x.k + ':' + x.c.label));
   if (lost.length) {
     lost.forEach(x => hkWarned.add(x.k + ':' + x.c.label));
-    toast(`단축키 ${lost.map(x => x.c.label).join(', ')}을(를) 다른 프로그램이 쓰고 있어 등록되지 않았어요 (빨간 표시)`);
+    toast(`단축키 ${lost.map(x => x.c.label).join(', ')} — 다른 프로그램이 쓰고 있어 등록하지 못했어요 (빨간 표시)`);
   }
   rerender();
   if (modalOpen() && $('#setAppHk')) {
@@ -4658,7 +4658,7 @@ const ACTIONS = [
   { id: 'nextNote', g: '앱 전체', n: '다음 메모', k: [2, 'Tab'], run: () => cycle(1) },
   { id: 'prevNote', g: '앱 전체', n: '이전 메모', k: [6, 'Tab'], run: () => cycle(-1) },
   { id: 'closeView', g: '앱 전체', n: '보드로 / 창 닫기', k: [2, 'KeyW'], run: () => { if (view === 'editor') showBoard(); else { flushAll(); host.send('close'); } } },
-  { id: 'save', g: '앱 전체', n: '저장 (원래 자동 저장)', k: [2, 'KeyS'], run: () => { flushAll(); toast('저장했어요 · 원래 자동 저장됩니다'); } },
+  { id: 'save', g: '앱 전체', n: '저장 (원래 자동 저장)', k: [2, 'KeyS'], run: () => { flushAll(); toast('저장했어요 · 따로 누르지 않아도 자동으로 저장돼요'); } },
   { id: 'quit', g: '앱 전체', n: '끄기 (단축키는 계속 대기)', k: [2, 'KeyQ'], run: () => { flushAll(); host.send('quit'); } },
   { id: 'settings', g: '앱 전체', n: '설정', k: [2, 'Comma'], run: () => openSettings() },
   { id: 'help', g: '앱 전체', n: '단축키 모두 보기', k: [0, 'F1'], run: () => showHelp() },
@@ -4667,7 +4667,7 @@ const ACTIONS = [
   { id: 'zoomReset', g: '앱 전체', n: '글자 크기 원래대로', k: [2, 'Digit0'], run: () => zoom(0) },
   { id: 'onTop', g: '앱 전체', n: '항상 위에 표시 켜기 / 끄기', k: null, run: () => { setOnTop(!st.onTop); toast(st.onTop ? '항상 위에 표시' : '항상 위에 표시 끔'); } },
   { id: 'theme', g: '앱 전체', n: '라이트 / 다크 바꾸기', k: null, run: () => setTheme(st.theme === 'dark' ? 'light' : 'dark') },
-  { id: 'trash', g: '앱 전체', n: '휴지통 (지운 메모 복원)', k: null, run: () => openTrash() },
+  { id: 'trash', g: '앱 전체', n: '휴지통 (삭제한 메모 복원)', k: null, run: () => openTrash() },
   { id: 'sidebar', g: '앱 전체', n: '메모 목록 접기 / 펼치기', k: null, run: () => $('#hSide').click() },
   { id: 'palette', g: '꺼내 쓰기', n: '한 줄 찾아 붙여넣기 (앱 안에서)', k: [6, 'KeyF'], run: () => openPalette(quickOn ? 'quick' : 'key') },
   { id: 'sendPaste', g: '꺼내 쓰기', n: '복사 → 원래 창에 바로 붙여넣기', k: [6, 'Enter'], run: () => sendOut('paste') },
@@ -4743,11 +4743,11 @@ function localProblem(c, skip) {
   if (!c.mods && !fkey) return { lvl: 2, msg: 'Ctrl · Alt · Shift와 함께 눌러 주세요. (F1~F12는 단독 가능)' };
   if (c.mods === 4 && !fkey) return { lvl: 2, msg: 'Shift만 쓰면 글자 입력과 겹쳐요. Ctrl이나 Alt를 함께 눌러 주세요.' };
   const fixed = FIXED_KEYS.get(c.mods + ':' + c.code);
-  if (fixed) return { lvl: 2, msg: `${c.label}은(는) ‘${fixed}’에 쓰는 키라서 바꿀 수 없어요.` };
+  if (fixed) return { lvl: 2, msg: `${josa(c.label, '은', '는')} ‘${fixed}’에 쓰는 키라서 바꿀 수 없어요.` };
   const g = hkOwner(c, null);
-  if (g) return { lvl: 2, msg: `${c.label}은(는) 전역 단축키(‘${g}’)라서 앱 안에서는 그쪽이 먼저 실행돼요. 다른 키를 골라 주세요.` };
+  if (g) return { lvl: 2, msg: `${josa(c.label, '은', '는')} 전역 단축키 ‘${g}’에 쓰고 있어서 앱 안에서는 그쪽이 먼저 실행돼요. 다른 키를 골라 주세요.` };
   const o = localOwner(c, skip);
-  if (o) return { lvl: 1, msg: `‘${o.n}’에 쓰던 키예요. 저장하면 이쪽으로 옮겨지고 ‘${o.n}’은(는) 지정 안 함이 돼요.` };
+  if (o) return { lvl: 1, msg: `‘${o.n}’에 쓰던 키예요. 저장하면 이쪽으로 옮겨지고 ${josa(`‘${o.n}’`, '은', '는')} 지정 안 함이 돼요.` };
   return null;
 }
 function setLocalKey(id, c) {
@@ -4766,9 +4766,9 @@ function updateKeyHints() {
     if (!t) el.hidden = !k;
   }
   const sw = kl('switcher'), nx = kl('nextNote');
-  defaultHint = ['Esc 보드', sw && sw + ' 이동'].filter(Boolean).join(' · ');
+  defaultHint = ['Esc 보드', sw && sw + ' 빠른 이동'].filter(Boolean).join(' · ');
   if (!hintMode) $('#stHint').textContent = defaultHint;
-  $('#sbFoot').textContent = [nx && nx + ' 다음 메모', sw && sw + ' 찾기'].filter(Boolean).join(' · ');
+  $('#sbFoot').textContent = [nx && nx + ' 다음 메모', sw && sw + ' 빠른 이동'].filter(Boolean).join(' · ');
 }
 
 // ---------------------------------------------------------------- settings / help
@@ -4827,14 +4827,14 @@ function openSettings(tab, keep) {               // keep: back from the key reco
     ${row('글자 크기', 'Ctrl + 마우스 휠로도 조절', `<div class="seg"><button data-z="-1">−</button><span class="val" id="setZ">${pct}</span><button data-z="1">+</button></div>`)}
     ${row('항상 위에 표시', '', sw('onTop', st.onTop))}
     <h4 class="kh">실행</h4>
-    ${row('단축키', `앱 부르기 ${esc(kl0(st.appHotkey))} · 찾아 붙여넣기 ${esc(kl0(st.findHotkey))} · 빠른 메모 ${esc(kl0(st.quickHotkey))}`, `<button class="btn" id="setGoKeys">단축키 설정</button>`)}
-    ${row('닫기(X) → 트레이로 숨기기', '켜 두면 다음 호출이 바로 열려요 (권장)', sw('closeToTray', st.closeToTray))}
+    ${row('단축키', `앱 부르기 ${esc(kl0(st.appHotkey))} · 한 줄 찾아 붙여넣기 ${esc(kl0(st.findHotkey))} · 빠른 메모 ${esc(kl0(st.quickHotkey))}`, `<button class="btn" id="setGoKeys">단축키 설정</button>`)}
+    ${row('닫기(X) → 트레이로 숨기기', '켜 두면 다음에 부를 때 바로 열려요 (권장) · 끄면 X가 앱을 끄고 단축키만 대기해요', sw('closeToTray', st.closeToTray))}
     ${startMode() === 'package'
       ? row('Windows 시작 시', '<span class="wrap">로그인하면 <b>단축키 대기</b>로 켜져서 꺼져 있어도 단축키가 동작해요.<br>끄려면 작업 관리자 › 시작 앱(또는 설정 › 앱 › 시작 프로그램)에서 Super Speed Note를 끄세요.</span>', '')
       : row('Windows 시작 시', '<span class="wrap"><b>단축키 대기</b> 꺼져 있어도 단축키로 열림 · 메모리 거의 안 씀 · 첫 호출 약 1초<br><b>트레이 상주</b> 언제나 바로 열림 · 메모리 더 사용<br><b>끔</b> 자동으로 켜지지 않아요 · 앱을 끄면 메모 단축키도 함께 꺼져요</span>', `<div class="seg" id="setStart"><button data-v="standby">단축키 대기 (권장)</button><button data-v="tray">트레이 상주</button><button data-v="off">끔</button></div>`)}
     <h4 class="kh">데이터</h4>
     ${row('데이터 폴더 · 백업', `메모 · 이미지 · 백업이 있는 곳 · 매일 자동 백업(최근 14일)<br>${esc(boot.dataDir || '')}`, `<div class="row-btns"><button class="btn" id="setOpen"${HOST ? '' : ' disabled'}>폴더 열기</button><button class="btn" id="setBackup">지금 백업</button></div>`)}
-    ${row('휴지통', '지운 메모 복원 · 영구 삭제 · 비우기 (빈 메모는 바로 지워져요)', `<button class="btn" id="setTrash">휴지통 열기</button>`)}`;
+    ${row('휴지통', '삭제한 메모는 휴지통을 비우기 전까지 보관해요 · 빈 메모는 바로 없어져요', `<button class="btn" id="setTrash">휴지통 열기</button>`)}`;
   }
   openModal(`<div class="dlg wide set"><div class="dlg-head">${ic('i-gear')}<h3>설정</h3><span style="flex:1"></span><div class="seg" id="setTabs"><button data-v="general"${tab === 'general' ? ' class="on"' : ''}>일반</button><button data-v="keys"${tab === 'keys' ? ' class="on"' : ''}>단축키</button></div></div><div class="dlg-body" id="setBody">${body}</div>` +
     `<div class="dlg-foot">${tab === 'keys' ? '<button class="btn ghost" id="setResetKeys">앱 안 단축키 모두 기본값으로</button>' : `<span class="ver">Super Speed Note ${esc(boot.version || '')} · 자동 저장 · 매일 자동 백업(14일)</span>`}<span style="flex:1"></span><button class="btn primary" id="setDone">완료</button></div></div>`);
@@ -4860,7 +4860,7 @@ function openSettings(tab, keep) {               // keep: back from the key reco
     };
     for (const b of $$('[data-reset]', modal)) b.onclick = () => {
       const a = ACT.get(b.dataset.reset), d = defKey(a), g = d && hkOwner(d, null);
-      if (g) { toast(`${d.label}은(는) 지금 전역 단축키 ‘${g}’로 쓰고 있어요`); return; }
+      if (g) { toast(`${josa(d.label, '은', '는')} 지금 전역 단축키 ‘${g}’에 쓰고 있어요`); return; }
       setLocalKey(a.id, d); back();
     };
     $('#setResetKeys').onclick = () => {
@@ -4907,7 +4907,14 @@ function openSettings(tab, keep) {               // keep: back from the key reco
   $('#setTrash').onclick = () => openTrash(() => openSettings('general'));
 }
 let keysScroll = 0;
-const kl0 = k => k ? k.label : '없음';
+const kl0 = k => k ? k.label : '지정 안 함';
+// Korean particles that fit the word before them: josa('Ctrl+F', '은', '는') → 'Ctrl+F는', josa('‘찾기’', '과', '와') → '‘찾기’와'
+const josa = (w, a, b) => {
+  const c = String(w).replace(/[^가-힣A-Za-z0-9]+$/, '').slice(-1), k = c.charCodeAt(0);
+  const f = k >= 0xAC00 && k <= 0xD7A3 ? (k - 0xAC00) % 28 : /[013678LMNR]$/i.test(c) ? (/[178LR]$/i.test(c) ? 8 : 1) : 0;
+  if (a === '으로') return w + (f && f !== 8 ? '으로' : '로');
+  return w + (f ? a : b);
+};
 function showHelp() {
   const isKey = v => /^(Ctrl|Alt|Shift|Win|F\d|Esc|Enter|Tab|Del|Delete|Backspace|Space|Home|End|PgUp|PgDn|[←↑→↓]|Num)/.test(v);
   const g = (title, rows) => `<h4>${title}</h4>` + rows.filter(r => r[1]).map(([a, b]) => `<div><span>${a}</span>${isKey(b) ? `<kbd>${esc(b)}</kbd>` : `<em class="hnote">${esc(b)}</em>`}</div>`).join('');
@@ -4915,7 +4922,7 @@ function showHelp() {
   const join = (...ids) => ids.map(k).filter(Boolean).join(' / ');
   openModal(`<div class="dlg wide"><div class="dlg-head">${ic('i-help')}<h3>단축키</h3><input id="helpQ" class="sel" data-autofocus placeholder="단축키 찾기 (예: 표, 형광펜, 붙여넣기)" spellcheck="false" autocomplete="off"></div><div class="dlg-body"><div class="help" id="helpList">
     ${g('어디서든 (전역)', [['앱 부르기 / 원래 창으로', kl0(st.appHotkey)], ['한 줄 찾아 바로 붙여넣기', kl0(st.findHotkey)], ['빠른 메모 (화면 구석에 새 메모 / 닫기)', kl0(st.quickHotkey)], ['메모별 단축키', '누르면 열기 · 다시 누르면 이전 창']])}
-    ${g('찾아 붙여넣기 검색창', [['원래 창에 바로 붙여넣기', 'Enter / 클릭'], ['N번째 결과 바로 붙여넣기', 'Alt+1~9'], ['칸 · 단어만 골라 붙여넣기', 'Tab / Shift+Tab'], ['복사만 하고 돌아가기', 'Shift+Enter'], ['그 메모 열기', 'Ctrl+Enter'], ['그냥 돌아가기', 'Esc'], ['초성으로 찾기', 'ㄱㅊㅅ → 김철수']])}
+    ${g('한 줄 찾아 붙여넣기 검색창', [['원래 창에 바로 붙여넣기', 'Enter / 클릭'], ['N번째 결과 바로 붙여넣기', 'Alt+1~9'], ['칸 · 단어만 골라 붙여넣기', 'Tab / Shift+Tab'], ['복사만 하고 돌아가기', 'Shift+Enter'], ['그 메모 열기', 'Ctrl+Enter'], ['그냥 돌아가기', 'Esc'], ['초성으로 찾기', 'ㄱㅊㅅ → 김철수']])}
     ${g('메모 보드', [['선택 이동', '← ↑ → ↓'], ['열기', 'Enter / 더블클릭'], ['이름 바꾸기', 'F2'], ['삭제 (되돌리기 · 휴지통에서 복원)', 'Del'], ['여러 개 선택', 'Shift+클릭·방향키 / Ctrl+클릭 / Ctrl+A'], ['새 메모', k('newNote')], ['N번째 메모 열기', 'Ctrl+1~9'], ['빠른 이동', k('switcher')], ['검색', k('find')]])}
     ${g('편집', [['굵게 / 밑줄 / 기울임', join('bold', 'underline', 'italic')], ['취소선', k('strike')], ['글자색', k('fgColor')], ['형광펜', k('hl')], ['서식 지우기', k('clearFmt')], ['글머리 / 번호 목록', join('ul', 'ol')], ['체크리스트', k('chk')], ['체크 표시 / 해제', 'Ctrl+Enter'], ['제목 1 / 2 / 3', join('h1', 'h2', 'h3')], ['구분선', k('hr')], ['날짜·시간', k('stamp')], ['서식 없이 붙여넣기', 'Ctrl+Shift+V'], ['찾기', k('find')], ['확대 / 축소', ['Ctrl+휠', join('zoomIn', 'zoomOut')].filter(Boolean).join(', ')], ['보드로', 'Esc'], ['다음 / 이전 메모', join('nextNote', 'prevNote')], ['실행 취소 / 다시', 'Ctrl+Z / Ctrl+Y'], [ACT.get('quit').n, k('quit')]])}
     ${g('표 (엑셀처럼)', [['칸 선택·이동', '클릭 / 방향키'], ['범위 선택', 'Shift+방향키 / 드래그'], ['선택한 칸에 바로 입력', '기존 값을 새로 씀'], ['칸 편집 (끝에 커서)', 'F2 / 더블클릭'], ['편집 취소', 'Esc'], ['칸 지우기', 'Delete'], ['아래 칸 / 마지막 행이면 행 추가', 'Enter'], ['칸 안 줄바꿈', 'Shift+Enter / Alt+Enter'], ['다음 / 이전 칸 (마지막 열이면 열 추가)', 'Tab / Shift+Tab'], ['모든 칸 선택 (한 번 더: 메모 전체)', 'Ctrl+A'], ['표 넣기 / 빠져나가기', [k('table'), 'Ctrl+Enter'].filter(Boolean).join(' / ')], ['위 / 아래에 행 삽입', join('rowAbove', 'rowBelow')], ['왼쪽 / 오른쪽에 열 삽입', join('colBefore', 'colAfter')], ['행 / 열 삭제', join('delRow', 'delCol')], ['중간에 행·열 넣기', '표 왼쪽·위쪽 여백의 +'], ['끝에 행·열 추가 (끌면 여러 개)', '표 아래·오른쪽 막대'], ['엑셀 붙여넣기 · 범위 복사', 'Ctrl+V / Ctrl+C']])}
