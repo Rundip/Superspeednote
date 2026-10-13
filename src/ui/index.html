@@ -1102,9 +1102,13 @@ function filterBoard() {
   }
   if (!selShown) selId = first;
   markSel();
-  showHits(terms, kinds, byId);
+  // the cards filter at once; their text snippets (new text = costly line layout) wait until typing pauses
+  clearTimeout(hitsT);
+  if (terms.length) hitsT = setTimeout(() => showHits(terms, kinds, new Map(S.notes.map(n => [n.id, n]))), 150);
+  else showHits(terms, kinds, byId);
   boardStatus(shown);
 }
+let hitsT = 0;
 // the hero count, the search box's ×, and a next step when no card is shown
 function boardStatus(shown) {
   const q = query.trim(), n = S.notes.length, pill = $('#noteCount');
@@ -3829,7 +3833,7 @@ function showHits(terms, kinds, byId) {
   if (terms.length) {
     let k = 0;
     for (const c of grid.querySelectorAll('.card[data-id]:not([hidden])')) {
-      if (k++ >= 60) break;
+      if (k++ >= 24) break;                       // about a screenful: the rest keep their usual preview
       const n = byId.get(c.dataset.id), pv = c.querySelector('.c-prev'), tl = { l: titleOf(n).toLowerCase() };
       if (!pv || terms.every((t, j) => termAt(tl, t, kinds[j]) >= 0)) continue;   // the title already shows why
       const old = was.get(n.id);
@@ -4331,7 +4335,15 @@ function openSwitcher() {
   openModal(`<div class="dlg qs"><div class="qs-in">${ic('i-search')}<input id="qsIn" placeholder="제목이나 내용으로 메모 찾기" spellcheck="false" autocomplete="off"></div><div class="qs-list" id="qsList"></div>` +
     `<div class="pal-foot"><span><kbd>↑↓</kbd>선택</span><span><kbd>Enter</kbd>열기</span><span class="fill"></span><span><kbd>Esc</kbd>닫기</span></div></div>`);
   const inp = $('#qsIn'), list = $('#qsList');
-  let items = [], idx = 0, terms = [];
+  let items = [], idx = 0, terms = [], shownN = 0;
+  // rows are drawn 60 at a time (more as you scroll or arrow down): a word in every note must not lay out 500 rows per key
+  const rowHTML = (x, i) => `<div class="qs-item${i === idx ? ' on' : ''}" data-i="${i}"><span class="c-dot" data-c="${x.n.color}" style="--c:${NOTE_COLORS[x.n.color]}"></span><div class="qs-txt"><b>${mark(titleOf(x.n) || '제목 없음', terms)}</b><small>${snippet(x.e, terms)}</small></div>${x.n.hotkey ? `<span class="chip">${esc(x.n.hotkey.label)}</span>` : ''}</div>`;
+  const more = upTo => {
+    const to = Math.min(items.length, Math.max(upTo, shownN + 60));
+    if (to <= shownN) return;
+    list.insertAdjacentHTML('beforeend', items.slice(shownN, to).map((x, j) => rowHTML(x, shownN + j)).join(''));
+    shownN = to;
+  };
   const render = () => {
     terms = termsOf(inp.value);
     const kinds = terms.map(kindOf);
@@ -4345,8 +4357,8 @@ function openSwitcher() {
     }
     items.sort((a, b) => b.sc - a.sc);            // stable: ties keep the board order (pinned first)
     idx = clamp(idx, 0, Math.max(0, items.length - 1));
-    list.innerHTML = items.map((x, i) => `<div class="qs-item${i === idx ? ' on' : ''}" data-i="${i}"><span class="c-dot" data-c="${x.n.color}" style="--c:${NOTE_COLORS[x.n.color]}"></span><div class="qs-txt"><b>${mark(titleOf(x.n) || '제목 없음', terms)}</b><small>${snippet(x.e, terms)}</small></div>${x.n.hotkey ? `<span class="chip">${esc(x.n.hotkey.label)}</span>` : ''}</div>`).join('') ||
-      '<div class="qs-empty">일치하는 메모가 없어요</div>';
+    shownN = Math.min(items.length, Math.max(60, idx + 1));
+    list.innerHTML = items.slice(0, shownN).map(rowHTML).join('') || '<div class="qs-empty">일치하는 메모가 없어요</div>';
     if (!items.length && terms.length) list.innerHTML = `<div class="qs-item qs-new on" data-i="0">${ic('i-plus')}<div class="qs-txt"><b>새 메모 만들기</b><small>‘${esc(inp.value.trim())}’ 제목으로</small></div></div>`;
     const on = list.querySelector('.on');
     if (on) on.scrollIntoView({ block: 'nearest' });
@@ -4354,7 +4366,10 @@ function openSwitcher() {
   const move = i => {                             // like the palette: only the highlight moves
     if (!items.length) return;
     idx = clamp(i, 0, items.length - 1);
-    for (const el of list.querySelectorAll('.qs-item')) el.classList.toggle('on', +el.dataset.i === idx);
+    if (idx >= shownN) more(idx + 1);
+    for (const el of list.querySelectorAll('.qs-item.on')) el.classList.remove('on');
+    const row = list.querySelector(`.qs-item[data-i="${idx}"]`);
+    if (row) row.classList.add('on');
     const on = list.querySelector('.on');
     if (on) on.scrollIntoView({ block: 'nearest' });
   };
@@ -4376,6 +4391,7 @@ function openSwitcher() {
     else if (e.key === 'Enter') { e.preventDefault(); go(idx); }
   });
   list.addEventListener('mousemove', e => { const it = e.target.closest('.qs-item'); if (it && +it.dataset.i !== idx) move(+it.dataset.i); });
+  list.addEventListener('scroll', () => { if (shownN < items.length && list.scrollTop + list.clientHeight > list.scrollHeight - 200) more(0); });
   list.addEventListener('click', e => { const it = e.target.closest('.qs-item'); if (it) go(+it.dataset.i); });
   modal.querySelector('.qs').addEventListener('mousedown', e => { if (e.target !== inp) e.preventDefault(); });   // keep typing in the box
   render();
