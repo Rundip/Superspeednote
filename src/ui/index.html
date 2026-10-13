@@ -9,7 +9,7 @@
 :root{
   --top:#0a1532;
   --accent:#3b6cf6;--accent-ink:#2453d6;--accent-soft:rgba(59,108,246,.10);
-  --bg:#f4f6fb;--paper:#fff;--ink:#101a30;--ink-2:#4a5672;--ink-3:#8b96ad;
+  --bg:#f4f6fb;--paper:#fff;--ink:#101a30;--ink-2:#4a5672;--ink-3:#647089;--danger:#d92d20;
   --line:#e7ecf4;--line-2:#d6deea;--hover:#f0f4fb;--menu:#fff;
   --th-bg:#f1f5fd;--th-ink:#15306c;--card:#fff;--card-line:rgba(16,26,48,.07);
   --sh-1:0 1px 2px rgba(10,22,50,.04),0 6px 20px -8px rgba(10,22,50,.16);
@@ -25,7 +25,7 @@
 [data-theme=dark]{
   --top:#050c1f;
   --accent:#5b8cff;--accent-ink:#9ab8ff;--accent-soft:rgba(91,140,255,.16);
-  --bg:#0a1226;--paper:#0f1a33;--ink:#e6ecf8;--ink-2:#a9b5cd;--ink-3:#6c7a98;
+  --bg:#0a1226;--paper:#0f1a33;--ink:#e6ecf8;--ink-2:#a9b5cd;--ink-3:#8391b0;--danger:#ff8a80;color-scheme:dark;
   --line:#1d2a48;--line-2:#2b3b62;--hover:#18264a;--menu:#121e3b;
   --th-bg:#17284f;--th-ink:#d3e0ff;--card:#111c37;--card-line:rgba(255,255,255,.06);
   --sh-1:0 1px 2px rgba(0,0,0,.3),0 8px 22px -8px rgba(0,0,0,.5);
@@ -43,12 +43,19 @@ input,select{font:inherit;color:inherit}
 svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
 kbd{font:600 11px "Segoe UI",var(--ui)}
 [hidden]{display:none!important}
+/* one focus ring for the keyboard, lighter on the navy surfaces */
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+#titlebar :focus-visible,#quickBar :focus-visible,#sidebar :focus-visible,.hero :focus-visible,.toast :focus-visible,.selbar :focus-visible{outline-color:#9cc0ff}
+.switch:focus-visible{outline-offset:3px}
+#editor:focus-visible,#noteTitle:focus-visible,.grid:focus-visible,#sbList:focus-visible,.dlg:focus-visible,input:focus-visible,select.sel:focus-visible{outline:none}
+.c-copy:focus-visible{opacity:1;transform:none}
 /* lightweight icons for things repeated per note (no SVG instance per card) */
 .mi{display:inline-block;width:14px;height:14px;flex:none;background:currentColor;-webkit-mask:var(--m) center/contain no-repeat;mask:var(--m) center/contain no-repeat}
 .mi-copy{--m:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='9' y='9' width='12' height='12' rx='2'/%3E%3Cpath d='M5 15H4.5A1.5 1.5 0 0 1 3 13.5v-9A1.5 1.5 0 0 1 4.5 3h9A1.5 1.5 0 0 1 15 4.5V5'/%3E%3C/svg%3E")}
 .mi-key{--m:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='2.5' y='6' width='19' height='12' rx='2.5'/%3E%3Cpath d='M6.5 10h.01M10 10h.01M14 10h.01M17.5 10h.01M7.5 14h9'/%3E%3C/svg%3E")}
 .mi-pin{--m:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 17v5M5 17h14v-1.8a2 2 0 0 0-1.1-1.8l-1.8-.9A2 2 0 0 1 15 10.8V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.8a2 2 0 0 1-1.1 1.7l-1.8.9A2 2 0 0 0 5 15.2Z'/%3E%3C/svg%3E")}
-mark{background:rgba(255,213,79,.6);color:inherit;border-radius:2px}
+mark{background:rgba(255,213,79,.6);color:var(--ink);border-radius:3px}
+[data-theme=dark] mark{background:rgba(255,213,79,.26);color:#ffe7a3;box-shadow:inset 0 -1.5px 0 rgba(255,213,79,.6)}
 ::-webkit-scrollbar{width:11px;height:11px}
 ::-webkit-scrollbar-thumb{background:rgba(120,140,180,.38);border-radius:8px;border:3px solid transparent;background-clip:padding-box}
 ::-webkit-scrollbar-thumb:hover{background-color:rgba(120,140,180,.6)}
@@ -94,8 +101,8 @@ body[data-view=editor] #editorView{display:flex}
 .search .s-clear:not([hidden])+kbd{display:none}
 .search:focus-within{background:rgba(255,255,255,.13);border-color:rgba(150,185,255,.65);box-shadow:0 0 0 4px rgba(110,155,255,.15);color:#fff}
 .search input{flex:1;min-width:0;border:0;outline:0;background:transparent;color:#fff;font-size:13.5px}
-.search input::placeholder{color:rgba(222,232,255,.5)}
-.search kbd{color:rgba(222,232,255,.5);border:1px solid rgba(255,255,255,.16);border-radius:6px;padding:1px 6px}
+.search input::placeholder{color:rgba(222,232,255,.7)}
+.search kbd{color:rgba(222,232,255,.7);border:1px solid rgba(255,255,255,.16);border-radius:6px;padding:1px 6px}
 .btn-new{height:40px;padding:0 16px 0 12px;border-radius:12px;background:#fff;color:#0f2152;font-weight:700;font-size:13.5px;display:inline-flex;align-items:center;gap:6px;box-shadow:0 8px 20px -8px rgba(0,0,0,.55);transition:background .15s,transform .15s}
 .btn-new .i{width:17px;height:17px;stroke-width:2.2;color:var(--accent)}
 .btn-new:hover{background:#eef3ff;transform:translateY(-1px)}
@@ -113,7 +120,15 @@ body[data-view=editor] #editorView{display:flex}
 #board:focus-within .card.sel{box-shadow:0 0 0 2px var(--accent),0 0 0 6px rgba(59,108,246,.16),var(--sh-2)}
 .c-head{display:flex;align-items:center;gap:9px;min-width:0}
 .c-dot{width:8px;height:8px;border-radius:50%;background:var(--c);box-shadow:0 0 0 3px color-mix(in srgb,var(--c) 18%,transparent);flex:none}
-[data-theme=dark] .c-dot,[data-theme=dark] .cdot::after,[data-theme=dark] .qs-item .c-dot{filter:brightness(1.7) saturate(1.1)}
+/* note colours: the light-theme dots are too dark on navy, so dark surfaces get their own (beats the inline --c) */
+[data-theme=dark] [data-c=navy],#sidebar [data-c=navy]{--c:#6d8cff!important}
+[data-theme=dark] [data-c=blue],#sidebar [data-c=blue]{--c:#6f9bff!important}
+[data-theme=dark] [data-c=sky],#sidebar [data-c=sky]{--c:#38bdf8!important}
+[data-theme=dark] [data-c=teal],#sidebar [data-c=teal]{--c:#2dd4bf!important}
+[data-theme=dark] [data-c=green],#sidebar [data-c=green]{--c:#4ade80!important}
+[data-theme=dark] [data-c=amber],#sidebar [data-c=amber]{--c:#fbbf24!important}
+[data-theme=dark] [data-c=coral],#sidebar [data-c=coral]{--c:#fb7185!important}
+[data-theme=dark] [data-c=violet],#sidebar [data-c=violet]{--c:#a78bfa!important}
 .c-pin{width:13px!important;height:13px!important;color:var(--accent)}
 .c-idx{flex:none;min-width:19px;height:19px;padding:0 4px;border-radius:6px;border:1px solid var(--line);display:grid;place-items:center;font:600 10.5px "Segoe UI",var(--ui);color:var(--ink-3)}
 .c-title{flex:1;min-width:0;font-size:15px;font-weight:700;letter-spacing:-.015em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -154,8 +169,9 @@ body[data-view=editor] #editorView{display:flex}
 [data-theme=dark] .selbar{background:#24345f;border:1px solid rgba(255,255,255,.1)}
 body[data-view=board].selbar-on #toasts{bottom:84px}
 @media (max-width:560px){#selBar kbd{display:none}}
-.board-foot{position:relative;margin-top:auto;display:flex;flex-wrap:wrap;gap:8px 20px;padding:20px 40px 18px;color:var(--ink-3);font-size:12px}
+.board-foot{position:relative;margin-top:auto;display:flex;flex-wrap:wrap;gap:8px 20px;padding:20px 40px 18px;color:var(--ink-2);font-size:12px}
 .board-foot span{display:inline-flex;align-items:center;gap:6px}
+@media (max-width:1000px){.board-foot span.x{display:none}}
 .board-foot kbd{padding:2px 6px;border-radius:6px;background:var(--paper);border:1px solid var(--line-2);border-bottom-width:2px;color:var(--ink-2);font:600 10.5px "Segoe UI",var(--ui)}
 
 /* ---------- editor view ---------- */
@@ -164,26 +180,26 @@ body.sb-off #sidebar{display:none}
 .sb-head{display:flex;align-items:center;gap:6px;padding:12px 12px 6px}
 .sb-back{flex:1;height:36px;border-radius:11px;display:flex;align-items:center;gap:8px;padding:0 10px;color:rgba(232,238,252,.85);font-weight:650;font-size:13px}
 .sb-back:hover,.sb-add:hover{background:rgba(255,255,255,.08);color:#fff}
-.sb-back kbd{margin-left:auto;color:rgba(232,238,252,.4)}
+.sb-back kbd{margin-left:auto;color:rgba(232,238,252,.6)}
 .sb-add{width:36px;height:36px;border-radius:11px;display:grid;place-items:center;color:rgba(232,238,252,.85)}
-.sb-label{padding:8px 20px 6px;font-size:10.5px;letter-spacing:.12em;color:rgba(232,238,252,.42);font-weight:700}
+.sb-label{padding:8px 20px 6px;font-size:11.5px;letter-spacing:.02em;color:rgba(232,238,252,.62);font-weight:700}
 .sb-label.on{letter-spacing:0;font-size:11.5px;color:#cfe0ff}
 #sbList{outline:none}
-.sb-item.msel{background:rgba(110,155,255,.26);box-shadow:inset 0 0 0 1px rgba(170,200,255,.45)}
+.sb-item.msel{background:rgba(110,155,255,.18);box-shadow:inset 0 0 0 1.5px #9cc0ff}
 .sb-item.msel::before{opacity:1;background:#9cc0ff}
 #sbList{flex:1;overflow:auto;padding:0 10px 14px}
 #sbList::-webkit-scrollbar-thumb{background:rgba(255,255,255,.16);background-clip:padding-box}
 .sb-item{position:relative;padding:9px 12px 9px 16px;border-radius:11px;margin-bottom:2px;content-visibility:auto;contain-intrinsic-size:auto 52px}
-.sb-item::before{content:'';position:absolute;left:6px;top:12px;bottom:12px;width:3px;border-radius:3px;background:var(--c);opacity:.35}
+.sb-item::before{content:'';position:absolute;left:6px;top:12px;bottom:12px;width:3px;border-radius:3px;background:var(--c);opacity:.55}
 .sb-item:hover{background:rgba(255,255,255,.06)}
 .sb-item.on{background:rgba(255,255,255,.13)}
 .sb-item.on::before{opacity:1}
 .sb-row{display:flex;align-items:center;gap:6px}
 .sb-item .t{flex:1;font-weight:650;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.sb-item .t.ph{color:rgba(220,230,252,.5)!important}
-.sb-item .p{font-size:12px;color:rgba(220,230,252,.55);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+.sb-item .t.ph{color:rgba(220,230,252,.62)!important}
+.sb-item .p{font-size:12px;color:rgba(220,230,252,.66);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
 .sb-hk{flex:none;font:600 10px "Segoe UI",sans-serif;color:#b3cbff;background:rgba(110,155,255,.18);border-radius:5px;padding:1px 5px}
-.sb-foot{padding:10px 20px 14px;font-size:11px;color:rgba(220,230,252,.38);line-height:1.6}
+.sb-foot{padding:10px 20px 14px;font-size:11px;color:rgba(220,230,252,.6);line-height:1.6}
 #pane{flex:1;min-width:0;display:flex;flex-direction:column;background:var(--pane);position:relative}
 #noteHead{display:flex;align-items:center;gap:6px;padding:14px 26px 12px 14px}
 .hbtn{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;color:var(--ink-2);flex:none}
@@ -192,7 +208,7 @@ body.sb-off #sidebar{display:none}
 .cdot{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;flex:none}
 .cdot::after{content:'';width:13px;height:13px;border-radius:50%;background:var(--c);box-shadow:0 0 0 4px color-mix(in srgb,var(--c) 22%,transparent)}
 .cdot:hover{background:var(--hover)}
-#noteTitle{flex:1;min-width:0;border:0;outline:0;background:transparent;color:var(--ink);font:750 23px/1.3 var(--ui);letter-spacing:-.025em;padding:2px 4px;user-select:text}
+#noteTitle{flex:1;min-width:0;border:0;outline:0;background:transparent;color:var(--ink);font:750 23px/1.3 var(--ui);letter-spacing:-.025em;padding:2px 4px;user-select:text;text-overflow:ellipsis}
 #noteTitle::placeholder{color:var(--ink-3);opacity:.75}
 .hk-chip{height:32px;padding:0 12px;border-radius:10px;display:inline-flex;align-items:center;gap:6px;font:650 12.5px "Segoe UI",var(--ui);color:var(--ink-2);background:var(--paper);border:1px dashed var(--line-2);white-space:nowrap;flex:none}
 .hk-chip:hover{border-color:var(--accent);color:var(--accent-ink)}
@@ -216,10 +232,12 @@ body.sb-off #sidebar{display:none}
 .tsep{width:1px;height:18px;background:var(--line-2);margin:0 5px}
 .tb-fill{flex:1}
 #tbBlock{min-width:86px;justify-content:space-between;padding:0 8px 0 10px;font-weight:650;font-size:13px;color:var(--ink)}
-#findbar{position:absolute;right:5px;top:4px;bottom:4px;display:none;align-items:center;gap:2px;padding:0 4px 0 10px;background:var(--menu);border:1px solid var(--accent);border-radius:10px;box-shadow:var(--sh-2)}
+#findbar{position:absolute;right:5px;top:7px;height:32px;display:none;align-items:center;gap:2px;padding:0 4px 0 10px;background:var(--menu);border:1px solid var(--accent);border-radius:10px;box-shadow:var(--sh-2)}
 #findbar.show{display:flex}
 #findbar input{width:190px;border:0;outline:0;background:transparent;font-size:13px}
-#findCount{font:600 11.5px "Segoe UI",var(--ui);color:var(--ink-3);min-width:44px;text-align:right;padding-right:4px}
+#findCount{font:600 11.5px "Segoe UI",var(--ui);color:var(--ink-3);min-width:44px;text-align:right;padding-right:4px;white-space:nowrap}
+#findbar.none{border-color:var(--danger)}
+#findbar.none #findCount{color:var(--danger)}
 #findbar .tb{height:26px;min-width:26px;padding:0}
 #scroller{flex:1;min-height:0;overflow:auto;position:relative}
 #sheet{position:relative;min-height:100%;overflow-x:clip}
@@ -275,10 +293,13 @@ body.sb-off #sidebar{display:none}
 [data-theme=dark] #editor table.t{background:linear-gradient(90deg,var(--paper) 30%,transparent) left/28px 100% no-repeat local,linear-gradient(270deg,var(--paper) 30%,transparent) right/28px 100% no-repeat local,radial-gradient(farthest-side at 0 50%,rgba(0,0,0,.55),transparent) left/12px 100% no-repeat scroll,radial-gradient(farthest-side at 100% 50%,rgba(0,0,0,.55),transparent) right/12px 100% no-repeat scroll}
 #editor table.t.hdr tr:first-child td{background:var(--th-bg);color:var(--th-ink);font-weight:700}
 ::highlight(ssn-find){background-color:rgba(255,200,40,.45)}
+[data-theme=dark] ::highlight(ssn-find){background-color:rgba(255,200,40,.7);color:#111}
 ::highlight(ssn-cur){background-color:#ff9f1c;color:#111}
 #status{height:30px;flex:none;display:flex;align-items:center;gap:14px;padding:0 20px;font-size:11.5px;color:var(--ink-3);border-top:1px solid var(--line)}
-#stSave{display:inline-flex;align-items:center;gap:6px}
+#stSave{display:inline-flex;align-items:center;gap:6px;min-width:64px}
 #stSave::before{content:'';width:7px;height:7px;border-radius:50%;background:#22c55e}
+#stSave.pulse::before{animation:saved .3s ease-out}
+@keyframes saved{50%{transform:scale(1.6)}}
 #stSave.saving::before{background:#f59e0b}
 #status .fill{flex:1}
 #stZoom{cursor:pointer}
@@ -331,14 +352,15 @@ body.sb-off #sidebar{display:none}
 .mit:hover,.mit.cur{background:var(--hover)}
 .mit .i{width:16px;height:16px;color:var(--ink-2)}
 .mit>i{width:16px;flex:none}
+.mit>.mg{font:700 14.5px/1 "Segoe UI",var(--ui);text-align:center;color:var(--ink-2);font-style:normal}
 .mit span{flex:1}
 .mit kbd{color:var(--ink-2);margin-left:18px}
-.mit.danger,.mit.danger .i{color:#e5484d}
+.mit.danger,.mit.danger .i{color:var(--danger)}
 .mit:disabled{opacity:.38;pointer-events:none}
 .mit.on{color:var(--accent-ink)}
 .msep{height:1px;background:var(--line);margin:5px 4px}
 .mlabel{padding:5px 10px 3px;font-size:11px;color:var(--ink-3);font-weight:650}
-.swatches{display:flex;gap:7px;padding:6px 10px 8px;flex-wrap:wrap;max-width:236px}
+.swatches{display:flex;gap:6px;padding:6px 10px 8px;flex-wrap:nowrap}
 .sw{width:22px;height:22px;border-radius:50%;box-shadow:inset 0 0 0 1px rgba(0,0,0,.12);position:relative;flex:none}
 .sw:hover{transform:scale(1.12)}
 .sw.on::after{content:'';position:absolute;inset:-4px;border-radius:50%;border:2px solid var(--accent)}
@@ -368,7 +390,11 @@ body.sb-off #sidebar{display:none}
 .dlg-foot{display:flex;align-items:center;gap:8px;padding:12px 22px 18px}
 .dlg-foot .ver{font-size:11.5px;color:var(--ink-3)}
 .btn{height:36px;padding:0 14px;border-radius:10px;background:var(--hover);font-weight:650;font-size:13px;white-space:nowrap}
-.btn:hover{filter:brightness(.97)}
+.btn:not(.primary):not(.danger-fill):hover{background:var(--line)}
+[data-theme=dark] .btn:not(.primary):not(.danger-fill):hover{background:#22325c}
+.btn.primary:hover,.btn.danger-fill:hover{filter:brightness(1.08)}
+[data-theme=dark] #modal{background:rgba(0,0,0,.55)}
+[data-theme=dark] .dlg{border-color:var(--line-2)}
 .btn.primary{background:linear-gradient(135deg,#4f7dff,#2a56e0);color:#fff}
 .btn.ghost{background:transparent;color:var(--ink-2)}
 .btn.ghost:hover{background:var(--hover)}
@@ -377,10 +403,9 @@ body.sb-off #sidebar{display:none}
 .keys kbd.ghost{color:var(--ink-3);border-style:dashed}
 .keys .plus{color:var(--ink-3);font-weight:700}
 .hint{font-size:12.5px;color:var(--ink-3);text-align:center;line-height:1.5;min-height:58px}
-.hint.bad{color:#d1343a}
+.hint.bad{color:var(--danger)}
 .hint.warn{color:#b25e09}
 .hint.ok{color:#1a7f37}
-[data-theme=dark] .hint.bad{color:#ff8a8f}
 [data-theme=dark] .hint.warn{color:#f5b54a}
 [data-theme=dark] .hint.ok{color:#5fd38a}
 .keys.bad kbd{border-color:#f3b4b0;color:#d1343a;background:rgba(229,72,77,.06)}
@@ -400,7 +425,8 @@ body.sb-off #sidebar{display:none}
 .switch.on::after{transform:translateX(18px)}
 .seg{display:inline-flex;background:var(--hover);border-radius:10px;padding:3px;flex:none}
 .seg button{height:28px;padding:0 12px;border-radius:8px;font-size:12.5px;color:var(--ink-2);font-weight:600}
-.seg button.on{background:var(--paper);color:var(--ink);box-shadow:var(--sh-1)}
+.seg button.on{background:var(--paper);color:var(--ink);box-shadow:0 1px 3px rgba(10,22,50,.18),0 0 0 1px rgba(10,22,50,.06)}
+[data-theme=dark] .seg button.on{background:#2b3b62;color:#fff;box-shadow:0 1px 2px rgba(0,0,0,.45),inset 0 0 0 1px rgba(255,255,255,.08)}
 .seg .val{display:grid;place-items:center;min-width:48px;font:650 12.5px "Segoe UI"}
 select.sel{height:32px;border-radius:9px;border:1px solid var(--line-2);background:var(--paper);padding:0 8px;outline:none}
 .qs{width:min(620px,calc(100vw - 32px))}
@@ -411,7 +437,7 @@ select.sel{height:32px;border-radius:9px;border:1px solid var(--line-2);backgrou
 .qs-list{overflow:auto;padding:6px;max-height:52vh}
 #qsList{height:min(52vh,420px)}                     /* Ctrl+K: steady height, so its footer stays put while typing */
 .qs-item{display:flex;align-items:center;gap:12px;padding:9px 12px;border-radius:11px}
-.qs-item.on{background:var(--hover)}
+.qs-item.on{background:var(--accent-soft);box-shadow:inset 3px 0 0 var(--accent)}
 .qs-item .c-dot{margin:0 2px}
 .qs-txt{flex:1;min-width:0}
 .qs-txt b{display:block;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -428,7 +454,9 @@ select.sel{height:32px;border-radius:9px;border:1px solid var(--line-2);backgrou
 .pal .qs-txt small em{font-style:normal}
 .pal-col{color:var(--accent-ink);font-weight:650}
 .pal-pos{margin-left:6px;font-size:11px;color:var(--ink-3)}
-.pal-n{flex:none;margin-left:6px;min-width:16px;text-align:center;color:var(--ink-3);opacity:.55;font-weight:600}
+.pal-n{flex:none;margin-left:6px;min-width:16px;text-align:center;color:var(--ink-3);opacity:.8;font-weight:600}
+.qs-item.on .pal-n::before{content:'Alt+'}
+.pal .qs-txt small{color:var(--ink-2)}
 .qs-item.on .pal-n{opacity:1}
 .pal-sec{padding:8px 12px 4px;font-size:11.5px;font-weight:650;color:var(--ink-3)}
 .pal-sec span{float:right;font-weight:400}
@@ -450,7 +478,7 @@ select.sel{height:32px;border-radius:9px;border:1px solid var(--line-2);backgrou
 .pv-tip i{font-style:normal;padding:0 5px;border-radius:5px;background:var(--hover);color:var(--ink)}
 .pal-tip{padding:0 12px 10px;max-width:520px}
 .qs-empty b{color:var(--ink-2);line-height:2}
-.pal-foot{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;padding:9px 16px;border-top:1px solid var(--line);font-size:11.5px;color:var(--ink-3)}
+.pal-foot{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;padding:9px 16px;border-top:1px solid var(--line);font-size:11.5px;color:var(--ink-2)}
 .pal-foot .fill{flex:1}
 .pal-foot kbd{padding:1px 6px;margin-right:5px;border-radius:5px;border:1px solid var(--line-2);color:var(--ink-2)}
 @media (max-width:680px){.pal-pv{display:none}}
@@ -533,7 +561,8 @@ body.quick #modal.palm .pal-foot span:last-child{margin-left:auto}
 .tr-del:hover{background:var(--hover);color:#e5484d}
 .tr-del.arm,.btn.danger.arm{background:#e5484d;color:#fff}
 .tr-del.arm{width:auto;padding:0 10px;font:600 12px var(--ui);white-space:nowrap}
-.btn.danger{color:#e5484d}
+.btn.danger{color:var(--danger)}
+.dlg.confirm .dlg-head .i{color:var(--danger)}
 .btn.danger-fill{background:#e5484d;color:#fff}
 .dlg.confirm{width:min(440px,calc(100vw - 32px))}
 .del-list{margin:4px 0 2px;padding-left:0;list-style:none;font-size:13px;color:var(--ink-2);line-height:1.7}
@@ -552,8 +581,12 @@ body.quick #modal.palm .pal-foot span:last-child{margin-left:auto}
 @media (max-width:640px){.help{grid-template-columns:1fr}}
 body.quick #modal{padding:8px}
 body.quick .dlg{max-height:calc(100vh - 16px);width:calc(100vw - 16px)}
-#toasts{position:fixed;left:50%;bottom:46px;transform:translateX(-50%);z-index:120;display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none}
-.toast{pointer-events:auto;display:flex;align-items:center;gap:14px;padding:10px 16px;border-radius:12px;background:#0f1d40;color:#fff;font-size:13px;box-shadow:var(--sh-pop);animation:pop .14s ease-out;transition:opacity .15s}
+#toasts{position:fixed;left:16px;right:16px;bottom:46px;z-index:120;display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none}
+.toast{pointer-events:auto;display:flex;align-items:center;gap:14px;padding:10px 16px;border-radius:12px;background:#0f1d40;color:#fff;font-size:13px;box-shadow:var(--sh-pop);animation:pop .14s ease-out;transition:opacity .15s;max-width:min(560px,100%);word-break:keep-all;overflow-wrap:anywhere}
+.toast span{min-width:0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.toast button{flex:none;white-space:nowrap}
+[data-theme=dark] .toast{background:#24345f;border:1px solid rgba(255,255,255,.10);box-shadow:0 12px 32px rgba(0,0,0,.55)}
+body.modal-on:not(.pal-pop) #toasts{bottom:auto;top:52px}
 .toast.out{opacity:0}
 .toast button{color:#9cc0ff;font-weight:700}
 .rz{position:fixed;z-index:200}
@@ -562,12 +595,15 @@ body.quick .dlg{max-height:calc(100vh - 16px);width:calc(100vw - 16px)}
 .rz.tl{left:0;top:0;width:8px;height:8px;cursor:nwse-resize}.rz.tr{right:0;top:0;width:8px;height:8px;cursor:nesw-resize}
 .rz.bl{left:0;bottom:0;width:8px;height:8px;cursor:nesw-resize}.rz.br{right:0;bottom:0;width:10px;height:10px;cursor:nwse-resize}
 body.maxed:not(.quick) .rz,body.web .rz{display:none}
-@media (max-width:820px){#sidebar{display:none}.hero,.grid,.board-foot{padding-left:22px;padding-right:22px}}
+@media (max-width:820px){#sidebar{display:none}.hero,.grid,.board-foot{padding-left:22px;padding-right:22px}
+  body.sb-peek #sidebar{display:flex;position:fixed;z-index:30;top:40px;bottom:0;left:0;box-shadow:var(--sh-pop)}}
+@media (max-width:960px){#sidebar{width:216px}#doc{margin:0 12px}#toolbar{padding:7px 6px}.tsep{margin:0 2px}.tb{min-width:30px;padding:0 5px}#tbBlock{min-width:72px}}
 </style>
 </head>
 <body data-view="board" data-theme="light">
 <svg width="0" height="0" style="position:absolute">
   <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></symbol>
+  <symbol id="i-ontop" viewBox="0 0 24 24"><rect x="3" y="8.5" width="12.5" height="12.5" rx="2" opacity=".45"/><rect x="8.5" y="3" width="12.5" height="12.5" rx="2"/></symbol>
   <symbol id="i-top" viewBox="0 0 24 24"><path d="M12 15V4M7.5 8.5 12 4l4.5 4.5"/><path d="M4 14v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></symbol>
   <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5Z"/></symbol>
   <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M4.6 4.6 6 6M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4 6 18M18 6l1.4-1.4"/></symbol>
@@ -615,8 +651,9 @@ body.maxed:not(.quick) .rz,body.web .rz{display:none}
     </div>
     <div class="tb-mid" id="tbMid"></div>
     <button class="tbtn" id="btnSwitch" data-k="switcher" data-t="빠른 이동" title="빠른 이동 (Ctrl+K)"><svg class="i"><use href="#i-search"/></svg></button>
-    <button class="tbtn" id="btnTop" title="항상 위에 표시"><svg class="i"><use href="#i-top"/></svg></button>
-    <button class="tbtn" id="btnTheme" title="라이트 / 다크"><svg class="i"><use href="#i-moon"/></svg></button>
+    <button class="tbtn" id="btnPal" data-k="palette" data-t="한 줄 찾아 붙여넣기" title="한 줄 찾아 붙여넣기"><svg class="i"><use href="#i-paste"/></svg></button>
+    <button class="tbtn" id="btnTop" title="항상 위에 표시 · 꺼짐"><svg class="i"><use href="#i-ontop"/></svg></button>
+    <button class="tbtn" id="btnTheme" title="다크 모드로 바꾸기"><svg class="i"><use href="#i-moon"/></svg></button>
     <button class="tbtn" id="btnSettings" data-k="settings" data-t="설정" title="설정 (Ctrl+,)"><svg class="i"><use href="#i-gear"/></svg></button>
     <span class="tsep2"></span>
     <button class="wc" id="wcMin" title="최소화"><svg class="i"><use href="#i-min"/></svg></button>
@@ -636,7 +673,7 @@ body.maxed:not(.quick) .rz,body.web .rz{display:none}
     <section id="grid" class="grid" tabindex="0"></section>
     <div id="selBar" class="selbar" hidden></div>
     <div class="board-foot">
-      <span><kbd>← ↑ → ↓</kbd>선택</span><span><kbd>Enter</kbd>열기 · 더블클릭</span><span><kbd>F2</kbd>이름 변경</span><span><kbd>Shift</kbd>여러 개 선택</span><span><kbd>Del</kbd>삭제</span><span><kbd>Ctrl+1~9</kbd>바로 열기</span><span><kbd data-k="switcher">Ctrl+K</kbd>빠른 이동</span><span><kbd data-k="help">F1</kbd>모든 단축키</span>
+      <span><kbd>← ↑ → ↓</kbd>선택</span><span><kbd>Enter</kbd>열기 · 더블클릭</span><span class="x"><kbd>F2</kbd>이름 바꾸기</span><span class="x"><kbd>Shift</kbd>여러 개 선택</span><span class="x"><kbd>Del</kbd>삭제</span><span class="x"><kbd>Ctrl+1~9</kbd>바로 열기</span><span><kbd data-k="switcher">Ctrl+K</kbd>빠른 이동</span><span><kbd data-k="palette">Ctrl+Shift+F</kbd>한 줄 찾아 붙여넣기</span><span><kbd data-k="help">F1</kbd>모든 단축키</span>
     </div>
   </main>
 
@@ -646,7 +683,7 @@ body.maxed:not(.quick) .rz,body.web .rz{display:none}
         <button class="sb-back" id="btnBack" title="보드로 (Esc)"><svg class="i"><use href="#i-grid"/></svg>메모 보드<kbd>Esc</kbd></button>
         <button class="sb-add" id="btnSbNew" data-k="newNote" data-t="새 메모" title="새 메모 (Ctrl+N)"><svg class="i"><use href="#i-plus"/></svg></button>
       </div>
-      <div class="sb-label" id="sbLabel">NOTES</div>
+      <div class="sb-label" id="sbLabel">메모 목록</div>
       <div id="sbList" tabindex="-1"></div>
       <div class="sb-foot" id="sbFoot">Ctrl+Tab 다음 메모 · Ctrl+K 찾기</div>
     </aside>
@@ -654,7 +691,7 @@ body.maxed:not(.quick) .rz,body.web .rz{display:none}
       <div id="noteHead">
         <button class="hbtn" id="hSide" data-k="sidebar" data-t="목록 접기 / 펼치기" title="목록 접기 / 펼치기"><svg class="i"><use href="#i-side"/></svg></button>
         <button class="cdot" id="hColor" title="메모 색상"></button>
-        <input id="noteTitle" placeholder="제목 (비우면 첫 줄)" spellcheck="false" autocomplete="off">
+        <input id="noteTitle" placeholder="제목 없음" title="비워 두면 첫 줄이 제목이 돼요" spellcheck="false" autocomplete="off">
         <button class="hk-chip" id="hHotkey" title="이 메모를 어디서든 부르는 전역 단축키"></button>
         <button class="hbtn" id="hPin" title="맨 앞에 고정"><svg class="i"><use href="#i-pin"/></svg></button>
         <button class="hbtn" id="hMore" title="더 보기"><svg class="i"><use href="#i-more"/></svg></button>
@@ -681,7 +718,7 @@ body.maxed:not(.quick) .rz,body.web .rz{display:none}
         <button class="tb" id="tbClear" data-k="clearFmt" data-t="서식 지우기" title="서식 지우기 (Ctrl+\)"><svg class="i"><use href="#i-eraser"/></svg></button>
         <span class="tb-fill"></span>
         <button class="tb" id="tbFind" data-k="find" data-t="찾기" title="찾기 (Ctrl+F)"><svg class="i"><use href="#i-search"/></svg></button>
-        <div id="findbar"><input id="findIn" placeholder="메모에서 찾기" spellcheck="false"><span id="findCount"></span><button class="tb" id="findPrev" title="이전 (Shift+Enter)"><svg class="i"><use href="#i-up"/></svg></button><button class="tb" id="findNext" title="다음 (Enter)"><svg class="i"><use href="#i-chev"/></svg></button><button class="tb" id="findX" title="닫기 (Esc)"><svg class="i"><use href="#i-close"/></svg></button></div>
+        <div id="findbar"><input id="findIn" placeholder="메모에서 찾기" spellcheck="false"><span id="findCount"></span><button class="tb" id="findPrev" title="이전 (Shift+Enter · Shift+F3)"><svg class="i"><use href="#i-up"/></svg></button><button class="tb" id="findNext" title="다음 (Enter · F3)"><svg class="i"><use href="#i-chev"/></svg></button><button class="tb" id="findX" title="닫기 (Esc)"><svg class="i"><use href="#i-close"/></svg></button></div>
       </div>
       <div id="scroller">
         <div id="sheet">
@@ -698,7 +735,7 @@ body.maxed:not(.quick) .rz,body.web .rz{display:none}
           <div id="objbox"></div>
         </div>
       </div>
-      <footer id="status"><span id="stSave">저장됨</span><span id="stCount"></span><span class="fill"></span><span id="stHint">Esc 보드 · Ctrl+K 이동</span><span id="stZoom" title="클릭하면 100%">100%</span></footer>
+      <footer id="status"><span id="stSave">저장됨</span><span id="stCount"></span><span class="fill"></span><span id="stHint">Esc 보드 · Ctrl+K 이동</span><span id="stZoom" title="클릭하면 100%로" hidden>100%</span></footer>
       </div>
     </section>
   </main>
@@ -708,7 +745,7 @@ body.maxed:not(.quick) .rz,body.web .rz{display:none}
 <div class="rz tl" data-edge="tl"></div><div class="rz tr" data-edge="tr"></div><div class="rz bl" data-edge="bl"></div><div class="rz br" data-edge="br"></div>
 <div id="pop" class="pop" hidden></div>
 <div id="modal"></div>
-<div id="toasts"></div>
+<div id="toasts" role="status" aria-live="polite"></div>
 
 <script>
 (() => {
@@ -731,11 +768,12 @@ const ic = (id, cls = '') => `<svg class="i ${cls}"><use href="#${id}"/></svg>`;
 
 const NOTE_COLORS = { navy: '#1e3a8a', blue: '#2f6bff', sky: '#0ea5e9', teal: '#0d9488', green: '#16a34a', amber: '#f59e0b', coral: '#f43f5e', violet: '#8b5cf6' };
 const COLOR_KEYS = Object.keys(NOTE_COLORS);
+const COLOR_NAMES = { navy: '남색', blue: '파랑', sky: '하늘', teal: '청록', green: '초록', amber: '주황', coral: '빨강', violet: '보라' };
 // text colours chosen for contrast on white; dark theme remaps them (see injected CSS)
 const FG = [
-  { n: '기본', v: '' }, { n: '네이비', v: '#1d3a8a', d: '#a5bdff' }, { n: '블루', v: '#1d4ed8', d: '#7fa8ff' },
-  { n: '레드', v: '#d92d20', d: '#ff8f84' }, { n: '그린', v: '#067647', d: '#5ad39b' }, { n: '오렌지', v: '#c2410c', d: '#ffa56e' },
-  { n: '퍼플', v: '#6d28d9', d: '#c9a8ff' }, { n: '그레이', v: '#475467', d: '#a6b1c6' }
+  { n: '기본', v: '' }, { n: '남색', v: '#1d3a8a', d: '#a5bdff' }, { n: '파랑', v: '#1d4ed8', d: '#7fa8ff' },
+  { n: '빨강', v: '#d92d20', d: '#ff8f84' }, { n: '초록', v: '#067647', d: '#5ad39b' }, { n: '주황', v: '#c2410c', d: '#ffa56e' },
+  { n: '보라', v: '#6d28d9', d: '#c9a8ff' }, { n: '회색', v: '#475467', d: '#a6b1c6' }
 ];
 const HL = [
   { n: '노랑', v: '#fff176' }, { n: '민트', v: '#a7f3d0' }, { n: '하늘', v: '#bae6fd' },
@@ -990,6 +1028,7 @@ function unwrap(el) { const p = el.parentNode; if (!p) return; while (el.firstCh
 // ---------------------------------------------------------------- saving
 let dirty = false, saveT = 0, stateT = 0, stateDirty = false;
 function markDirty() { dirty = true; freshIds.delete(cur); setSave(true); clearTimeout(saveT); saveT = setTimeout(flushNote, 400); }
+// the label stays '저장됨' while typing (a dot pulses once per save); '저장 중…' only if a write hangs on past 2s
 function flushNote() {
   clearTimeout(saveT); saveT = 0;
   if (!dirty || !cur) return;
@@ -998,7 +1037,7 @@ function flushNote() {
   bodies[cur] = h;
   if (isBig !== h.length > 80000) setBig(h.length);
   const n = noteById(cur);
-  if (n) { n.preview = previewOf(editor); n.line1 = firstLineOf(editor); n.updated = now(); }
+  if (n) { n.preview = previewOf(editor); n.line1 = firstLineOf(editor); n.updated = now(); titlePh(n); }
   host.send('saveNote', cur, h);
   staleCards.add(cur); staleRows.add(cur);
   saveStateSoon();
@@ -1012,7 +1051,14 @@ function flushAll() {
   if (cur && view === 'editor') { if (!composing) editor.normalize(); keepAt(); }
   flushNote(); flushState();
 }
-function setSave(busy) { const el = $('#stSave'); el.classList.toggle('saving', busy); el.textContent = busy ? '저장 중…' : '저장됨'; }
+let slowT = 0;
+function setSave(busy, quiet) {
+  const el = $('#stSave');
+  clearTimeout(slowT);
+  if (busy) { if (!el.classList.contains('saving')) slowT = setTimeout(() => { if (dirty) { el.classList.add('saving'); el.textContent = '저장 중…'; } }, 2000); return; }
+  el.classList.remove('saving', 'pulse'); el.textContent = '저장됨';
+  if (!quiet) { void el.offsetWidth; el.classList.add('pulse'); }
+}
 window.addEventListener('blur', flushAll);
 document.addEventListener('visibilitychange', () => { if (document.hidden) flushAll(); });
 
@@ -1076,8 +1122,8 @@ function boardStatus(shown) {
 }
 function cardHTML(n, idx) {
   const pv = previewAfterTitle(n), title = titleOf(n), empty = !pv && !n.line1;
-  return `<div class="card" data-id="${n.id}" draggable="true" style="--c:${NOTE_COLORS[n.color]}">` +
-    `<button class="c-copy" title="메모 전체 복사 (Ctrl+C)"><i class="mi mi-copy"></i></button>` +
+  return `<div class="card" data-id="${n.id}" data-c="${n.color}" draggable="true" style="--c:${NOTE_COLORS[n.color]}">` +
+    `<button class="c-copy" tabindex="-1" title="메모 전체 복사 (Ctrl+C)"><i class="mi mi-copy"></i></button>` +
     `<div class="c-head"><span class="c-dot"></span><div class="c-title${title ? '' : ' ph'}">${esc(title || '제목 없음')}</div>` +
     `${n.pinned ? '<i class="mi mi-pin c-pin"></i>' : ''}${idx < 9 ? `<span class="c-idx" title="Ctrl+${idx + 1}">${idx + 1}</span>` : ''}</div>` +
     `<div class="c-prev">${pv ? esc(pv.slice(0, 90)) : empty ? '<span class="ph">비어 있음</span>' : ''}</div>` +
@@ -1458,6 +1504,7 @@ function openNote(id, o = {}) {
   const n = noteById(id);
   if (!n) return;
   closePop();
+  app.classList.remove('sb-peek');
   boardUndo = null;
   const same = cur === id && view === 'editor';
   if (!same) {
@@ -1474,7 +1521,7 @@ function openNote(id, o = {}) {
     lastSel = null;
   }
   setView('editor');
-  renderHead(); renderSidebar(); stats(); setSave(false);
+  renderHead(); renderSidebar(); stats(); setSave(false, true);
   S.lastOpen = id; saveStateSoon();
   host.send('active', id);
   if (o.focusTitle) { titleIn.focus(); titleIn.select(); return; }
@@ -1536,7 +1583,7 @@ function renderSidebarSoon() { clearTimeout(sbT); sbT = setTimeout(() => renderS
 let sbSig = '';
 const staleRows = new Set();                      // notes edited since their sidebar row was drawn
 function sbItemHTML(n) {
-  return `<div class="sb-item${n.id === cur ? ' on' : ''}${sbMulti.has(n.id) ? ' msel' : ''}" data-id="${n.id}" style="--c:${NOTE_COLORS[n.color]}"><div class="sb-row"><div class="t${titleOf(n) ? '' : ' ph'}">${esc(titleOf(n) || '제목 없음')}</div>` +
+  return `<div class="sb-item${n.id === cur ? ' on' : ''}${sbMulti.has(n.id) ? ' msel' : ''}" data-id="${n.id}" data-c="${n.color}" style="--c:${NOTE_COLORS[n.color]}"><div class="sb-row"><div class="t${titleOf(n) ? '' : ' ph'}">${esc(titleOf(n) || '제목 없음')}</div>` +
     `${n.hotkey ? `<span class="sb-hk">${esc(n.hotkey.label)}</span>` : ''}</div><div class="p">${esc(previewAfterTitle(n).slice(0, 80)) || '&nbsp;'}</div></div>`;
 }
 // like the board: full build only when the list itself changed, otherwise just the open note's row
@@ -1566,7 +1613,7 @@ let sbAnchor = null;
 function markSb() {
   for (const el of sbList.querySelectorAll('.sb-item')) el.classList.toggle('msel', sbMulti.has(el.dataset.id));
   const lbl = $('#sbLabel');
-  lbl.textContent = sbMulti.size ? `${sbMulti.size}개 선택 · Del 삭제 · Esc 해제` : 'NOTES';
+  lbl.textContent = sbMulti.size ? `${sbMulti.size}개 선택 · Del 삭제 · Esc 해제` : '메모 목록';
   lbl.classList.toggle('on', sbMulti.size > 0);
 }
 function clearSb() { if (!sbMulti.size) return false; sbMulti.clear(); markSb(); return true; }
@@ -1589,7 +1636,16 @@ sbList.addEventListener('click', e => {
   sbList.focus({ preventScroll: true });          // so Delete / Esc go to the list
 });
 sbList.addEventListener('keydown', e => {
-  if (!sbMulti.size) return;
+  if (!sbMulti.size) {                            // the list has the keys: ↑ / ↓ walk the notes, Enter / Esc go back to writing
+    if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && !e.ctrlKey && !e.altKey && !e.shiftKey) {
+      e.preventDefault(); e.stopPropagation();
+      const ids = $$('.sb-item', sbList).map(x => x.dataset.id), i = ids.indexOf(cur);
+      const to = ids[clamp(i + (e.key === 'ArrowDown' ? 1 : -1), 0, ids.length - 1)];
+      if (to && to !== cur) openNote(to);
+      sbList.focus({ preventScroll: true });
+    } else if (e.key === 'Enter' || e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); refocus(); }
+    return;
+  }
   if (e.key === 'Delete') { e.preventDefault(); e.stopPropagation(); askDeleteNotes([...sbMulti]); }
   else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); clearSb(); refocus(); }
 });
@@ -1610,14 +1666,17 @@ sbList.addEventListener('contextmenu', e => {
 function renderHead() {
   const n = noteById(cur);
   if (!n) return;
-  $('#hColor').style.setProperty('--c', NOTE_COLORS[n.color]);
+  $('#hColor').style.setProperty('--c', NOTE_COLORS[n.color]); $('#hColor').dataset.c = n.color;
   const hk = $('#hHotkey');
   hk.className = 'hk-chip' + (n.hotkey ? ' set' : '') + (n.hotkey && hkFailed.has(n.id) ? ' bad' : '');
   hk.innerHTML = ic('i-key') + (n.hotkey ? esc(n.hotkey.label) : '단축키 지정');
   hk.title = n.hotkey && hkFailed.has(n.id) ? '다른 프로그램이 이 단축키를 쓰고 있어요. 다른 조합을 지정해 주세요.' : '이 메모를 어디서든 부르는 전역 단축키';
-  $('#hPin').classList.toggle('on', !!n.pinned);
+  $('#hPin').classList.toggle('on', !!n.pinned); $('#hPin').title = n.pinned ? '고정 해제' : '맨 앞에 고정';
   $('#tbMid').textContent = titleOf(n);
+  titlePh(n);
 }
+// an empty title shows the first line it falls back to, greyed: what the board and the list will call this note
+function titlePh(n) { titleIn.placeholder = (n && n.line1) || '제목 없음'; }
 titleIn.addEventListener('input', () => {
   const n = noteById(cur);
   if (!n) return;
@@ -1629,7 +1688,12 @@ titleIn.addEventListener('keydown', e => {
   if (e.isComposing) return;
   if (e.key === 'Enter' || e.key === 'ArrowDown') { e.preventDefault(); editor.focus(); placeCaret(editor.firstChild || editor, false); }
 });
-$('#hSide').onclick = () => { st.sidebar = !st.sidebar; app.classList.toggle('sb-off', !st.sidebar); saveStateSoon(); posOvSoon(); };
+const narrow = matchMedia('(max-width:820px)');  // a half-screen window: the list opens as a drawer over the note
+$('#hSide').onclick = () => {
+  if (narrow.matches) { app.classList.toggle('sb-peek'); return; }
+  st.sidebar = !st.sidebar; app.classList.toggle('sb-off', !st.sidebar); saveStateSoon(); posOvSoon();
+};
+$('#pane').addEventListener('mousedown', () => app.classList.remove('sb-peek'));
 $('#hColor').onclick = e => { const r = e.currentTarget.getBoundingClientRect(); colorMenu(cur, r.left, r.bottom + 6); };
 $('#hHotkey').onclick = () => setNoteHotkey(cur);
 $('#hPin').onclick = () => togglePin(cur);
@@ -1940,7 +2004,7 @@ function openUrl(u) { if (!/^(https?:|mailto:)/i.test(u)) return; if (HOST) host
 document.addEventListener('selectionchange', () => {
   if (view !== 'editor') return;
   if (selRange()) { lastSel = selSave(); syncNav(); }
-  if (!tbRaf) tbRaf = requestAnimationFrame(() => { tbRaf = 0; updateToolbar(); caretTable(); });
+  if (!tbRaf) tbRaf = requestAnimationFrame(() => { tbRaf = 0; updateToolbar(); caretTable(); selCount(); });
 });
 let tbRaf = 0;
 let statsT = 0;
@@ -1949,7 +2013,16 @@ function stats() {
   const t = editor.textContent;
   const noSp = t.replace(/\s+/g, '').length;
   editor.classList.toggle('is-empty', !t && !editor.querySelector('img,table,hr,li'));
-  $('#stCount').textContent = `${t.length.toLocaleString()}자 · 공백 제외 ${noSp.toLocaleString()}자`;
+  statTxt = `${t.length.toLocaleString()}자 · 공백 제외 ${noSp.toLocaleString()}자`; statLen = t.length;
+  selCount();
+}
+// a text selection shows its own size; cells walked with the keyboard (an invisible selection) do not
+let statTxt = '', statLen = 0;
+function selCount() {
+  const r = selRange(), el = $('#stCount');
+  const n = r && !r.collapsed && !isBig && !navLive() && editor.contains(r.commonAncestorContainer) ? r.toString().length : 0;
+  const txt = n ? `선택 ${n.toLocaleString()}자 · 전체 ${statLen.toLocaleString()}자` : statTxt;
+  if (el.textContent !== txt) el.textContent = txt;
 }
 
 // ---------------------------------------------------------------- formatting
@@ -2326,10 +2399,10 @@ function toolPop(kind, anchor) {
     menuOn = true;                                 // ↑ / ↓ / Enter / Esc, like the other menus
   } else if (kind === 'fg') {
     showPop(r.left, r.bottom + 6, `<div class="mlabel">글자색 · 잘 보이는 색만 골랐어요</div><div class="swatches">${FG.map(c => c.v
-      ? `<button class="sw txt${st.fg === c.v ? ' on' : ''}" data-v="${c.v}" title="${c.n}" style="color:${c.v}">A</button>`
+      ? `<button class="sw txt${st.fg === c.v ? ' on' : ''}" data-v="${c.v}" title="${c.n}" style="color:${st.theme === 'dark' && c.d ? c.d : c.v}">A</button>`
       : `<button class="sw none" data-v="" title="기본 색"></button>`).join('')}</div>`, b => { applyFg(b.dataset.v); });
   } else if (kind === 'hl') {
-    showPop(r.left, r.bottom + 6, `<div class="mlabel">형광펜</div><div class="swatches">${HL.map(c => `<button class="sw${st.hl === c.v ? ' on' : ''}" data-v="${c.v}" title="${c.n}" style="background:${c.v}"></button>`).join('')}<button class="sw none" data-v="" title="형광펜 지우기"></button></div>`,
+    showPop(r.left, r.bottom + 6, `<div class="mlabel">형광펜</div><div class="swatches"><button class="sw none" data-v="" title="형광펜 지우기"></button>${HL.map(c => `<button class="sw${st.hl === c.v ? ' on' : ''}" data-v="${c.v}" title="${c.n}" style="background:${c.v}"></button>`).join('')}</div>`,
       b => { applyHl(b.dataset.v || null); });
   } else if (kind === 'table') {
     let cells = '';
@@ -3420,7 +3493,7 @@ editor.addEventListener('contextmenu', e => {
     { label: '잘라내기', icon: 'i-cut', kbd: 'Ctrl+X', disabled: !has, action: () => edit(() => exec('cut')) },
     { label: '복사', icon: 'i-copy', kbd: 'Ctrl+C', disabled: !has, action: () => exec('copy') },
     { label: '붙여넣기', icon: 'i-paste', kbd: 'Ctrl+V', action: () => pasteFromClipboard(false) },
-    { label: '서식 없이 붙여넣기', kbd: 'Ctrl+Shift+V', action: () => pasteFromClipboard(true) });
+    { label: '서식 없이 붙여넣기', icon: 'i-paste', kbd: 'Ctrl+Shift+V', action: () => pasteFromClipboard(true) });
   if (td) {
     const t = td.closest('table');
     const rc = inNavRect(td) ? navRect() : null, nr = rc ? rc.r1 - rc.r0 + 1 : 1, nc = rc ? rc.c1 - rc.c0 + 1 : 1;
@@ -3436,8 +3509,8 @@ editor.addEventListener('contextmenu', e => {
       { label: '표 삭제', icon: 'i-trash', danger: true, action: () => tableOp('delTable', t, td) });
   } else if (!img) {                             // text formatting means nothing for a picture
     items.push({ sep: true },
-      { label: '굵게', kbd: kl('bold'), action: () => fmt('bold') },
-      { label: '밑줄', kbd: kl('underline'), action: () => fmt('underline') },
+      { label: '굵게', glyph: '<b>B</b>', kbd: kl('bold'), action: () => fmt('bold') },
+      { label: '밑줄', glyph: '<u>U</u>', kbd: kl('underline'), action: () => fmt('underline') },
       { label: '형광펜', icon: 'i-marker', kbd: kl('hl'), action: toggleHl },
       { label: '서식 지우기', icon: 'i-eraser', kbd: kl('clearFmt'), action: clearFmt });
   }
@@ -3459,19 +3532,27 @@ function openFind() {
   findIn.focus(); findIn.select();
   runFind(true);
 }
-function findText(q, nth = 0) {                  // open the find bar on q and jump to its nth match
+// open the find bar on q and jump to its nth match; toEditor (after a jump from Ctrl+K / the palette) puts the
+// caret right after the match, so the next key writes in the note instead of replacing the search
+function findText(q, nth = 0, toEditor = false) {
   findOpen = true;
   $('#findbar').classList.add('show');
   findIn.value = q;
   runFind(false);
   if (hits.length) { hitI = clamp(nth, 0, hits.length - 1); showHit(); }
+  if (toEditor && hits.length) {
+    editor.focus({ preventScroll: true });
+    const c = hits[hitI].cloneRange(); c.collapse(false);
+    const s = getSelection(); s.removeAllRanges(); s.addRange(c);
+    return;
+  }
   findIn.focus(); findIn.select();
 }
 function findSoon() { clearTimeout(findT); findT = setTimeout(() => runFind(false), 200); }
 function runFind(fromCaret) {
   hlAll.clear(); hlCur.clear(); hits = []; hitI = -1;
   const q = findIn.value.toLowerCase();
-  if (!q) { $('#findCount').textContent = ''; return; }
+  if (!q) { $('#findCount').textContent = ''; $('#findbar').classList.remove('none'); return; }
   const w = document.createTreeWalker(editor, NodeFilter.SHOW_TEXT);
   let n;
   while ((n = w.nextNode()) && hits.length < 5000) {
@@ -3491,7 +3572,8 @@ function runFind(fromCaret) {
 function selRangeFrom(x) { const [a] = nodeAt(x.a); try { const r = document.createRange(); r.setStart(a, Math.min(x.ao, a.nodeType === 3 ? a.nodeValue.length : a.childNodes.length)); return r; } catch (e) { return null; } }
 function showHit(scroll = true) {
   hlCur.clear();
-  if (hitI < 0) { $('#findCount').textContent = findIn.value ? '0/0' : ''; return; }
+  $('#findbar').classList.toggle('none', hitI < 0 && !!findIn.value);
+  if (hitI < 0) { $('#findCount').textContent = findIn.value ? '결과 없음' : ''; return; }
   const r = hits[hitI];
   hlCur.add(r);
   $('#findCount').textContent = (hitI + 1) + '/' + hits.length;
@@ -3506,7 +3588,7 @@ function findClose(silent) {
   $('#findbar').classList.remove('show');
   const r = hits[hitI];
   hlAll.clear(); hlCur.clear(); hits = []; hitI = -1;
-  if (silent) return;
+  if (silent || document.activeElement === editor) return;   // writing in the note: the caret stays where it is
   editor.focus({ preventScroll: true });
   if (r && r.startContainer.isConnected) { const s = getSelection(); s.removeAllRanges(); s.addRange(r); }
   else if (lastSel) selRestore(lastSel);
@@ -3547,8 +3629,8 @@ window.addEventListener('blur', closePop);
 function showMenu(x, y, items) {
   const html = items.map((it, i) => {
     if (it.sep) return '<div class="msep"></div>';
-    if (it.colors) return `<div class="mlabel">색상</div><div class="swatches">${COLOR_KEYS.map(k => `<button class="sw${it.value === k ? ' on' : ''}" data-i="${i}" data-c="${k}" title="${k}" style="background:${NOTE_COLORS[k]}"></button>`).join('')}</div>`;
-    return `<button class="mit${it.danger ? ' danger' : ''}${it.on ? ' on' : ''}" data-i="${i}"${it.disabled ? ' disabled' : ''}>${it.icon ? ic(it.icon) : '<i></i>'}<span>${esc(it.label)}</span>${it.kbd ? `<kbd>${esc(it.kbd)}</kbd>` : ''}</button>`;
+    if (it.colors) return `<div class="mlabel">색상</div><div class="swatches">${COLOR_KEYS.map(k => `<button class="sw${it.value === k ? ' on' : ''}" data-i="${i}" data-c="${k}" title="${COLOR_NAMES[k]}" style="--c:${NOTE_COLORS[k]};background:var(--c)"></button>`).join('')}</div>`;
+    return `<button class="mit${it.danger ? ' danger' : ''}${it.on ? ' on' : ''}" data-i="${i}"${it.disabled ? ' disabled' : ''}>${it.glyph ? `<i class="mg">${it.glyph}</i>` : it.icon ? ic(it.icon) : '<i></i>'}<span>${esc(it.label)}</span>${it.kbd ? `<kbd>${esc(it.kbd)}</kbd>` : ''}</button>`;
   }).join('');
   showPop(x, y, html, b => {
     const it = items[+b.dataset.i];
@@ -3592,19 +3674,21 @@ function colorMenu(id, x, y) {
 function noteMenu(id, x, y) {
   const n = noteById(id);
   if (!n) return;
+  const here = view === 'editor' && id === cur;   // the ⋯ menu of the open note: no '열기', and Del means a character here
   showMenu(x, y, [
-    { label: '열기', icon: 'i-open', kbd: 'Enter', action: () => openNote(id) },
+    ...(here ? [] : [{ label: '열기', icon: 'i-open', kbd: 'Enter', action: () => openNote(id) }]),
     { label: '이름 바꾸기', icon: 'i-edit', kbd: 'F2', action: () => (view === 'board' ? renameInline(id) : openNote(id, { focusTitle: true })) },
     { label: n.hotkey ? `단축키 변경 (${n.hotkey.label})` : '전역 단축키 지정…', icon: 'i-key', action: () => setNoteHotkey(id) },
     { label: n.pinned ? '고정 해제' : '맨 앞에 고정', icon: 'i-pin', action: () => togglePin(id) },
     { colors: true, value: n.color, pick: c => setColor(id, c) },
     { sep: true },
-    { label: '복제', icon: 'i-copy', action: () => duplicate(id) },
+    { label: '복사', icon: 'i-copy', kbd: here ? '' : 'Ctrl+C', action: () => copyNote(id) },
     { label: '텍스트로 복사', icon: 'i-copy', action: () => copyText(id) },
+    { label: '복제', icon: 'i-plus', action: () => duplicate(id) },
     { label: '내보내기 (.txt)', icon: 'i-export', action: () => exportNote(id, 'txt') },
     { label: '내보내기 (.html)', icon: 'i-export', action: () => exportNote(id, 'html') },
     { sep: true },
-    { label: '삭제', icon: 'i-trash', kbd: 'Del', danger: true, action: () => deleteNote(id) }
+    { label: '삭제', icon: 'i-trash', kbd: here ? '' : 'Del', danger: true, action: () => deleteNote(id) }
   ]);
 }
 
@@ -3615,6 +3699,7 @@ function openModal(html, onClose) {
   if (modalOpen()) closeModal();
   modal.innerHTML = html;
   modal.classList.add('show');
+  app.classList.add('modal-on');                  // toasts move up, off the dialog's buttons
   modalOnClose = onClose || null;
   modalFocus();                                   // keys go to the dialog, never to the note behind it
 }
@@ -3646,6 +3731,7 @@ document.addEventListener('keydown', e => {
 function closeModal() {
   if (!modalOpen()) return;
   modal.classList.remove('show');
+  app.classList.remove('modal-on');
   modal.innerHTML = '';
   const f = modalOnClose;
   modalOnClose = null;
@@ -3917,12 +4003,12 @@ function openPalette(mode) {
   paletteOn = true;
   host.send('palette', '1');
   const inp = $('#palIn'), list = $('#palList'), pv = $('#palPv');
-  const tip = '<p>거래처 이름, 계좌, 전화번호처럼 <b>기억나는 단어</b>를 입력하면 모든 메모에서 그 줄을 찾아요.</p><p>띄어쓰기로 단어를 더 넣으면 좁혀져요. 메모 제목·표의 열 이름도 함께 찾아요. 예) <i>한빛 전화</i></p><p><b>ㄱㅊㅅ</b>처럼 초성만 넣어도 돼요.</p><p>표의 한 행은 <b>Tab</b>으로 칸 하나만 골라 붙여넣을 수 있어요.</p>';
+  const tip = `<p>거래처 이름, 계좌, 전화번호처럼 <b>기억나는 단어</b>를 입력하면 모든 메모에서 그 줄을 찾아요.</p><p>띄어쓰기로 단어를 더 넣으면 좁혀져요. 메모 제목·표의 열 이름도 함께 찾아요. 예) <i>한빛 전화</i></p><p><b>ㄱㅊㅅ</b>처럼 초성만 넣어도 돼요.</p><p>다른 프로그램에서도 <b>${esc(kl0(st.findHotkey))}</b> 단축키로 바로 불러올 수 있어요.</p><p>표의 한 행은 <b>Tab</b>으로 칸 하나만 골라 붙여넣을 수 있어요.</p>`;
   let items = [], idx = 0, terms = [], q = '', fit = 40;   // fit: characters a result row shows (wide Hangul)
   const where = it => [titleOf(it.n) || '제목 없음', !it.x.c && it.x.sec].filter(Boolean).map(esc).join(' › ');
   const itemHTML = (it, i) => {
     const P = it.part >= 0 ? partsOf(it.x)[it.part] : null;
-    return `<div class="qs-item${i === idx ? ' on' : ''}" data-i="${i}"><span class="c-dot" style="--c:${NOTE_COLORS[it.n.color]}"></span>` +
+    return `<div class="qs-item${i === idx ? ' on' : ''}" data-i="${i}"><span class="c-dot" data-c="${it.n.color}" style="--c:${NOTE_COLORS[it.n.color]}"></span>` +
       `<div class="qs-txt"><b>${lineHTML(it.x.s, terms, P, fit, 14)}</b><small>${where(it)}${P && P.k ? ` · <em class="pal-col">${esc(P.k)}</em>` : ''}` +
       `${P ? `<span class="pal-pos">${it.part + 1}/${partsOf(it.x).length}</span>` : ''}</small></div>${i < 9 ? `<kbd class="pal-n">${i + 1}</kbd>` : ''}</div>`;
   };
@@ -3931,7 +4017,7 @@ function openPalette(mode) {
     if (!it) { pv.innerHTML = q ? `<div class="pv-tip"><b>이렇게 써 보세요</b>${tip}</div>` : ''; return; }
     const L = linesOf(it.n.id), i = it.i;
     const P = it.part >= 0 ? partsOf(it.x)[it.part] : null;
-    let h = `<div class="pv-head"><span class="c-dot" style="--c:${NOTE_COLORS[it.n.color]}"></span><b>${esc(titleOf(it.n) || '제목 없음')}</b><small>${relTime(it.n.updated)}</small></div>`;
+    let h = `<div class="pv-head"><span class="c-dot" data-c="${it.n.color}" style="--c:${NOTE_COLORS[it.n.color]}"></span><b>${esc(titleOf(it.n) || '제목 없음')}</b><small>${relTime(it.n.updated)}</small></div>`;
     if (it.x.c && it.x.h) {                       // a table row: each column name with its value, then rows near it
       h += '<div class="pv-kv">' + it.x.c.map((v, j) => `<span>${esc(it.x.h[j] || '')}</span><b${P && P.j === j ? ' class="pick"' : ''}>${mark(v, terms) || '&nbsp;'}</b>`).join('') + '</div>';
       const near = [];
@@ -3993,7 +4079,7 @@ function openPalette(mode) {
       for (let j = 0; j < it.i; j++) for (let k = L[j].l.indexOf(tl); k >= 0; k = L[j].l.indexOf(tl, k + 1)) nth++;
       closeModal();
       openNote(it.n.id);
-      findText(t, nth);
+      findText(t, nth, true);
       if (pop) host.send('show');
       return;
     }
@@ -4180,7 +4266,7 @@ function renderTrash() {
     const m = x.m || {}, lines = x.p.split('\n');               // x.p: the note's first lines
     const title = m.title || m.line1 || (lines[0] || '').slice(0, 60) || '제목 없음';
     const pv = (m.title ? lines : lines.slice(1)).join(' ').slice(0, 90);
-    return `<div class="tr-item" data-i="${i}"><span class="c-dot" style="--c:${NOTE_COLORS[m.color] || NOTE_COLORS.navy}"></span>` +
+    return `<div class="tr-item" data-i="${i}"><span class="c-dot" data-c="${NOTE_COLORS[m.color] ? m.color : 'navy'}" style="--c:${NOTE_COLORS[m.color] || NOTE_COLORS.navy}"></span>` +
       `<div class="tr-txt"><b>${esc(title)}</b><small>${esc(pv) || '&nbsp;'}</small></div><span class="tr-at">${relTime(x.at)} 삭제</span>` +
       `<button class="btn tr-restore" data-act="restore">복원</button><button class="tr-del" title="영구 삭제">${ic('i-trash')}</button></div>`;
   }).join('') || `<div class="qs-empty">${ic('i-trash')}<b>휴지통이 비어 있어요</b><small>메모를 삭제하면 여기에 보관돼요. 복원하면 원래 자리 · 색 · 단축키 그대로 돌아와요.</small></div>`;
@@ -4259,7 +4345,7 @@ function openSwitcher() {
     }
     items.sort((a, b) => b.sc - a.sc);            // stable: ties keep the board order (pinned first)
     idx = clamp(idx, 0, Math.max(0, items.length - 1));
-    list.innerHTML = items.map((x, i) => `<div class="qs-item${i === idx ? ' on' : ''}" data-i="${i}"><span class="c-dot" style="--c:${NOTE_COLORS[x.n.color]}"></span><div class="qs-txt"><b>${mark(titleOf(x.n) || '제목 없음', terms)}</b><small>${snippet(x.e, terms)}</small></div>${x.n.hotkey ? `<span class="chip">${esc(x.n.hotkey.label)}</span>` : ''}</div>`).join('') ||
+    list.innerHTML = items.map((x, i) => `<div class="qs-item${i === idx ? ' on' : ''}" data-i="${i}"><span class="c-dot" data-c="${x.n.color}" style="--c:${NOTE_COLORS[x.n.color]}"></span><div class="qs-txt"><b>${mark(titleOf(x.n) || '제목 없음', terms)}</b><small>${snippet(x.e, terms)}</small></div>${x.n.hotkey ? `<span class="chip">${esc(x.n.hotkey.label)}</span>` : ''}</div>`).join('') ||
       '<div class="qs-empty">일치하는 메모가 없어요</div>';
     if (!items.length && terms.length) list.innerHTML = `<div class="qs-item qs-new on" data-i="0">${ic('i-plus')}<div class="qs-txt"><b>새 메모 만들기</b><small>‘${esc(inp.value.trim())}’ 제목으로</small></div></div>`;
     const on = list.querySelector('.on');
@@ -4280,7 +4366,7 @@ function openSwitcher() {
     for (const t of terms) if ((w = hitText(x.e.t, t))) break;
     closeModal();
     openNote(x.n.id);
-    if (w) findText(w);
+    if (w) findText(w, 0, true);
   };
   inp.addEventListener('input', () => { idx = 0; render(); });
   inp.addEventListener('keydown', e => {
@@ -4689,12 +4775,25 @@ function updateKeyHints() {
 function applyTheme() {
   app.dataset.theme = st.theme;
   $('#btnTheme').innerHTML = ic(st.theme === 'dark' ? 'i-sun' : 'i-moon');
+  $('#btnTheme').title = st.theme === 'dark' ? '라이트 모드로 바꾸기' : '다크 모드로 바꾸기';
 }
-function applyZoom() { document.documentElement.style.setProperty('--fs', st.fontSize + 'px'); $('#stZoom').textContent = Math.round(st.fontSize / 15 * 100) + '%'; posOvSoon(); }
+// zoom moves in round steps (never 107% or 113%); an old stored size snaps to the nearest one
+const ZOOMS = [70, 80, 90, 100, 110, 125, 150, 175, 200];
+const zoomPct = () => Math.round(st.fontSize / 15 * 100);
+function zoomIdx() { const p = st.fontSize / 15 * 100; let b = 3; ZOOMS.forEach((z, i) => { if (Math.abs(z - p) < Math.abs(ZOOMS[b] - p)) b = i; }); return b; }
+function applyZoom() {
+  st.fontSize = 15 * ZOOMS[zoomIdx()] / 100;
+  document.documentElement.style.setProperty('--fs', st.fontSize + 'px');
+  const z = $('#stZoom'); z.textContent = zoomPct() + '%'; z.hidden = zoomPct() === 100;
+  posOvSoon();
+}
 function applyFont() { document.documentElement.style.setProperty('--ef', (FONTS[st.font] || FONTS.ui)[1]); }
-function zoom(d) { st.fontSize = d === 0 ? 15 : clamp(st.fontSize + d, 10, 36); applyZoom(); saveStateSoon(); }
+function zoom(d) { st.fontSize = 15 * ZOOMS[d === 0 ? 3 : clamp(zoomIdx() + d, 0, ZOOMS.length - 1)] / 100; applyZoom(); saveStateSoon(); }
 function setTheme(t) { st.theme = t; applyTheme(); host.send('theme', t); saveStateSoon(); }
-function setOnTop(on) { st.onTop = on; $('#btnTop').classList.toggle('on', on); host.send('top', on ? '1' : '0'); saveStateSoon(); }
+function setOnTop(on) {
+  st.onTop = on; const b = $('#btnTop'); b.classList.toggle('on', on); b.title = `항상 위에 표시 · ${on ? '켜짐' : '꺼짐'}`;
+  host.send('top', on ? '1' : '0'); saveStateSoon();
+}
 function openSettings(tab, keep) {               // keep: back from the key recorder, at the same scroll
   tab = tab || 'general';
   if (!keep) keysScroll = 0;
@@ -4721,7 +4820,7 @@ function openSettings(tab, keep) {               // keep: back from the key reco
     h += `<div class="khint">바꿀 수 없는 키: 복사·붙여넣기·실행 취소 (Ctrl+C/V/X/Z/Y/A) · Ctrl+1~9 메모 열기 · Esc · F2 · 표 안의 Enter / Tab / 방향키</div>`;
     body = h;
   } else {
-    const pct = Math.round(st.fontSize / 15 * 100) + '%';
+    const pct = zoomPct() + '%';
     body = `<h4 class="kh">보기</h4>
     ${row('테마', '눈이 편한 쪽으로 · 제목 표시줄 버튼으로도 바꿔요', `<div class="seg" id="setTheme"><button data-v="light">라이트</button><button data-v="dark">다크</button></div>`)}
     ${row('에디터 글꼴', `<span class="font-sample" id="fontSample" style="font-family:${(FONTS[st.font] || FONTS.ui)[1]}">가나다 ABC 123 — 빠른 메모</span>`, `<select class="sel" id="setFont">${Object.entries(FONTS).map(([k, v]) => `<option value="${k}"${st.font === k ? ' selected' : ''}>${v[0]}</option>`).join('')}</select>`)}
@@ -4797,7 +4896,7 @@ function openSettings(tab, keep) {               // keep: back from the key reco
     };
   }
   $('#setFont').onchange = e => { st.font = e.target.value; applyFont(); saveStateSoon(); $('#fontSample').style.fontFamily = (FONTS[st.font] || FONTS.ui)[1]; };
-  for (const b of $$('[data-z]', modal)) b.onclick = () => { zoom(+b.dataset.z); $('#setZ').textContent = Math.round(st.fontSize / 15 * 100) + '%'; };
+  for (const b of $$('[data-z]', modal)) b.onclick = () => { zoom(+b.dataset.z); $('#setZ').textContent = zoomPct() + '%'; };
   $('#setOpen').onclick = () => host.send('openData');
   $('#setBackup').onclick = e => {
     if (!HOST) { toast('브라우저 미리보기에서는 백업하지 않아요'); return; }
@@ -4854,7 +4953,9 @@ function toast(msg, actLabel, act) {
   el.innerHTML = `<span>${esc(msg)}</span>${actLabel ? `<button>${esc(actLabel)}</button>` : ''}`;
   box.appendChild(el);
   const kill = () => { el.classList.add('out'); setTimeout(() => el.remove(), 160); };
-  const t = setTimeout(kill, actLabel ? 6500 : 2800);
+  let t = setTimeout(kill, actLabel ? 8000 : clamp(2400 + msg.length * 45, 2800, 7000));   // long enough to read it
+  el.onmouseenter = () => clearTimeout(t);        // reading it with the mouse on it: it waits
+  el.onmouseleave = () => { t = setTimeout(kill, 2000); };
   if (actLabel) el.querySelector('button').onclick = () => { clearTimeout(t); kill(); act(); };
   while (box.children.length > 3) box.firstChild.remove();
 }
@@ -4880,7 +4981,8 @@ $('#wcMin').onclick = () => host.send('min');
 $('#wcMax').onclick = () => host.send('max');
 $('#wcClose').onclick = () => { flushAll(); host.send('close'); };
 $('#btnSwitch').onclick = openSwitcher;
-$('#btnTop').onclick = () => setOnTop(!st.onTop);
+$('#btnTop').onclick = () => { setOnTop(!st.onTop); toast(st.onTop ? '항상 위에 표시를 켰어요' : '항상 위에 표시를 껐어요'); };
+$('#btnPal').onclick = () => openPalette('key');
 $('#btnTheme').onclick = () => setTheme(st.theme === 'dark' ? 'light' : 'dark');
 $('#btnSettings').onclick = openSettings;
 $('#stZoom').onclick = () => zoom(0);
@@ -4897,6 +4999,11 @@ document.addEventListener('keydown', e => {
   if (modalOpen()) { if (e.key === 'Escape') { e.preventDefault(); if (paletteOn && palMode === 'pop') host.send('back'); closeModal(); } return; }
   const mod = e.ctrlKey || e.metaKey, code = e.code;
   const act = actionFor(e, 'app');                  // shortcuts from Settings > 단축키
+  if (e.key === 'F3' && view === 'editor' && !act && !mod && !e.altKey) {   // F3 / Shift+F3: next / previous match, like everywhere else
+    e.preventDefault();
+    if (findOpen) findStep(e.shiftKey ? -1 : 1); else openFind();
+    return;
+  }
   if (quickOn) {                                    // the little memo window: no switching notes or views
     if (act && QUICK_OK.has(act.id)) { e.preventDefault(); act.run(); return; }
     if (act && act.id === 'closeView') { e.preventDefault(); $('#qbClose').click(); return; }
@@ -4909,6 +5016,9 @@ document.addEventListener('keydown', e => {
     return;
   }
   if (act) { e.preventDefault(); act.run(); return; }
+  if (e.key === 'F2' && view === 'editor' && !mod && !e.altKey && !e.shiftKey && !e.defaultPrevented && e.target === editor && !closestSel('table')) {
+    e.preventDefault(); titleIn.focus(); titleIn.select(); return;   // F2 renames, in the note too (a cell keeps its own F2)
+  }
   if (mod && !e.altKey) {                           // fixed keys
     let hit = true;
     switch (code) {
@@ -4925,7 +5035,7 @@ document.addEventListener('keydown', e => {
     if (hit) { e.preventDefault(); return; }
   }
   if (e.key === 'Escape') {
-    if (view === 'editor') { e.preventDefault(); if (findOpen) findClose(); else showBoard(); }
+    if (view === 'editor') { e.preventDefault(); if (app.classList.contains('sb-peek')) app.classList.remove('sb-peek'); else if (findOpen) findClose(); else showBoard(); }
     else if (!isTyping(e.target)) { if (clearMulti()) e.preventDefault(); else if (query) { e.preventDefault(); clearSearch(); } }   // board: one Esc at a time back to all cards
     return;
   }
@@ -4971,12 +5081,17 @@ if (HOST) window.chrome.webview.addEventListener('message', e => {
 
 // ---------------------------------------------------------------- first run
 function welcome() {
-  const html = '<h2>⚡ 메모장보다 빠른 메모</h2>' +
-    '<div>메모마다 <b>전역 단축키</b>를 지정하면 어떤 프로그램을 쓰고 있든 그 메모가 바로 앞으로 나옵니다. 같은 단축키를 <u>한 번 더 누르면 방금 쓰던 창으로</u> 돌아가요.</div><div><br></div>' +
-    '<ul class="checklist"><li data-checked="true">카드를 더블클릭하거나 Enter로 열기</li><li data-checked="false">위쪽 <b>⌨ 단축키 지정</b>으로 Ctrl+Alt+1 같은 키 붙이기</li><li data-checked="false">엑셀에서 셀을 복사해 여기에 붙여넣기 → 표로 변환</li></ul><div><br></div>' +
-    '<table class="t hdr"><tbody><tr><td>하고 싶은 것</td><td>방법</td></tr><tr><td>행 추가</td><td>마지막 행에서 Enter · 표 아래 막대 (끌면 여러 행)</td></tr><tr><td>열 추가</td><td>마지막 칸에서 Tab · 표 오른쪽 막대</td></tr><tr><td>빠른 이동</td><td>Ctrl+K</td></tr><tr><td>앱 부르기</td><td>Ctrl+Alt+N</td></tr></tbody></table>' +
-    '<div><span style="background-color: rgb(255, 241, 118);">형광펜</span>, <font color="#d92d20">잘 보이는 글자색</font>, <b>굵게</b>, <u>밑줄</u>을 지원합니다. 모든 단축키는 F1.</div>';
-  const n = { id: uid(), title: 'Super Speed Note 시작하기', color: 'navy', pinned: true, hotkey: null, created: now(), updated: now(), preview: previewOf(frag(html)) };
+  const row = (a, b) => `<tr><td>${a}</td><td>${esc(b)}</td></tr>`;   // keys as they are set right now
+  const html = '<h2>메모장보다 빠른 메모</h2>' +
+    '<div>메모마다 <b>전역 단축키</b>를 지정하면 어떤 프로그램을 쓰고 있든 그 메모가 바로 앞으로 나와요. 같은 단축키를 <u>한 번 더 누르면 방금 쓰던 창으로</u> 돌아가요.</div><div><br></div>' +
+    '<ul class="checklist"><li data-checked="true">카드를 더블클릭하거나 Enter로 열기</li><li data-checked="false">메모 제목 옆 <b>[단축키 지정]</b>으로 Ctrl+Alt+1 같은 키 붙이기</li><li data-checked="false">엑셀에서 셀을 복사해 여기에 붙여넣기 → 표로 변환</li></ul><div><br></div>' +
+    '<table class="t hdr"><tbody><tr><td>하고 싶은 것</td><td>방법</td></tr>' +
+    row('어디서든 한 줄 찾아 붙여넣기', kl0(st.findHotkey) + ' → Enter') + row('어디서든 빠른 메모', kl0(st.quickHotkey)) + row('앱 부르기', kl0(st.appHotkey)) +
+    row('보드에서 찾기', '그냥 입력 (초성 ㄱㅊㅅ도 돼요)') + row('빠른 이동', kl('switcher') || 'Ctrl+K') +
+    row('칸 내용 고치기', '더블클릭 또는 F2 · 그냥 입력하면 새로 써요') + row('행 추가', '마지막 행에서 Enter · 표 아래 막대 (끌면 여러 행)') +
+    row('열 추가', '마지막 칸에서 Tab · 표 오른쪽 막대') + row('중간에 행·열 넣기', '표 왼쪽·위쪽 여백의 + 클릭') + row('삭제한 메모 되살리기', 'Ctrl+Z · 휴지통') + '</tbody></table>' +
+    '<div><span style="background-color: rgb(255, 241, 118);">형광펜</span>, <font color="#d92d20">잘 보이는 글자색</font>, <b>굵게</b>, <u>밑줄</u>을 쓸 수 있어요. 모든 단축키는 F1.</div>';
+  const n = { id: uid(), title: '⚡ 시작하기', color: 'navy', pinned: true, hotkey: null, created: now(), updated: now(), preview: previewOf(frag(html)) };
   S.notes.push(n);
   bodies[n.id] = html;
   host.send('saveNote', n.id, html);
@@ -4993,6 +5108,7 @@ applyTheme(); applyZoom(); applyFont(); updateSwatches();
 syncQuitLabel(); rebuildKeys(); updateKeyHints();
 app.classList.toggle('sb-off', !st.sidebar);
 $('#btnTop').classList.toggle('on', !!st.onTop);
+$('#btnTop').title = `항상 위에 표시 · ${st.onTop ? '켜짐' : '꺼짐'}`;
 renderBoard();
 boardSearch.focus({ preventScroll: true });
 host.send('ready');
