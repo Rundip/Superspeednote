@@ -84,9 +84,14 @@ body[data-view=editor] #editorView{display:flex}
 .crumb{display:flex;align-items:center;gap:10px}
 .crumb-t{font-size:17px;font-weight:700;letter-spacing:-.015em}
 .pill{display:inline-flex;align-items:center;height:22px;padding:0 9px;border-radius:999px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.12);color:rgba(255,255,255,.82);font:600 11.5px "Segoe UI",var(--ui)}
+.pill.warn{background:rgba(245,158,11,.22);color:#ffd28a}
 .hero-act{display:flex;gap:10px;align-items:center}
 .search{display:flex;align-items:center;gap:9px;height:40px;width:340px;max-width:56vw;padding:0 10px 0 13px;border-radius:12px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.13);color:rgba(255,255,255,.7);transition:background .15s,border-color .15s,box-shadow .15s}
 .search .i{width:16px;height:16px}
+.search .s-clear{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;flex:none;background:rgba(255,255,255,.12);color:rgba(255,255,255,.85)}
+.search .s-clear:hover{background:rgba(255,255,255,.22);color:#fff}
+.search .s-clear .i{width:12px;height:12px;stroke-width:2.4}
+.search .s-clear:not([hidden])+kbd{display:none}
 .search:focus-within{background:rgba(255,255,255,.13);border-color:rgba(150,185,255,.65);box-shadow:0 0 0 4px rgba(110,155,255,.15);color:#fff}
 .search input{flex:1;min-width:0;border:0;outline:0;background:transparent;color:#fff;font-size:13.5px}
 .search input::placeholder{color:rgba(222,232,255,.5)}
@@ -105,21 +110,21 @@ body[data-view=editor] #editorView{display:flex}
 .card.msel::after{content:'';position:absolute;inset:0;background:rgba(59,108,246,.08);pointer-events:none}
 .card.msel .c-dot{background:var(--accent) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E") center/80% no-repeat;width:14px;height:14px;box-shadow:none}
 .sel-pill{background:#fff;color:#1d3a8a;border-color:transparent}
-.grid:focus .card.sel{box-shadow:0 0 0 2px var(--accent),0 0 0 6px rgba(59,108,246,.16),var(--sh-2)}
+#board:focus-within .card.sel{box-shadow:0 0 0 2px var(--accent),0 0 0 6px rgba(59,108,246,.16),var(--sh-2)}
 .c-head{display:flex;align-items:center;gap:9px;min-width:0}
 .c-dot{width:8px;height:8px;border-radius:50%;background:var(--c);box-shadow:0 0 0 3px color-mix(in srgb,var(--c) 18%,transparent);flex:none}
 [data-theme=dark] .c-dot,[data-theme=dark] .cdot::after,[data-theme=dark] .qs-item .c-dot{filter:brightness(1.7) saturate(1.1)}
 .c-pin{width:13px!important;height:13px!important;color:var(--accent)}
 .c-idx{flex:none;min-width:19px;height:19px;padding:0 4px;border-radius:6px;border:1px solid var(--line);display:grid;place-items:center;font:600 10.5px "Segoe UI",var(--ui);color:var(--ink-3)}
 .c-title{flex:1;min-width:0;font-size:15px;font-weight:700;letter-spacing:-.015em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.c-prev{margin-top:10px;color:var(--ink-2);font-size:13px;line-height:1.55;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;word-break:break-all}
+.c-prev{margin-top:10px;color:var(--ink-2);font-size:13px;line-height:1.55;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;word-break:keep-all;overflow-wrap:anywhere}
 .c-foot{margin-top:auto;display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--ink-3);min-width:0}
 .c-copy{position:absolute;right:11px;bottom:9px;z-index:1;width:28px;height:28px;border-radius:9px;display:grid;place-items:center;color:var(--ink-2);background:var(--card);border:1px solid var(--line-2);opacity:0;transform:translateY(3px);transition:opacity .12s,transform .12s,color .12s,border-color .12s}
 .c-copy .mi{width:15px;height:15px}
 .card:hover .c-copy,.card.sel .c-copy{opacity:1;transform:none}
-.card:hover .c-time,.card.sel .c-time{visibility:hidden}
+.card:hover .c-time,.card.sel .c-time{margin-right:34px}   /* slides aside for the copy button instead of vanishing */
 .c-copy:hover{color:var(--accent);border-color:var(--accent)}
-.c-time{margin-left:auto;white-space:nowrap}
+.c-time{margin-left:auto;white-space:nowrap;transition:margin .12s}
 .ph{color:var(--ink-3)!important;font-weight:500}
 .rename{width:100%;border:0;outline:2px solid var(--accent);border-radius:6px;padding:1px 6px;background:var(--paper);color:var(--ink);font:inherit}
 .chip{display:inline-flex;align-items:center;gap:4px;height:21px;padding:0 7px;border-radius:7px;background:var(--accent-soft);color:var(--accent-ink);font:650 11px "Segoe UI",var(--ui);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:150px}
@@ -136,6 +141,19 @@ body[data-view=editor] #editorView{display:flex}
 .card.drop-l{box-shadow:-5px 0 0 -1px var(--accent),var(--sh-1)}
 .card.drop-r{box-shadow:5px 0 0 -1px var(--accent),var(--sh-1)}
 .empty{grid-column:1/-1;padding:48px;text-align:center;color:rgba(225,234,255,.85)}
+.empty.zero{order:-1;padding:6px 2px 2px;text-align:left}   /* no notes at all: a heading above the new-note card */
+.empty b{display:block;font-size:15px;font-weight:700}
+.empty small{display:block;margin-top:6px;font-size:12.5px;opacity:.75}
+.empty kbd{padding:1px 6px;border-radius:6px;border:1px solid rgba(255,255,255,.3)}
+.selbar{position:sticky;bottom:16px;z-index:6;align-self:center;display:flex;align-items:center;gap:6px;margin-top:-8px;padding:6px 6px 6px 16px;border-radius:14px;background:#0f1d40;color:#fff;box-shadow:var(--sh-pop);font-size:13px}
+.selbar b{margin-right:8px;font-weight:700;white-space:nowrap}
+#selBar .btn{height:32px;padding:0 12px;background:rgba(255,255,255,.1);color:#fff;filter:none}
+#selBar .btn:hover{background:rgba(255,255,255,.2)}
+#selBar .btn.danger{color:#ff9b91}
+#selBar kbd{margin-left:7px;color:rgba(255,255,255,.55)}
+[data-theme=dark] .selbar{background:#24345f;border:1px solid rgba(255,255,255,.1)}
+body[data-view=board].selbar-on #toasts{bottom:84px}
+@media (max-width:560px){#selBar kbd{display:none}}
 .board-foot{position:relative;margin-top:auto;display:flex;flex-wrap:wrap;gap:8px 20px;padding:20px 40px 18px;color:var(--ink-3);font-size:12px}
 .board-foot span{display:inline-flex;align-items:center;gap:6px}
 .board-foot kbd{padding:2px 6px;border-radius:6px;background:var(--paper);border:1px solid var(--line-2);border-bottom-width:2px;color:var(--ink-2);font:600 10.5px "Segoe UI",var(--ui)}
@@ -370,6 +388,7 @@ select.sel{height:32px;border-radius:9px;border:1px solid var(--line-2);backgrou
 .qs-txt b{display:block;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .qs-txt small{display:block;color:var(--ink-3);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .qs-empty{padding:26px;text-align:center;color:var(--ink-3)}
+.qs-new>.i{color:var(--accent-ink);margin:0 -2px}
 .pal{width:min(920px,calc(100vw - 32px))}
 .pal-body{display:flex;min-height:0}
 .pal-body .qs-list{flex:1;min-width:0;max-height:58vh}
@@ -434,9 +453,11 @@ body.pal-pop #toasts{bottom:56px}
 .kreset{width:26px;height:26px;border-radius:8px;color:var(--ink-3);font-size:15px}
 .kreset:hover{background:var(--hover);color:var(--ink)}
 .khint{font-size:11.5px;color:var(--ink-3);padding:8px 0 2px;line-height:1.5}
-.hero-btn{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.13);color:rgba(255,255,255,.72);flex:none}
+.hero-btn{min-width:40px;height:40px;padding:0 12px;gap:6px;border-radius:12px;display:inline-flex;align-items:center;justify-content:center;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.13);color:rgba(255,255,255,.72);flex:none}
 .hero-btn:hover{background:rgba(255,255,255,.15);color:#fff}
 .hero-btn .i{width:17px;height:17px}
+.hb-l{font-size:13px;font-weight:650}   /* "휴지통" in words: a bare bin next to a selected card read as "delete it" */
+@media (max-width:899px){.hb-l{display:none}.hero-btn{padding:0}}
 .dlg.trash{width:min(680px,calc(100vw - 32px))}
 .tr-body{padding:6px 12px 10px;min-height:110px}
 .tr-item{display:flex;align-items:center;gap:12px;padding:8px 10px;border-radius:11px}
@@ -538,12 +559,13 @@ body.maxed:not(.quick) .rz,body.web .rz{display:none}
     <section class="hero" data-drag>
       <div class="crumb"><span class="crumb-t">전체 메모</span><span class="pill" id="noteCount">0 / 500</span><span class="pill sel-pill" id="selCount" hidden></span></div>
       <div class="hero-act">
-        <button class="hero-btn" id="btnTrash" data-k="trash" data-t="휴지통 · 지운 메모 복원" title="휴지통 · 지운 메모 복원"><svg class="i"><use href="#i-trash"/></svg></button>
-        <label class="search"><svg class="i"><use href="#i-search"/></svg><input id="boardSearch" placeholder="메모 검색" spellcheck="false" autocomplete="off"><kbd data-k="find">Ctrl+F</kbd></label>
-        <button class="btn-new" id="btnNew"><svg class="i"><use href="#i-plus"/></svg>새 메모</button>
+        <button class="hero-btn" id="btnTrash" data-k="trash" data-t="휴지통 · 지운 메모 복원" title="휴지통 · 지운 메모 복원"><svg class="i"><use href="#i-trash"/></svg><span class="hb-l">휴지통</span></button>
+        <label class="search"><svg class="i"><use href="#i-search"/></svg><input id="boardSearch" placeholder="바로 입력해서 찾기 (초성도 돼요)" spellcheck="false" autocomplete="off"><button class="s-clear" id="sClear" title="검색 지우기 (Esc)" hidden><svg class="i"><use href="#i-close"/></svg></button><kbd data-k="find">Ctrl+F</kbd></label>
+        <button class="btn-new" id="btnNew" data-k="newNote" data-t="새 메모"><svg class="i"><use href="#i-plus"/></svg>새 메모</button>
       </div>
     </section>
     <section id="grid" class="grid" tabindex="0"></section>
+    <div id="selBar" class="selbar" hidden></div>
     <div class="board-foot">
       <span><kbd>← ↑ → ↓</kbd>선택</span><span><kbd>Enter</kbd>열기 · 더블클릭</span><span><kbd>F2</kbd>이름 변경</span><span><kbd>Shift</kbd>여러 개 선택</span><span><kbd>Del</kbd>삭제</span><span><kbd>Ctrl+1~9</kbd>바로 열기</span><span><kbd data-k="switcher">Ctrl+K</kbd>빠른 이동</span><span><kbd data-k="help">F1</kbd>모든 단축키</span>
     </div>
@@ -750,9 +772,10 @@ function previewOf(root, max = 120) {
   let n;
   while ((n = w.nextNode()) && out.length < max * 2) {
     if (n.nodeType === 3) out += n.nodeValue;
-    else if (n.nodeName === 'BR' || BLOCK_TAGS.test(n.nodeName)) out += ' ';
+    else if (n.nodeName === 'BR' || n.nodeName === 'TD' || n.nodeName === 'TH') out += ' ';
+    else if (BLOCK_TAGS.test(n.nodeName)) out += '\n';
   }
-  return out.replace(/\s+/g, ' ').trim().slice(0, max);
+  return out.trim().replace(/\s*\n\s*/g, ' · ').replace(/\s+/g, ' ').slice(0, max);   // lines read "a · b" on a card
 }
 // readable plain text (tables become TSV) - used for search, copy and .txt export
 function toPlain(root) {
@@ -805,7 +828,7 @@ function firstLineOf(root) {
 function titleOf(n) { return n ? (n.title || n.line1 || '') : ''; }
 function previewAfterTitle(n) {                   // don't repeat a first-line title in the preview
   const pv = n.preview || '';
-  return !n.title && n.line1 && pv.startsWith(n.line1) ? pv.slice(n.line1.length).trim() : pv;
+  return !n.title && n.line1 && pv.startsWith(n.line1) ? pv.slice(n.line1.length).replace(/^\s*·?\s*/, '') : pv;
 }
 const textCache = new Map();                      // id -> { u: updated, t: plain text, l: lower-cased }
 function textEntry(id) {
@@ -894,7 +917,7 @@ function unwrap(el) { const p = el.parentNode; if (!p) return; while (el.firstCh
 
 // ---------------------------------------------------------------- saving
 let dirty = false, saveT = 0, stateT = 0, stateDirty = false;
-function markDirty() { dirty = true; setSave(true); clearTimeout(saveT); saveT = setTimeout(flushNote, 400); }
+function markDirty() { dirty = true; freshIds.delete(cur); setSave(true); clearTimeout(saveT); saveT = setTimeout(flushNote, 400); }
 function flushNote() {
   clearTimeout(saveT); saveT = 0;
   if (!dirty || !cur) return;
@@ -912,7 +935,11 @@ function flushNote() {
 }
 function saveStateSoon() { stateDirty = true; clearTimeout(stateT); stateT = setTimeout(flushState, 300); }
 function flushState() { clearTimeout(stateT); stateT = 0; if (!stateDirty) return; stateDirty = false; host.send('saveState', JSON.stringify(S)); }
-function flushAll() { flushNote(); flushState(); }
+function flushAll() {
+  // hidden, standby, quit: the open note's caret is kept too (normalized first, so its path fits the saved html)
+  if (cur && view === 'editor') { if (!composing) editor.normalize(); keepAt(); }
+  flushNote(); flushState();
+}
 function setSave(busy) { const el = $('#stSave'); el.classList.toggle('saving', busy); el.textContent = busy ? '저장 중…' : '저장됨'; }
 window.addEventListener('blur', flushAll);
 document.addEventListener('visibilitychange', () => { if (document.hidden) flushAll(); });
@@ -930,7 +957,7 @@ function renderBoard(force) {
     staleCards.clear();
     let h = '';
     list.forEach((n, i) => { h += cardHTML(n, i); });
-    if (S.notes.length < MAX_NOTES) h += `<div class="card new" data-new="1"><span class="plus">${ic('i-plus')}</span><b>새 메모</b><small>Ctrl+N</small></div>`;
+    if (S.notes.length < MAX_NOTES) h += `<div class="card new" data-new="1"><span class="plus">${ic('i-plus')}</span><b>새 메모</b><small data-k="newNote">${esc(kl('newNote'))}</small></div>`;
     h += '<div class="empty" hidden></div>';
     grid.innerHTML = h;
   } else if (staleCards.size) {
@@ -940,13 +967,12 @@ function renderBoard(force) {
     }
     staleCards.clear();
   }
-  $('#noteCount').textContent = S.notes.length + ' / ' + MAX_NOTES;
   filterBoard();
 }
 function filterBoard() {
   const q = query.trim().toLowerCase();
   const byId = new Map(S.notes.map(n => [n.id, n]));
-  let first = null, selShown = false;
+  let first = null, selShown = false, shown = 0;
   for (const c of grid.children) {
     const id = c.dataset.id;
     if (!id) { if (c.classList.contains('new')) c.hidden = !!q; continue; }
@@ -954,20 +980,34 @@ function filterBoard() {
     const ok = !q || (n && (titleOf(n).toLowerCase().includes(q) || noteTextLower(id).includes(q)));
     c.hidden = !ok;
     if (!ok) multi.delete(id);
-    if (ok) { if (!first) first = id; if (id === selId) selShown = true; }
+    if (ok) { shown++; if (!first) first = id; if (id === selId) selShown = true; }
   }
-  const empty = grid.querySelector('.empty');
-  if (empty) { empty.hidden = !q || !!first; empty.textContent = `‘${query}’ 와 일치하는 메모가 없어요`; }
   if (!selShown) selId = first;
   markSel();
+  boardStatus(shown);
+}
+// the hero count, the search box's ×, and a next step when no card is shown
+function boardStatus(shown) {
+  const q = query.trim(), n = S.notes.length, pill = $('#noteCount');
+  pill.textContent = q ? `${shown}개 찾음` : `메모 ${n}개${n >= 450 ? ` / ${MAX_NOTES}` : ''}`;
+  pill.classList.toggle('warn', !q && n >= 450);
+  $('#sClear').hidden = !boardSearch.value;
+  const empty = grid.querySelector('.empty');
+  if (!empty) return;
+  empty.hidden = shown > 0;
+  if (shown) return;
+  const k = kl('newNote');
+  empty.classList.toggle('zero', !q);
+  empty.innerHTML = q ? `<b>‘${esc(q)}’ 검색 결과가 없어요</b><small><kbd>Enter</kbd> 이 제목으로 새 메모 · <kbd>Esc</kbd> 검색 지우기</small>`
+    : `<b>아직 메모가 없어요</b><small><kbd>Enter</kbd>${k ? ` 또는 <kbd>${esc(k)}</kbd>` : ''} 새 메모 · 삭제한 메모는 휴지통에서 복원</small>`;
 }
 function cardHTML(n, idx) {
-  const pv = previewAfterTitle(n), title = titleOf(n);
+  const pv = previewAfterTitle(n), title = titleOf(n), empty = !pv && !n.line1;
   return `<div class="card" data-id="${n.id}" draggable="true" style="--c:${NOTE_COLORS[n.color]}">` +
     `<button class="c-copy" title="메모 전체 복사 (Ctrl+C)"><i class="mi mi-copy"></i></button>` +
     `<div class="c-head"><span class="c-dot"></span><div class="c-title${title ? '' : ' ph'}">${esc(title || '제목 없음')}</div>` +
     `${n.pinned ? '<i class="mi mi-pin c-pin"></i>' : ''}${idx < 9 ? `<span class="c-idx" title="Ctrl+${idx + 1}">${idx + 1}</span>` : ''}</div>` +
-    `<div class="c-prev">${pv ? esc(pv.slice(0, 20)) + (pv.length > 20 ? '…' : '') : '<span class="ph">비어 있음</span>'}</div>` +
+    `<div class="c-prev">${pv ? esc(pv.slice(0, 90)) : empty ? '<span class="ph">비어 있음</span>' : ''}</div>` +
     `<div class="c-foot">${n.hotkey ? `<span class="chip${hkFailed.has(n.id) ? ' bad' : ''}" title="${hkFailed.has(n.id) ? '다른 프로그램이 사용 중' : '전역 단축키'}"><i class="mi mi-key"></i>${esc(n.hotkey.label)}</span>` : ''}<span class="c-time">${relTime(n.updated)}</span></div></div>`;
 }
 // Selection: selId = the focused card; multi = cards picked with Shift (range) / Ctrl (toggle) for bulk delete.
@@ -984,6 +1024,40 @@ function markSel() {
   const pill = $('#selCount');
   pill.hidden = multi.size < 2;
   pill.textContent = `${multi.size}개 선택 · Del 삭제 · Esc 해제`;
+  selBar();
+}
+// Several cards picked: a bar that stays at the bottom of the board (the hero's count scrolls away) and gives
+// the mouse what the keys do.
+let selBarKey = '';
+function selBar() {
+  const on = multi.size > 1, bar = $('#selBar');
+  app.classList.toggle('selbar-on', on && view === 'board');
+  bar.hidden = !on;
+  if (!on) return;
+  const pinned = S.notes.every(n => !multi.has(n.id) || n.pinned), key = multi.size + (pinned ? 'p' : '');
+  if (key === selBarKey) return;
+  selBarKey = key;
+  bar.innerHTML = `<b>${multi.size}개 선택됨</b><button class="btn" data-a="pin">${pinned ? '고정 해제' : '고정'}</button>` +
+    '<button class="btn" data-a="copy">복사<kbd>Ctrl+C</kbd></button><button class="btn danger" data-a="del">삭제<kbd>Del</kbd></button><button class="btn" data-a="clear">해제<kbd>Esc</kbd></button>';
+}
+$('#selBar').addEventListener('click', e => {
+  const b = e.target.closest('button[data-a]'), a = b && b.dataset.a, ids = [...multi];
+  if (a === 'pin') pinNotes(ids); else if (a === 'copy') copySel(); else if (a === 'del') askDeleteNotes(ids); else if (a === 'clear') clearMulti();
+});
+function pinNotes(ids) {                          // all pinned, or all unpinned when they already are
+  const set = new Set(ids), on = !S.notes.every(n => !set.has(n.id) || n.pinned);
+  for (const n of S.notes) if (set.has(n.id)) n.pinned = on;
+  saveStateSoon(); rerender();
+}
+// Ctrl+C on the board: the selected card, or every picked card (title + text, a blank line between)
+function copySel() {
+  if (multi.size < 2) { if (selId) copyNote(selId); return; }
+  const list = ordered().filter(n => multi.has(n.id));
+  putClip({
+    text: list.map(n => (n.title ? n.title + '\n' : '') + noteText(n.id).replace(/\s+$/, '')).join('\n\n'),
+    html: list.map(n => (n.title ? `<div><b>${esc(n.title)}</b></div>` : '') + (bodies[n.id] || '')).join('<div><br></div>')
+  });
+  toast(`메모 ${list.length}개를 복사했어요`);
 }
 function visibleIds() { return $$('.card[data-id]:not([hidden])', grid).map(c => c.dataset.id); }
 // mode: 'single' (default), 'range' (Shift: anchor .. id), 'toggle' (Ctrl: add / remove one)
@@ -1028,6 +1102,15 @@ grid.addEventListener('click', e => {
   if (e.target.closest('.card.new')) newNote();
   else if (!e.target.closest('.card[data-id]') && e.target === grid) clearMulti();       // click on empty space
 });
+// Clicks leave the keyboard in the search box: at once on the board's background, and on a card when the
+// button is released (stopping a card's mousedown would also stop it being dragged).
+$('#board').addEventListener('mousedown', e => {
+  const t = e.target, bd = e.currentTarget;
+  if (e.button === 1 || t.closest('input,.card[data-id]') || (t === bd && e.offsetX >= bd.clientWidth) || grid.querySelector('.rename')) return;
+  e.preventDefault();
+  boardSearch.focus({ preventScroll: true });
+});
+grid.addEventListener('mouseup', () => { if (!grid.querySelector('.rename')) boardSearch.focus({ preventScroll: true }); });
 grid.addEventListener('dblclick', e => {
   const c = e.target.closest('.card[data-id]');
   if (c && !e.target.closest('.rename,.c-copy')) openNote(c.dataset.id);
@@ -1046,50 +1129,73 @@ grid.addEventListener('contextmenu', e => {
   }
   setSel(c.dataset.id, false); noteMenu(c.dataset.id, e.clientX, e.clientY);
 });
-let dragId = null;
+let dragId = null, dropAt = null, dragTold = 0;   // dropAt: { id, after } - exactly where the line is shown
 grid.addEventListener('dragstart', e => {
   const c = e.target.closest('.card[data-id]');
-  if (!c || query) { e.preventDefault(); return; }
+  if (!c || query.trim()) {
+    e.preventDefault();
+    if (c && now() - dragTold > 3000) { dragTold = now(); toast('검색 중에는 순서를 바꿀 수 없어요 · Esc로 검색 지우기'); }
+    return;
+  }
   dragId = c.dataset.id;
   e.dataTransfer.effectAllowed = 'move';
   e.dataTransfer.setData('text/x-ssn', dragId);
   c.classList.add('dragging');
 });
-grid.addEventListener('dragend', () => { dragId = null; $$('.card', grid).forEach(c => c.classList.remove('dragging', 'drop-l', 'drop-r')); });
+grid.addEventListener('dragend', () => { dragId = null; dropAt = null; $$('.card', grid).forEach(c => c.classList.remove('dragging', 'drop-l', 'drop-r')); boardSearch.focus({ preventScroll: true }); });
 grid.addEventListener('dragover', e => {
   if (!dragId) return;
   e.preventDefault();
-  e.dataTransfer.dropEffect = 'move';
-  const c = e.target.closest('.card[data-id]');
+  let c = e.target.closest('.card[data-id]');
+  // in the gap between cards: the card beside it, else the one above
+  if (!c && e.target === grid) for (const [dx, dy] of [[-12, 0], [12, 0], [0, -12]]) { const x = document.elementFromPoint(e.clientX + dx, e.clientY + dy); if ((c = x && x.closest('.card[data-id]'))) break; }
+  const from = noteById(dragId), to = c && noteById(c.dataset.id);
+  const across = to && !!to.pinned !== !!from.pinned;   // pinned cards stay in front: no line where a card can't land
+  e.dataTransfer.dropEffect = across ? 'none' : 'move';
   $$('.drop-l,.drop-r', grid).forEach(x => x.classList.remove('drop-l', 'drop-r'));
-  if (!c || c.dataset.id === dragId) return;
+  dropAt = null;
+  if (!to || across || to.id === dragId) return;
   const r = c.getBoundingClientRect();
-  c.classList.add(e.clientX < r.left + r.width / 2 ? 'drop-l' : 'drop-r');
+  dropAt = { id: to.id, after: e.clientX >= r.left + r.width / 2 };
+  c.classList.add(dropAt.after ? 'drop-r' : 'drop-l');
 });
 grid.addEventListener('drop', e => {
   if (!dragId) return;
   e.preventDefault();
-  const c = e.target.closest('.card[data-id]');
-  if (c && c.dataset.id !== dragId) {
-    const after = c.classList.contains('drop-r');
-    const [m] = S.notes.splice(S.notes.findIndex(n => n.id === dragId), 1);
-    let to = S.notes.findIndex(n => n.id === c.dataset.id);
-    if (after) to++;
-    S.notes.splice(to, 0, m);
-    saveStateSoon();
-    renderBoard();
-  }
+  const at = dropAt;
+  if (!at) return;
+  const [m] = S.notes.splice(S.notes.findIndex(n => n.id === dragId), 1);
+  let to = S.notes.findIndex(n => n.id === at.id);
+  if (at.after) to++;
+  S.notes.splice(to, 0, m);
+  saveStateSoon();
+  renderBoard();
 });
-boardSearch.addEventListener('input', () => { query = boardSearch.value; filterBoard(); });
+// The search box is where the keyboard rests on the board: Windows' Korean IME only composes in an editable
+// field, so a first syllable typed on the grid came out as a Latin letter. The box passes the board keys on.
+let qAuto = false;                                // the text was selected for you on return: typing replaces it, Ctrl+C copies the card
+boardSearch.addEventListener('input', () => { qAuto = false; query = boardSearch.value; filterBoard(); });
+boardSearch.addEventListener('mousedown', () => { qAuto = false; });
+boardSearch.addEventListener('compositionstart', () => { if (menuOn) closePop(); });   // Korean typing over an open card menu
 boardSearch.addEventListener('keydown', e => {
   if (e.isComposing) return;
-  if (e.key === 'Enter') { e.preventDefault(); if (selId) openNote(selId); }
-  else if (e.key === 'ArrowDown') { e.preventDefault(); grid.focus(); }
-  else if (e.key === 'Escape') {
-    e.preventDefault(); e.stopPropagation();
-    if (boardSearch.value) { boardSearch.value = ''; query = ''; filterBoard(); } else grid.focus();
-  }
+  const k = e.key, typed = !!boardSearch.value, plain = !e.ctrlKey && !e.metaKey && !e.altKey, ctl = (e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey;
+  if (k === 'Enter' && plain) { e.preventDefault(); boardEnter(); }
+  else if (k === 'Escape') { e.preventDefault(); e.stopPropagation(); if (typed) clearSearch(); else clearMulti(); }
+  else if ((k === 'ArrowDown' || k === 'ArrowUp') && plain) { e.preventDefault(); moveSel(0, k === 'ArrowDown' ? 1 : -1, e.shiftKey); }
+  else if (plain && (k === 'F2' || (!typed && /^(ArrowLeft|ArrowRight|Home|End|Delete| )$/.test(k)))) boardKey(e);
+  else if (ctl && e.code === 'KeyC' && (qAuto || boardSearch.selectionStart === boardSearch.selectionEnd)) { e.preventDefault(); copySel(); }
+  else if (ctl && e.code === 'KeyA' && !typed) { e.preventDefault(); selectAllCards(); }
+  else if (/^(Arrow|Home|End|Page)/.test(k) || (ctl && e.code === 'KeyA')) qAuto = false;   // selecting the text yourself
 });
+$('#sClear').addEventListener('mousedown', e => e.preventDefault());   // the box keeps the keyboard
+$('#sClear').onclick = () => { clearSearch(); boardSearch.focus(); };
+function clearSearch() { boardSearch.value = ''; query = ''; qAuto = false; filterBoard(); }
+// Enter: open the selected card; nothing shown -> a new note, named after the search if there is one
+function boardEnter() {
+  const t = boardSearch.value.trim();
+  if (selId) openNote(selId); else if (t) newNoteTitled(t); else newNote();
+}
 function boardKey(e) {
   switch (e.key) {
     case 'ArrowRight': moveSel(1, 0, e.shiftKey); break;
@@ -1098,7 +1204,8 @@ function boardKey(e) {
     case 'ArrowUp': moveSel(0, -1, e.shiftKey); break;
     case 'Home': { const c = grid.querySelector('.card[data-id]:not([hidden])'); if (c) setSel(c.dataset.id, true, e.shiftKey ? 'range' : 'single'); break; }
     case 'End': { const c = $$('.card[data-id]:not([hidden])', grid).pop(); if (c) setSel(c.dataset.id, true, e.shiftKey ? 'range' : 'single'); break; }
-    case 'Enter': case ' ': if (selId) openNote(selId); break;
+    case 'Enter': boardEnter(); break;
+    case ' ': if (selId) openNote(selId); break;
     case 'Delete': if (multi.size > 1) askDeleteNotes([...multi]); else if (selId) deleteNote(selId); break;
     case 'F2': if (selId) renameInline(selId); break;
     case '/': boardSearch.focus(); break;
@@ -1124,7 +1231,7 @@ function renameInline(id) {
     if (done) return;
     done = true;
     if (ok && inp.value.trim() !== (n.title || '')) { n.title = inp.value.trim(); n.updated = now(); saveStateSoon(); }
-    staleCards.add(id); renderBoard(); grid.focus({ preventScroll: true });
+    staleCards.add(id); renderBoard(); boardSearch.focus({ preventScroll: true });
   };
   inp.addEventListener('keydown', e => {
     e.stopPropagation();
@@ -1138,12 +1245,19 @@ function renameInline(id) {
 function newNote(front) {                        // front === true: first in the list (quick memos)
   if (S.notes.length >= MAX_NOTES) { toast(`메모는 ${MAX_NOTES}개까지 만들 수 있어요`); return false; }
   const n = { id: uid(), title: '', color: COLOR_KEYS[S.notes.length % COLOR_KEYS.length], pinned: false, hotkey: null, created: now(), updated: now(), preview: '' };
-  if (front === true) S.notes.unshift(n); else S.notes.push(n);
+  if (front === true) S.notes.unshift(n);
+  else { S.notes.push(n); if (!freshIds.has(selId)) freshPrevSel = selId; freshIds.add(n.id); }
   bodies[n.id] = '<div><br></div>';
   host.send('saveNote', n.id, bodies[n.id]);
   saveStateSoon();
   query = ''; boardSearch.value = '';
   openNote(n.id);                                  // straight into the body: write first, title later (or never)
+}
+function newNoteTitled(t) {                       // searched for a note that isn't there yet: make it, caret in the body
+  if (newNote() === false) return;
+  const n = noteById(cur);
+  n.title = t; titleIn.value = t; staleRows.add(n.id);
+  renderHead(); renderSidebar(); saveStateSoon();
 }
 function deleteNote(id) { deleteNotes([id]); }
 // Several notes at once: ask first, so a stray Ctrl+A → Del can't clear the board. One note goes straight to
@@ -1226,7 +1340,7 @@ function duplicate(id) {
   if (!n) return;
   if (S.notes.length >= MAX_NOTES) { toast(`메모는 ${MAX_NOTES}개까지 만들 수 있어요`); return; }
   if (id === cur) flushNote();
-  const c = Object.assign({}, n, { id: uid(), title: (titleOf(n) || '제목 없음') + ' 사본', hotkey: null, pinned: false, created: now(), updated: now() });
+  const c = Object.assign({}, n, { id: uid(), title: (titleOf(n) || '제목 없음') + ' 사본', hotkey: null, pinned: false, created: now(), updated: now(), at: null });
   S.notes.splice(S.notes.indexOf(n) + 1, 0, c);
   bodies[c.id] = bodies[id];
   host.send('saveNote', c.id, bodies[c.id]);
@@ -1264,7 +1378,9 @@ function exportNote(id, kind) {
 // ---------------------------------------------------------------- view switching
 const memo = new Map();        // per-note caret + scroll, restored when you come back
 let lastSel = null;
-function setView(v) { view = v; app.dataset.view = v; }
+const freshIds = new Set();    // new notes not written in yet: left empty, they go away like an empty quick memo
+let freshPrevSel = null;       // the card selected before them, selected again then
+function setView(v) { view = v; app.dataset.view = v; if (v !== 'board') app.classList.remove('selbar-on'); }
 function openNote(id, o = {}) {
   const n = noteById(id);
   if (!n) return;
@@ -1289,7 +1405,7 @@ function openNote(id, o = {}) {
   S.lastOpen = id; saveStateSoon();
   host.send('active', id);
   if (o.focusTitle) { titleIn.focus(); titleIn.select(); return; }
-  const m = memo.get(id);
+  const m = memo.get(id) || n.at;
   editor.focus({ preventScroll: true });
   if (!same) {
     if (m && m.sel) { selRestore(m.sel); scroller.scrollTop = m.top; }
@@ -1299,9 +1415,19 @@ function openNote(id, o = {}) {
 }
 function leaveNote() {
   if (!cur) return;
+  const n = noteById(cur);
+  if (n && freshIds.has(cur) && noteEmpty(cur) && !n.hotkey && !n.pinned) { freshIds.delete(cur); dropNote(cur); selId = freshPrevSel; return; }
   histCommit();                    // normalizes text nodes so the caret path matches the saved html
   flushNote();
-  memo.set(cur, { sel: selSave() || lastSel, top: scroller.scrollTop });
+  memo.set(cur, keepAt());
+}
+// Where to come back to: the caret only (a restored selection would be replaced by the first key typed),
+// also kept in the note's meta so it survives standby, Ctrl+Q and restarts.
+function keepAt() {
+  const s = selSave() || lastSel, n = noteById(cur);
+  const at = { sel: s && { a: s.b, ao: s.bo, b: s.b, bo: s.bo }, top: Math.round(scroller.scrollTop) };
+  if (n && JSON.stringify(n.at) !== JSON.stringify(at)) { n.at = at; saveStateSoon(); }
+  return at;
 }
 function showBoard() {
   if (cur) leaveNote();
@@ -1312,7 +1438,8 @@ function showBoard() {
   $('#tbMid').textContent = '';
   renderBoard();
   host.send('active', '');
-  grid.focus({ preventScroll: true });
+  boardSearch.focus({ preventScroll: true });
+  if (boardSearch.value) { boardSearch.select(); qAuto = true; }   // back from a search: typing starts a new one
   const c = grid.querySelector('.card.sel');
   if (c) c.scrollIntoView({ block: 'nearest' });
 }
@@ -1327,7 +1454,7 @@ function cycle(d) {
 function refocus() {
   if (modalOpen()) return;
   if (view === 'editor') { if (document.activeElement !== titleIn) { editor.focus({ preventScroll: true }); if (lastSel) selRestore(lastSel); } }
-  else if (document.activeElement !== boardSearch) grid.focus({ preventScroll: true });
+  else if (!isTyping(document.activeElement)) boardSearch.focus({ preventScroll: true });   // (a card being renamed keeps it)
 }
 
 // ---------------------------------------------------------------- editor chrome
@@ -1337,7 +1464,7 @@ let sbSig = '';
 const staleRows = new Set();                      // notes edited since their sidebar row was drawn
 function sbItemHTML(n) {
   return `<div class="sb-item${n.id === cur ? ' on' : ''}${sbMulti.has(n.id) ? ' msel' : ''}" data-id="${n.id}" style="--c:${NOTE_COLORS[n.color]}"><div class="sb-row"><div class="t${titleOf(n) ? '' : ' ph'}">${esc(titleOf(n) || '제목 없음')}</div>` +
-    `${n.hotkey ? `<span class="sb-hk">${esc(n.hotkey.label)}</span>` : ''}</div><div class="p">${esc(previewAfterTitle(n).slice(0, 20)) || '&nbsp;'}</div></div>`;
+    `${n.hotkey ? `<span class="sb-hk">${esc(n.hotkey.label)}</span>` : ''}</div><div class="p">${esc(previewAfterTitle(n).slice(0, 80)) || '&nbsp;'}</div></div>`;
 }
 // like the board: full build only when the list itself changed, otherwise just the open note's row
 function renderSidebar(force) {
@@ -1421,7 +1548,7 @@ function renderHead() {
 titleIn.addEventListener('input', () => {
   const n = noteById(cur);
   if (!n) return;
-  n.title = titleIn.value; n.updated = now(); staleCards.add(n.id); staleRows.add(n.id);
+  n.title = titleIn.value; n.updated = now(); staleCards.add(n.id); staleRows.add(n.id); freshIds.delete(n.id);
   $('#tbMid').textContent = titleOf(n);
   saveStateSoon(); renderSidebarSoon();
 });
@@ -3759,10 +3886,12 @@ function openSwitcher() {
     idx = clamp(idx, 0, Math.max(0, items.length - 1));
     list.innerHTML = items.map((x, i) => `<div class="qs-item${i === idx ? ' on' : ''}" data-i="${i}"><span class="c-dot" style="--c:${NOTE_COLORS[x.n.color]}"></span><div class="qs-txt"><b>${mark(titleOf(x.n) || '제목 없음', q)}</b><small>${snippet(x.t, q)}</small></div>${x.n.hotkey ? `<span class="chip">${esc(x.n.hotkey.label)}</span>` : ''}</div>`).join('') ||
       '<div class="qs-empty">일치하는 메모가 없어요</div>';
+    if (!items.length && q) list.innerHTML = `<div class="qs-item qs-new on" data-i="0">${ic('i-plus')}<div class="qs-txt"><b>새 메모 만들기</b><small>‘${esc(inp.value.trim())}’ 제목으로</small></div></div>`;
     const on = list.querySelector('.on');
     if (on) on.scrollIntoView({ block: 'nearest' });
   };
   const go = i => {
+    if (!items.length) { const t = inp.value.trim(); if (t) { closeModal(); newNoteTitled(t); } return; }   // nothing found: make it
     const x = items[i];
     if (!x) return;
     const q = inp.value.trim();
@@ -4318,7 +4447,7 @@ document.addEventListener('keydown', e => {
     switch (code) {
       case 'KeyA': if (view === 'board' && !isTyping(e.target) && !e.shiftKey) selectAllCards(); else hit = false; break;
       case 'KeyZ': if (view === 'board' && !e.shiftKey && boardUndo && !(isTyping(e.target) && e.target.value)) boardUndo(); else hit = false; break;
-      case 'KeyC': if (!e.shiftKey && view === 'board' && !isTyping(e.target) && selId) copyNote(selId); else hit = false; break;
+      case 'KeyC': if (!e.shiftKey && view === 'board' && !isTyping(e.target) && selId) copySel(); else hit = false; break;
       case 'NumpadAdd': zoom(1); break;
       case 'NumpadSubtract': zoom(-1); break;
       case 'Numpad0': zoom(0); break;
@@ -4330,7 +4459,7 @@ document.addEventListener('keydown', e => {
   }
   if (e.key === 'Escape') {
     if (view === 'editor') { e.preventDefault(); if (findOpen) findClose(); else showBoard(); }
-    else if (!isTyping(e.target) && clearMulti()) e.preventDefault();   // board: drop a multi-selection
+    else if (!isTyping(e.target)) { if (clearMulti()) e.preventDefault(); else if (query) { e.preventDefault(); clearSearch(); } }   // board: one Esc at a time back to all cards
     return;
   }
   if (view === 'board' && !isTyping(e.target) && !mod && !e.altKey) boardKey(e);
@@ -4349,7 +4478,7 @@ if (HOST) window.chrome.webview.addEventListener('message', e => {
     case 'hidden': flushAll(); closePop(); if (paletteOn && palMode !== 'pop') closeModal(); break;
     case 'winState': app.classList.toggle('maxed', arg === '1'); break;
     case 'hotkeyStatus': onHotkeyStatus(arg); break;
-    case 'flush': flushAll(); host.send('flushed'); break;
+    case 'flush': if (freshIds.has(cur)) leaveNote(); flushAll(); host.send('flushed'); break;   // quit / standby: an untouched new note goes too
     case 'toast': toast(arg); break;
     case 'trash': onTrash(arg); break;
     case 'trashRestored': onTrashRestored(arg); break;
@@ -4391,7 +4520,7 @@ rebuildKeys(); updateKeyHints();
 app.classList.toggle('sb-off', !st.sidebar);
 $('#btnTop').classList.toggle('on', !!st.onTop);
 renderBoard();
-grid.focus({ preventScroll: true });
+boardSearch.focus({ preventScroll: true });
 host.send('ready');
 warmSearch();
 host.send('closeToTray', st.closeToTray ? '1' : '0');
