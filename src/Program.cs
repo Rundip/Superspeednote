@@ -1337,7 +1337,10 @@ namespace SuperSpeedNote
                         break;
                     }
                 case "openData": Process.Start("explorer.exe", "\"" + Program.DataDir + "\""); break;
-                case "backup": DataBackup.Run("manual-" + DateTime.Now.ToString("yyyyMMdd-HHmmss")); Post("toast", "백업 완료 · backups 폴더"); break;
+                case "backup":                                   // the page hears back how it went (it used to always say "done")
+                    saver.Flush(2000);
+                    Task.Run(() => DataBackup.Manual()).ContinueWith(t => { try { BeginInvoke(new Action(() => Post("backupDone", t.Result))); } catch { } });
+                    break;
                 case "flushed": AfterFlush(quitSeq); break;
             }
         }
@@ -1674,29 +1677,54 @@ namespace SuperSpeedNote
     {
         public static void Run(string label)
         {
+            int failed;
+            try { Copy(label, false, out failed); }
+            catch (Exception ex) { Program.Log(ex); }
+        }
+
+        // "지금 백업": everything including pictures; returns the folder, or "!" + why it failed
+        public static string Manual()
+        {
             try
             {
-                string data = Program.DataDir;
-                string state = Path.Combine(data, "state.json");
-                if (!File.Exists(state)) return;
-                string root = Path.Combine(data, "backups");
-                string dir = Path.Combine(root, label ?? DateTime.Now.ToString("yyyy-MM-dd"));
-                if (Directory.Exists(dir))
-                {
-                    if (label == null) return;
-                    dir += "_" + DateTime.Now.ToString("HHmmss");
-                }
-                Directory.CreateDirectory(Path.Combine(dir, "notes"));
-                File.Copy(state, Path.Combine(dir, "state.json"), true);
-                string notes = Path.Combine(data, "notes");
-                if (Directory.Exists(notes))
-                    foreach (string f in Directory.GetFiles(notes, "*.html"))
-                        try { File.Copy(f, Path.Combine(dir, "notes", Path.GetFileName(f)), true); } catch { }
-                string[] daily = Directory.GetDirectories(root).Where(d => Regex.IsMatch(Path.GetFileName(d), @"^\d{4}-\d{2}-\d{2}$")).ToArray();
-                Array.Sort(daily, StringComparer.Ordinal);
-                for (int i = 0; i < daily.Length - 14; i++) { try { Directory.Delete(daily[i], true); } catch { } }
+                int failed;
+                string dir = Copy("manual-" + DateTime.Now.ToString("yyyyMMdd-HHmmss"), true, out failed);
+                if (dir == null) return "!아직 저장된 메모가 없어요";
+                return failed > 0 ? "!파일 " + failed + "개를 복사하지 못했어요 · " + dir : dir;
             }
-            catch (Exception ex) { Program.Log(ex); }
+            catch (Exception ex) { Program.Log(ex); return "!" + ex.Message; }
+        }
+
+        static string Copy(string label, bool images, out int failed)
+        {
+            failed = 0;
+            string data = Program.DataDir;
+            string state = Path.Combine(data, "state.json");
+            if (!File.Exists(state)) return null;
+            string root = Path.Combine(data, "backups");
+            string dir = Path.Combine(root, label ?? DateTime.Now.ToString("yyyy-MM-dd"));
+            if (Directory.Exists(dir))
+            {
+                if (label == null) return null;
+                dir += "_" + DateTime.Now.ToString("HHmmss");
+            }
+            Directory.CreateDirectory(Path.Combine(dir, "notes"));
+            File.Copy(state, Path.Combine(dir, "state.json"), true);
+            string notes = Path.Combine(data, "notes");
+            if (Directory.Exists(notes))
+                foreach (string f in Directory.GetFiles(notes, "*.html"))
+                    try { File.Copy(f, Path.Combine(dir, "notes", Path.GetFileName(f)), true); } catch { failed++; }
+            string imgs = Path.Combine(data, "images");
+            if (images && Directory.Exists(imgs))
+            {
+                Directory.CreateDirectory(Path.Combine(dir, "images"));
+                foreach (string f in Directory.GetFiles(imgs))
+                    try { File.Copy(f, Path.Combine(dir, "images", Path.GetFileName(f)), true); } catch { failed++; }
+            }
+            string[] daily = Directory.GetDirectories(root).Where(d => Regex.IsMatch(Path.GetFileName(d), @"^\d{4}-\d{2}-\d{2}$")).ToArray();
+            Array.Sort(daily, StringComparer.Ordinal);
+            for (int i = 0; i < daily.Length - 14; i++) { try { Directory.Delete(daily[i], true); } catch { } }
+            return dir;
         }
     }
 
