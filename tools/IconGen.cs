@@ -15,6 +15,7 @@ static class IconGen
     static readonly Color NavyDeep = Color.FromArgb(0x07, 0x14, 0x36);
     static readonly Color Navy = Color.FromArgb(0x10, 0x2A, 0x6B);
     static readonly Color Blue = Color.FromArgb(0x3D, 0x6B, 0xD8);
+    static readonly Color Sky = Color.FromArgb(0x8F, 0xAE, 0xEC);
     static readonly Color Mist = Color.FromArgb(0xDD, 0xE7, 0xFA);
     static readonly Color White = Color.FromArgb(0xFF, 0xFF, 0xFF);
     static readonly Color Ink = Color.FromArgb(0x0B, 0x1D, 0x4A);
@@ -147,13 +148,13 @@ static class IconGen
 
             using (GraphicsPath tilePath = RoundRect(tile, radius))
             {
-                // navy -> white gradient drawn out over the whole tile (a long, soft fade rather than a band
-                // in the middle); small sizes keep it a little tighter around the split "S" so both halves still read
+                // navy -> white gradient stretched to the very bottom edge: blue keeps fading through sky and mist,
+                // and only the last strip turns white (no flat white band under "SPEED")
                 using (var br = new LinearGradientBrush(new PointF(0, tile.Top - 1), new PointF(0, tile.Bottom + 1), NavyDeep, White))
                 {
                     var cb = new ColorBlend();
-                    cb.Colors = new[] { NavyDeep, Navy, Blue, Mist, White };
-                    cb.Positions = small ? new[] { 0f, 0.24f, 0.5f, 0.74f, 1f } : new[] { 0f, 0.18f, 0.48f, 0.8f, 1f };
+                    cb.Colors = new[] { NavyDeep, Navy, Blue, Sky, Mist, White };
+                    cb.Positions = small ? new[] { 0f, 0.2f, 0.4f, 0.6f, 0.82f, 1f } : new[] { 0f, 0.24f, 0.5f, 0.74f, 0.94f, 1f };
                     br.InterpolationColors = cb;
                     g.FillPath(br, tilePath);
                 }

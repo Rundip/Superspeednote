@@ -316,6 +316,8 @@ body.sb-off #sidebar{display:none}
 .tbar.r{top:0;bottom:0;right:-22px;width:16px;cursor:col-resize}
 .tghost{position:absolute;display:none;pointer-events:none;border:1.5px dashed var(--accent);border-radius:4px;box-shadow:0 8px 20px -10px rgba(10,22,50,.35)}
 .tghost.none{border-color:var(--ink-3);background:var(--paper)!important}
+.tghost.del{border-color:var(--danger);background:color-mix(in srgb,var(--danger) 13%,transparent)!important;box-shadow:none}
+.tghost.del span{background:var(--danger)}
 .tghost span{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);padding:2px 9px;border-radius:999px;background:var(--accent);color:#fff;font:700 11.5px "Segoe UI",var(--ui);white-space:nowrap}
 .tins{position:absolute;left:-9px;top:-9px;pointer-events:auto;width:18px;height:18px;border-radius:50%;background:var(--accent);color:#fff;display:none;place-items:center;box-shadow:0 2px 6px rgba(30,70,180,.3);transition:scale .1s}
 .tins.show{display:grid}
@@ -334,9 +336,6 @@ body.sb-off #sidebar{display:none}
 #cellbox.edit{background:none;box-shadow:0 0 0 4px var(--accent-soft)}      /* editing: a halo, no tint - typing adds */
 #stHint.tbl{color:var(--accent-ink);font-weight:600}
 #cellbox.copied,#objbox.copied{border-style:dashed}
-.tflash{position:absolute;pointer-events:none;display:none;border-radius:3px;background:var(--accent-soft)}
-.tflash.go{display:block;animation:tflash .7s ease-out forwards}
-@keyframes tflash{from{opacity:1}to{opacity:0}}
 #tblOv.cold .tbar{opacity:.18}
 #tblOv.cold .tgrip{opacity:0;pointer-events:none}
 .tbar,.tgrip{transition:opacity .15s,background .12s,border-color .12s}
@@ -734,12 +733,12 @@ body.maxed:not(.quick) .rz,body.web .rz{display:none}
         <div id="sheet">
           <div id="editor" contenteditable="true" spellcheck="false" data-ph="여기에 바로 입력하세요.&#10;줄 맨 앞에서 # 제목 · - 목록 · [] 체크 · ``` 코드 · 엑셀 셀을 붙여넣으면 표가 돼요"></div>
           <div id="tblOv">
-            <div id="cellbox"></div><i class="tflash"></i>
+            <div id="cellbox"></div>
             <i class="tinsln"></i>
             <button class="tins"><svg class="i"><use href="#i-plus"/></svg></button>
             <div class="tghost"><span></span></div>
-            <button class="tbar b" data-dir="row" title="클릭: 맨 아래에 행 추가 · 아래로 끌면 여러 행"><svg class="i"><use href="#i-plus"/></svg></button>
-            <button class="tbar r" data-dir="col" title="클릭: 맨 오른쪽에 열 추가 · 오른쪽으로 끌면 여러 열"><svg class="i"><use href="#i-plus"/></svg></button>
+            <button class="tbar b" data-dir="row" title="클릭: 맨 아래에 행 추가 · 아래로 끌면 여러 행 · 위(표 쪽)로 끌면 끝의 빈 행 지우기"><svg class="i"><use href="#i-plus"/></svg></button>
+            <button class="tbar r" data-dir="col" title="클릭: 맨 오른쪽에 열 추가 · 오른쪽으로 끌면 여러 열 · 왼쪽(표 쪽)으로 끌면 끝의 빈 열 지우기"><svg class="i"><use href="#i-plus"/></svg></button>
             <button class="tgrip" title="표 선택 · Ctrl+C 복사 · Delete 삭제"><svg class="i"><use href="#i-table"/></svg></button>
           </div>
           <div id="objbox"></div>
@@ -2947,15 +2946,6 @@ function caretTable() {
   else if (ovTable) { posOv(); if (!ovHover) hideOvSoon(); }
 }
 // the row / column border nearest to y / x (binary search: big tables stay cheap)
-const tflash = $('.tflash', ov);
-function flashLine(t, row, i) {                   // a soft glow over a row / column just added
-  const tr = t.getBoundingClientRect();
-  let r;
-  if (row) { const x = t.rows[i]; if (!x) return; r = x.getBoundingClientRect(); r = { left: tr.left, top: r.top, width: tr.width, height: r.height }; }
-  else { const a = t.rows[0].cells[i], b = t.rows[t.rows.length - 1].cells[i]; if (!a || !b) return; const ra = a.getBoundingClientRect(), rb = b.getBoundingClientRect(); r = { left: ra.left, top: ra.top, width: ra.width, height: rb.bottom - ra.top }; }
-  Object.assign(tflash.style, { left: (r.left - tr.left) + 'px', top: (r.top - tr.top) + 'px', width: r.width + 'px', height: r.height + 'px' });
-  tflash.classList.remove('go'); void tflash.offsetWidth; tflash.classList.add('go');
-}
 function rowBorder(t, y) {
   const rows = t.rows;
   let lo = 0, hi = rows.length - 1;
@@ -3060,24 +3050,51 @@ tins.addEventListener('click', () => {
   clearObj();
   edit(() => { if (at.row) addRow(t, at.i); else addCol(t, at.i); });
   if (at.row) setNav(t, at.i, c); else setNav(t, r >= t.rows.length ? 0 : r, at.i);
-  posOv(); flashLine(t, at.row, at.i);
+  posOv();
 });
 tgrip.addEventListener('click', () => { if (ovTable) selectObj(ovTable); });
-// add bars: a click adds one row / column, dragging adds as many as the dashed preview shows
+// add bars: a click adds one row / column, dragging out adds as many as the dashed preview shows, dragging back
+// into the table takes off the empty rows / columns at the end - it stops before one with anything in it
 function lastColWidth(t) {
   let w = 0;
   for (const tr of t.rows) { const c = tr.cells[tr.cells.length - 1]; if (c) { w = c.getBoundingClientRect().width; break; } }
   return w;
 }
+function colRect(t, j) { for (const tr of t.rows) if (tr.cells[j]) return tr.cells[j].getBoundingClientRect(); return null; }
+const cellBlank = td => !td.textContent.replace(/[\s\u200b]/g, '') && !td.querySelector('img,hr,table');
+function emptyTail(t, row) {                      // empty rows / columns at the end (one always stays)
+  let k = 0;
+  if (row) { for (let i = t.rows.length - 1; i > 0 && Array.from(t.rows[i].cells).every(cellBlank); i--) k++; }
+  else { for (let j = tableCols(t) - 1; j > 0 && Array.from(t.rows).every(tr => !tr.cells[j] || cellBlank(tr.cells[j])); j--) k++; }
+  return k;
+}
+function tailUnder(d, x, y) {                     // the empty ones at the end whose middle the pointer has passed
+  const t = d.t, c = tableCols(t);
+  let k = 0;
+  for (; k < d.max; k++) {
+    const r = d.row ? t.rows[t.rows.length - 1 - k].getBoundingClientRect() : colRect(t, c - 1 - k);
+    if (!r || (d.row ? y > (r.top + r.bottom) / 2 : x > (r.left + r.right) / 2)) break;
+  }
+  return k;
+}
 function showGhost() {
   const d = barDrag;
   if (!d) { tghost.style.display = 'none'; return; }
+  const what = d.row ? '행' : '열';
+  tghost.classList.toggle('none', !d.n);
+  tghost.classList.toggle('del', d.n < 0);
+  if (d.n < 0) {                                   // the rows / columns that go, tinted where they are
+    const t = d.t, tr = t.getBoundingClientRect();
+    if (d.row) Object.assign(tghost.style, { display: 'block', left: '0', right: '0', top: (t.rows[t.rows.length + d.n].getBoundingClientRect().top - tr.top) + 'px', bottom: '0', width: '', height: '', background: '' });
+    else Object.assign(tghost.style, { display: 'block', top: '0', bottom: '0', left: (colRect(t, tableCols(t) + d.n).left - tr.left) + 'px', right: '0', width: '', height: '', background: '' });
+    tghost.firstChild.textContent = `빈 ${what} ${-d.n}개 지우기`;
+    return;
+  }
   const len = Math.max(d.n, .8) * d.step, line = 'color-mix(in srgb,var(--accent) 35%,transparent)', fill = 'linear-gradient(var(--accent-soft),var(--accent-soft)) var(--paper)';
   Object.assign(tghost.style, d.row
     ? { display: 'block', left: '0', right: '0', top: 'calc(100% + 2px)', bottom: '', width: '', height: len + 'px', background: `repeating-linear-gradient(180deg,transparent 0 ${d.step - 1}px,${line} ${d.step - 1}px ${d.step}px),${fill}` }
     : { display: 'block', top: '0', bottom: '0', left: 'calc(100% + 2px)', right: '', height: '', width: len + 'px', background: `repeating-linear-gradient(90deg,transparent 0 ${d.step - 1}px,${line} ${d.step - 1}px ${d.step}px),${fill}` });
-  tghost.classList.toggle('none', !d.n);
-  tghost.firstChild.textContent = d.n ? `+${d.n}${d.row ? '행' : '열'}` : '놓으면 취소';
+  tghost.firstChild.textContent = d.n ? `+${d.n}${what}` : d.into && !d.max ? `지울 빈 ${what}이 없어요` : '놓으면 취소';
 }
 function finishBar(commit) {
   const d = barDrag;
@@ -3089,9 +3106,26 @@ function finishBar(commit) {
   if (!commit || !d.n || !t.isConnected || view !== 'editor' || !editor.contains(t)) { posOvSoon(); return; }
   const r = nav && nav.t === t ? nav.fr : 0, c = nav && nav.t === t ? nav.fc : 0;
   clearObj();
-  if (d.row) { const r0 = t.rows.length; edit(() => { for (let k = 0; k < d.n; k++) addRow(t, t.rows.length); }); setNav(t, r0, c); posOv(); flashLine(t, true, r0); }
-  else { const c0 = tableCols(t); edit(() => { for (let k = 0; k < d.n; k++) addCol(t, tableCols(t)); }); setNav(t, r, c0); posOv(); flashLine(t, false, c0); }
+  if (d.n < 0) { dropTail(t, d.row, -d.n); return; }
+  if (d.row) { const r0 = t.rows.length; edit(() => { for (let k = 0; k < d.n; k++) addRow(t, t.rows.length); }); setNav(t, r0, c); posOv(); }
+  else { const c0 = tableCols(t); edit(() => { for (let k = 0; k < d.n; k++) addCol(t, tableCols(t)); }); setNav(t, r, c0); posOv(); }
   if (d.n > 1) toast(`${d.row ? '행' : '열'} ${d.n}개를 추가했어요`, '되돌리기', undo);
+}
+function dropTail(t, row, k) {
+  k = Math.min(k, emptyTail(t, row));             // checked again: only ever empty ones
+  if (!k) { posOvSoon(); return; }
+  const inNav = !!nav && nav.t === t, fr = inNav ? nav.fr : 0, fc = inNav ? nav.fc : 0;
+  const held = closestSel('td'), heldIn = !!held && t.contains(held);
+  const hr = heldIn ? held.parentElement.rowIndex : 0, hc = heldIn ? held.cellIndex : 0;
+  edit(() => {
+    if (row) for (let i = 0; i < k; i++) t.deleteRow(t.rows.length - 1);
+    else { const c = tableCols(t); for (const tr of Array.from(t.rows)) for (let j = Math.min(tr.cells.length, c) - 1; j >= c - k; j--) tr.deleteCell(j); }
+  });
+  // a selected cell / the caret that was in a removed row / column moves to the nearest one left
+  if (inNav) setNav(t, fr, fc);
+  else if (heldIn && !held.isConnected) placeCaret(cellAt(t, Math.min(hr, t.rows.length - 1), Math.min(hc, tableCols(t) - 1)), true);
+  posOv();
+  if (k > 1) toast(`빈 ${row ? '행' : '열'} ${k}개를 지웠어요`, '되돌리기', undo);
 }
 document.addEventListener('keydown', e => { if (barDrag && e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); finishBar(false); } }, true);
 for (const b of $$('.tbar', ov)) {
@@ -3100,7 +3134,7 @@ for (const b of $$('.tbar', ov)) {
     e.preventDefault();
     const t = ovTable, row = b.dataset.dir === 'row';
     const step = Math.round(clamp(row ? t.rows[t.rows.length - 1].getBoundingClientRect().height : lastColWidth(t), 24, 400));
-    barDrag = { t, row, step, b, x: e.clientX, y: e.clientY, n: 1 };
+    barDrag = { t, row, step, b, x: e.clientX, y: e.clientY, n: 1, max: emptyTail(t, row), into: false };
     insAt = null; placeIns();
     b.setPointerCapture(e.pointerId);
     b.classList.add('drag');
@@ -3109,9 +3143,15 @@ for (const b of $$('.tbar', ov)) {
   b.addEventListener('pointermove', e => {
     const d = barDrag;
     if (!d || d.b !== b) return;
-    const dist = d.row ? e.clientY - d.y : e.clientX - d.x;   // back above where you pressed: nothing (cancel)
-    const n = dist < -d.step / 3 ? 0 : clamp(Math.round(dist / d.step), 1, d.row ? 200 : 50);
-    if (n !== d.n) { d.n = n; showGhost(); }
+    const dist = d.row ? e.clientY - d.y : e.clientX - d.x;
+    let n, into = false;
+    if (dist >= -d.step / 3) n = clamp(Math.round(dist / d.step), 1, d.row ? 200 : 50);   // away from the table: add
+    else {                                         // back toward it: empty ones at the end go, or nothing (cancel)
+      const k = tailUnder(d, e.clientX, e.clientY);
+      n = k ? -k : 0;
+      if (!d.max) { const t = d.t, r = d.row ? t.rows[t.rows.length - 1].getBoundingClientRect() : colRect(t, tableCols(t) - 1); into = !!r && (d.row ? e.clientY < (r.top + r.bottom) / 2 : e.clientX < (r.left + r.right) / 2); }
+    }
+    if (n !== d.n || into !== d.into) { d.n = n; d.into = into; showGhost(); }
   });
   b.addEventListener('pointerup', () => { if (barDrag && barDrag.b === b) finishBar(true); });
   b.addEventListener('pointercancel', () => finishBar(false));
@@ -4991,7 +5031,7 @@ function showHelp() {
     ${g('한 줄 찾아 붙여넣기 검색창', [['원래 창에 바로 붙여넣기', 'Enter / 클릭'], ['N번째 결과 바로 붙여넣기', 'Alt+1~9'], ['칸 · 단어만 골라 붙여넣기', 'Tab / Shift+Tab'], ['복사만 하고 돌아가기', 'Shift+Enter'], ['그 메모 열기', 'Ctrl+Enter'], ['그냥 돌아가기', 'Esc'], ['초성으로 찾기', 'ㄱㅊㅅ → 김철수']])}
     ${g('메모 보드', [['선택 이동', '← ↑ → ↓'], ['열기', 'Enter / 더블클릭'], ['이름 바꾸기', 'F2'], ['삭제 (되돌리기 · 휴지통에서 복원)', 'Del'], ['여러 개 선택', 'Shift+클릭·방향키 / Ctrl+클릭 / Ctrl+A'], ['새 메모', k('newNote')], ['N번째 메모 열기', 'Ctrl+1~9'], ['빠른 이동', k('switcher')], ['검색', k('find')]])}
     ${g('편집', [['굵게 / 밑줄 / 기울임', join('bold', 'underline', 'italic')], ['취소선', k('strike')], ['글자색', k('fgColor')], ['형광펜', k('hl')], ['서식 지우기', k('clearFmt')], ['글머리 / 번호 목록', join('ul', 'ol')], ['체크리스트', k('chk')], ['체크 표시 / 해제', 'Ctrl+Enter'], ['제목 1 / 2 / 3', join('h1', 'h2', 'h3')], ['구분선', k('hr')], ['날짜·시간', k('stamp')], ['서식 없이 붙여넣기', 'Ctrl+Shift+V'], ['찾기', k('find')], ['확대 / 축소', ['Ctrl+휠', join('zoomIn', 'zoomOut')].filter(Boolean).join(', ')], ['보드로', 'Esc'], ['다음 / 이전 메모', join('nextNote', 'prevNote')], ['실행 취소 / 다시', 'Ctrl+Z / Ctrl+Y'], [ACT.get('quit').n, k('quit')]])}
-    ${g('표 (엑셀처럼)', [['칸 선택·이동', '클릭 / 방향키'], ['범위 선택', 'Shift+방향키 / 드래그'], ['선택한 칸에 바로 입력', '기존 값을 새로 씀'], ['칸 편집 (끝에 커서)', 'F2 / 더블클릭'], ['편집 취소', 'Esc'], ['칸 지우기', 'Delete'], ['아래 칸 / 마지막 행이면 행 추가', 'Enter'], ['칸 안 줄바꿈', 'Shift+Enter / Alt+Enter'], ['다음 / 이전 칸 (마지막 열이면 열 추가)', 'Tab / Shift+Tab'], ['모든 칸 선택 (한 번 더: 메모 전체)', 'Ctrl+A'], ['표 넣기 / 빠져나가기', [k('table'), 'Ctrl+Enter'].filter(Boolean).join(' / ')], ['위 / 아래에 행 삽입', join('rowAbove', 'rowBelow')], ['왼쪽 / 오른쪽에 열 삽입', join('colBefore', 'colAfter')], ['행 / 열 삭제', join('delRow', 'delCol')], ['중간에 행·열 넣기', '표 왼쪽·위쪽 여백의 +'], ['끝에 행·열 추가 (끌면 여러 개)', '표 아래·오른쪽 막대'], ['엑셀 붙여넣기 · 범위 복사', 'Ctrl+V / Ctrl+C']])}
+    ${g('표 (엑셀처럼)', [['칸 선택·이동', '클릭 / 방향키'], ['범위 선택', 'Shift+방향키 / 드래그'], ['선택한 칸에 바로 입력', '기존 값을 새로 씀'], ['칸 편집 (끝에 커서)', 'F2 / 더블클릭'], ['편집 취소', 'Esc'], ['칸 지우기', 'Delete'], ['아래 칸 / 마지막 행이면 행 추가', 'Enter'], ['칸 안 줄바꿈', 'Shift+Enter / Alt+Enter'], ['다음 / 이전 칸 (마지막 열이면 열 추가)', 'Tab / Shift+Tab'], ['모든 칸 선택 (한 번 더: 메모 전체)', 'Ctrl+A'], ['표 넣기 / 빠져나가기', [k('table'), 'Ctrl+Enter'].filter(Boolean).join(' / ')], ['위 / 아래에 행 삽입', join('rowAbove', 'rowBelow')], ['왼쪽 / 오른쪽에 열 삽입', join('colBefore', 'colAfter')], ['행 / 열 삭제', join('delRow', 'delCol')], ['중간에 행·열 넣기', '표 왼쪽·위쪽 여백의 +'], ['끝에 행·열 추가 (끌면 여러 개)', '표 아래·오른쪽 막대'], ['끝의 빈 행·열 지우기', '그 막대를 표 쪽으로 끌기'], ['엑셀 붙여넣기 · 범위 복사', 'Ctrl+V / Ctrl+C']])}
     ${g('개체 (그림 · 구분선 · 표)', [['선택', '클릭 (표는 왼쪽 위 손잡이)'], ['삭제', 'Delete / Backspace'], ['선택 풀기', 'Esc / 다른 곳 클릭']])}
     ${g('꺼내 쓰기', [['한 줄 찾아 붙여넣기 (앱 안)', k('palette')], ['복사 → 원래 창에 바로 붙여넣기', k('sendPaste')], ['복사 → 원래 창으로', k('sendCopy')], ['보낼 내용', '선택 > 칸 > 현재 줄 (보드: 메모 전체)'], ['메모 전체 복사 (보드)', 'Ctrl+C / 카드 복사 버튼'], ['검색한 곳으로 바로 이동', (k('switcher') || '빠른 이동') + ' → Enter']])}
     ${g('빠른 서식 (줄 맨 앞에서 입력 후 Space)', [['제목 1 / 2 / 3', '# / ## / ###'], ['글머리 목록', '-'], ['번호 목록', '1.'], ['체크리스트', '[]'], ['인용', '>'], ['코드', '```'], ['구분선', '--- 후 Enter']])}
