@@ -1545,7 +1545,7 @@ function openNote(id, o = {}) {
   if (!n) return;
   closePop();
   if (!o.browse) app.classList.remove('sb-peek');   // (walking the list in a narrow window keeps its drawer open)
-  boardUndo = null;
+  if (!o.browse) boardUndo = null;                // looking at notes in the list keeps Ctrl+Z for the note just deleted
   const same = cur === id && view === 'editor';
   if (!same) {
     if (cur) leaveNote();
@@ -1935,7 +1935,16 @@ function histCommit() {
   for (const e of hs.st) size += e.h.length;
   while (hs.st.length > 2 && (hs.st.length > 200 || size > 30e6)) { size -= hs.st.shift().h.length; hs.i--; }
 }
+// Ctrl+Z / Ctrl+Y in the middle of a Korean syllable: the IME is told to finish it first (blur / focus), so the
+// syllable is recorded with the words before it and undone with them - not skipped (the step before undone instead)
+// and not typed in again after the undo
+function finishIme() {
+  if (!composing) return;
+  editor.blur(); editor.focus({ preventScroll: true });
+  composing = false;
+}
 function undo() {
+  finishIme();
   histCommit();
   const hs = H.get(cur);
   if (!hs || hs.i <= 0) return;
@@ -1944,6 +1953,7 @@ function undo() {
   applySnap(e.h, e.u || e.s);
 }
 function redo() {
+  finishIme();
   histCommit();
   const hs = H.get(cur);
   if (!hs || hs.i >= hs.st.length - 1) return;
@@ -1960,6 +1970,18 @@ function applySnap(h, sel) {
   if (sel) selRestore(sel); else placeCaret(editor.lastChild, true);
   markDirty(); statsSoon(); posOvSoon(); updateToolbar();
   if (findOpen) findSoon();
+}
+// A toast's 되돌리기 undoes the step it is about - only while nothing else was done since (in this note).
+// Ctrl+Z would take back whatever came last; the button refuses instead of undoing something else.
+// pending: the step is still being typed (a cell started over), so it is the next one recorded.
+function undoThis(pending) {
+  const id = cur, h0 = H.get(cur), at = h0 ? h0.i + (pending ? 1 : 0) : -1;
+  return () => {
+    if (id === cur && view === 'editor') histCommit();
+    const hs = H.get(id);
+    if (id !== cur || view !== 'editor' || !hs || hs.i !== at) { toast('그 뒤에 다른 편집이 있어서 되돌리지 않았어요 · 메모에서 Ctrl+Z로 하나씩 되돌릴 수 있어요'); return; }
+    undo();
+  };
 }
 // run a structural/formatting change as exactly one undo step
 function edit(fn) {
@@ -2679,9 +2701,9 @@ function tableOp(op, t, cell) {
     }
     if (target) placeCaret(target, false);
   });
-  if (gone || !t.isConnected) toast('표를 삭제했어요', '되돌리기', undo);
+  if (gone || !t.isConnected) toast('표를 삭제했어요', '되돌리기', undoThis());
   else if (inRc && (op === 'delRow' || op === 'delCol') && (op === 'delRow' ? rc.r1 > rc.r0 : rc.c1 > rc.c0))
-    toast(`${op === 'delRow' ? '행' : '열'} ${op === 'delRow' ? rc.r1 - rc.r0 + 1 : rc.c1 - rc.c0 + 1}개를 삭제했어요`, '되돌리기', undo);
+    toast(`${op === 'delRow' ? '행' : '열'} ${op === 'delRow' ? rc.r1 - rc.r0 + 1 : rc.c1 - rc.c0 + 1}개를 삭제했어요`, '되돌리기', undoThis());
 }
 // table shortcuts (Settings > 단축키): the cell being edited / selected, else the one holding the caret
 function tblAct(op) {
@@ -2695,6 +2717,8 @@ function tblAct(op) {
 // F2 / double-click edit it with the caret at the end, Esc while editing restores the old value.
 let nav = null;                                   // { t, ar, ac, fr, fc }  anchor / focus row + column
 let editCell = null, editKind = '', editOrig = '';
+let editMark = null;                              // { id, i }: the undo step a cell edit began after (Esc drops what it added)
+function markEdit() { const hs = H.get(cur); editMark = hs ? { id: cur, i: hs.i } : null; }
 let tabFrom = -1;                                 // column a run of Tabs started in: Enter goes back to it, like Excel
 // the status bar says what a key will do in a table (written only when the mode changes)
 let hintMode = '', defaultHint = '', tipAfterIme = false;
@@ -2748,11 +2772,21 @@ function setNav(t, r, c, extend) {
   if (td) { parkNav(td); td.scrollIntoView({ block: 'nearest', inline: 'nearest' }); }
   showOv(t); posOv(); updateToolbar(); tblHint('nav');
 }
+// Esc on a cell edit: the steps recorded while typing in it are dropped too, so the next Ctrl+Z takes back what was
+// done before the edit - not the cancelled text (it used to come back)
+function dropEditSteps() {
+  const hs = H.get(cur), m = editMark;
+  editMark = null;
+  clearTimeout(histT); histT = 0; burstSel = null;
+  if (hs && m && m.id === cur && hs.i > m.i && m.i >= 0) { hs.st.length = m.i + 1; hs.i = m.i; }
+  histCommit();                                   // a change made before the edit and not yet recorded: its own step
+}
 function startEdit(kind, td, keepCaret) {
   td = td || (nav && cellAt(nav.t, nav.fr, nav.fc));
   if (!td) return;
   const r = td.parentElement.rowIndex, c = td.cellIndex;
   nav = { t: td.closest('table'), ar: r, ac: c, fr: r, fc: c };
+  if (editCell !== td) markEdit();
   editCell = td; editKind = kind; editOrig = td.innerHTML;
   editor.classList.remove('cellnav');
   if (!keepCaret) parkCaret(td);
@@ -2765,6 +2799,7 @@ function beginReplace() {                         // a key typed on a selected c
   const hs = H.get(cur);
   if (hs) hs.st[hs.i].u = selSave();
   const orig = td.innerHTML;
+  markEdit();
   td.innerHTML = '<br>';
   startEdit('type', td);
   editOrig = orig;
@@ -2774,7 +2809,8 @@ function beginReplace() {                         // a key typed on a selected c
 function tipReplace() {                           // once: why the cell's text went away
   if (st.tipReplace) return;
   st.tipReplace = 1; saveStateSoon();
-  setTimeout(() => toast('선택한 칸에 입력하면 내용이 새로 바뀌어요 · 이어 쓰려면 F2나 더블클릭', '되돌리기', undo), 0);
+  const back = undoThis(true);
+  setTimeout(() => toast('선택한 칸에 입력하면 내용이 새로 바뀌어요 · 이어 쓰려면 F2나 더블클릭', '되돌리기', back), 0);
 }
 // the IME's first key on a selected cell: no DOM or selection change here (see parkNav) - the composition replaces
 // the parked selection by itself; we only switch the cell to editing
@@ -2782,6 +2818,7 @@ function imeReplace() {
   const r = selRange(), td = (r && cellOf(r.startContainer)) || cellAt(nav.t, nav.fr, nav.fc);
   if (!td) return;
   const row = td.parentElement.rowIndex, col = td.cellIndex;
+  markEdit();
   editCell = td; editKind = 'type'; editOrig = td.innerHTML;
   nav = { t: td.closest('table'), ar: row, ac: col, fr: row, fc: col };
   requestAnimationFrame(() => { if (editCell === td) { editor.classList.remove('cellnav'); tblHint('edit'); } });   // not even a class change on this key
@@ -2854,7 +2891,8 @@ function editKey(e) {
   const back = () => { histCommit(); nav = { t, ar: r, ac: c, fr: r, fc: c }; editCell = null; };
   if (e.key === 'Escape') {                      // cancel the edit
     e.preventDefault(); e.stopPropagation();
-    if (td.innerHTML !== editOrig) { td.innerHTML = editOrig; markDirty(); histSoon(); }
+    if (td.innerHTML !== editOrig) { td.innerHTML = editOrig; markDirty(); }
+    dropEditSteps();
     setNav(t, r, c);
     return true;
   }
@@ -3164,7 +3202,7 @@ function finishBar(commit) {
   if (d.n < 0) { dropTail(t, d.row, -d.n); return; }
   if (d.row) { const r0 = t.rows.length; edit(() => { for (let k = 0; k < d.n; k++) addRow(t, t.rows.length); }); setNav(t, r0, c); posOv(); }
   else { const c0 = tableCols(t); edit(() => { for (let k = 0; k < d.n; k++) addCol(t, tableCols(t)); }); setNav(t, r, c0); posOv(); }
-  if (d.n > 1) toast(`${d.row ? '행' : '열'} ${d.n}개를 추가했어요`, '되돌리기', undo);
+  if (d.n > 1) toast(`${d.row ? '행' : '열'} ${d.n}개를 추가했어요`, '되돌리기', undoThis());
 }
 function dropTail(t, row, k) {
   k = Math.min(k, emptyTail(t, row));             // checked again: only ever empty ones
@@ -3180,7 +3218,7 @@ function dropTail(t, row, k) {
   if (inNav) setNav(t, fr, fc);
   else if (heldIn && !held.isConnected) placeCaret(cellAt(t, Math.min(hr, t.rows.length - 1), Math.min(hc, tableCols(t) - 1)), true);
   posOv();
-  if (k > 1) toast(`빈 ${row ? '행' : '열'} ${k}개를 지웠어요`, '되돌리기', undo);
+  if (k > 1) toast(`빈 ${row ? '행' : '열'} ${k}개를 지웠어요`, '되돌리기', undoThis());
 }
 document.addEventListener('keydown', e => { if (barDrag && e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); finishBar(false); } }, true);
 for (const b of $$('.tbar', ov)) {
@@ -3254,7 +3292,7 @@ function deleteObj() {
   const el = objSel;
   clearObj();
   if (!el || !el.isConnected) return;
-  if (el.nodeName === 'TABLE') { edit(() => removeTable(el)); toast('표를 삭제했어요', '되돌리기', undo); return; }
+  if (el.nodeName === 'TABLE') { edit(() => removeTable(el)); toast('표를 삭제했어요', '되돌리기', undoThis()); return; }
   edit(() => {
     const p = el.parentNode;
     if (p === editor) {                           // a divider (or a picture on its own line)
@@ -3530,8 +3568,9 @@ function pasteGrid(rows, src) {
       placeCaret(t.nextElementSibling || t.rows[0].cells[0], false);
     }
   });
-  if (td) toast(`${rows.length}행 × ${w}열을 붙여넣었어요${grew ? ' · 표를 늘렸어요' : ''}`, '되돌리기', undo);
-  else toast(`표로 붙여넣었어요 · ${rows.length}행 × ${w}열`, '텍스트로', () => { undo(); doPaste(src || rowsText(rows), '', [], true); });
+  const back = undoThis();
+  if (td) toast(`${rows.length}행 × ${w}열을 붙여넣었어요${grew ? ' · 표를 늘렸어요' : ''}`, '되돌리기', back);
+  else toast(`표로 붙여넣었어요 · ${rows.length}행 × ${w}열`, '텍스트로', () => { const n = H.get(cur), i = n && n.i; back(); if (n && n.i < i) doPaste(src || rowsText(rows), '', [], true); });
 }
 const KEEP = new Set(['B', 'I', 'U', 'S', 'BR', 'P', 'DIV', 'H1', 'H2', 'H3', 'UL', 'OL', 'LI', 'A', 'BLOCKQUOTE', 'PRE', 'CODE', 'HR', 'TABLE', 'TBODY', 'TR', 'TD', 'IMG', 'SUB', 'SUP']);
 const DROP = new Set(['SCRIPT', 'STYLE', 'META', 'LINK', 'TITLE', 'HEAD', 'IFRAME', 'OBJECT', 'EMBED', 'NOSCRIPT', 'TEMPLATE', 'SVG', 'BUTTON', 'INPUT', 'SELECT', 'TEXTAREA', 'FORM', 'CANVAS', 'VIDEO', 'AUDIO', 'COLGROUP', 'COL']);
@@ -5239,7 +5278,7 @@ document.addEventListener('keydown', e => {
     let hit = true;
     switch (code) {
       case 'KeyA': if (view === 'board' && !isTyping(e.target) && !e.shiftKey) selectAllCards(); else hit = false; break;
-      case 'KeyZ': if (view === 'board' && !e.shiftKey && boardUndo && !(isTyping(e.target) && e.target.value)) boardUndo(); else hit = false; break;
+      case 'KeyZ': if ((view === 'board' || document.activeElement === sbList) && !e.shiftKey && boardUndo && !(isTyping(e.target) && e.target.value)) boardUndo(); else hit = false; break;
       case 'KeyC': if (!e.shiftKey && view === 'board' && !isTyping(e.target) && selId) copySel(); else hit = false; break;
       case 'NumpadAdd': zoom(1); break;
       case 'NumpadSubtract': zoom(-1); break;
