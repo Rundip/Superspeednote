@@ -68,7 +68,8 @@ mark{background:rgba(255,213,79,.6);color:var(--ink);border-radius:3px}
 .wordmark{font:italic 900 12.5px/1 "Segoe UI Black","Segoe UI",sans-serif;letter-spacing:.07em;white-space:nowrap}
 .wordmark span{font:300 11.5px/1 "Segoe UI",sans-serif;letter-spacing:.32em;opacity:.7;margin-left:7px;font-style:normal}
 .appver{font:600 10px/1 "Segoe UI",sans-serif;letter-spacing:.03em;opacity:.45;margin:2px 0 0 -3px;white-space:nowrap}
-.tb-mid{flex:1;height:100%;display:flex;align-items:center;justify-content:center;min-width:0;color:rgba(255,255,255,.55);font-size:12px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;padding:0 12px}
+.tb-mid{flex:1;height:100%;line-height:40px;text-align:center;min-width:0;color:rgba(255,255,255,.55);font-size:12px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;padding:0 12px}   /* a block, so a long title ends in "…" instead of being cut on both sides */
+@media (max-width:600px){.tb-mid{visibility:hidden}}   /* too narrow for it: the note's own header shows the title */
 .tbtn{width:34px;height:30px;border-radius:8px;display:grid;place-items:center;color:rgba(255,255,255,.75)}
 .tbtn:hover{background:rgba(255,255,255,.1);color:#fff}
 .tbtn.on{color:#a9c4ff;background:rgba(110,155,255,.2)}
@@ -93,7 +94,8 @@ body[data-view=editor] #editorView{display:flex}
 .crumb-t{font-size:17px;font-weight:700;letter-spacing:-.015em}
 .pill{display:inline-flex;align-items:center;height:22px;padding:0 9px;border-radius:999px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.12);color:rgba(255,255,255,.82);font:600 11.5px "Segoe UI",var(--ui)}
 .pill.warn{background:rgba(245,158,11,.22);color:#ffd28a}
-.hero-act{display:flex;gap:10px;align-items:center}
+.hero-act{display:flex;gap:10px;align-items:center;min-width:0;max-width:100%}
+@media (max-width:640px){.hero-act{width:100%}.hero-act .search{flex:1 1 120px;width:auto;max-width:none;min-width:0}.hero-act .search kbd{display:none}.btn-new{padding:0 12px}}   /* a narrow window: the search box gives way, nothing runs off the edge */
 .search{display:flex;align-items:center;gap:9px;height:40px;width:340px;max-width:56vw;padding:0 10px 0 13px;border-radius:12px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.13);color:rgba(255,255,255,.7);transition:background .15s,border-color .15s,box-shadow .15s}
 .search .i{width:16px;height:16px}
 .search .s-clear{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;flex:none;background:rgba(255,255,255,.12);color:rgba(255,255,255,.85)}
@@ -352,7 +354,13 @@ body.sb-off #sidebar{display:none}
 #objbox.drag .osz{display:block}
 
 /* ---------- popovers, menus, modals ---------- */
-.pop{position:fixed;z-index:100;min-width:190px;padding:6px;border-radius:13px;background:var(--menu);border:1px solid var(--line);box-shadow:var(--sh-pop);color:var(--ink);font-size:13px;animation:pop .1s ease-out}
+.pop{position:fixed;z-index:100;min-width:190px;padding:6px;border-radius:13px;background:var(--menu);border:1px solid var(--line);box-shadow:var(--sh-pop);color:var(--ink);font-size:13px;animation:pop .1s ease-out;overflow-y:auto;overscroll-behavior:contain}
+.pop.tight{padding:4px}
+.pop.tight .mit{height:28px}
+.pop.tight .tghint{display:none}
+.pop.tight .tgrid{grid-template-columns:repeat(8,15px);gap:2px;padding:5px 5px 2px}
+.pop.tight .tgrid i{width:15px;height:15px;border-radius:3px}
+.pop.tight .tglabel{padding:2px 0 1px}
 @keyframes pop{from{opacity:0;transform:translateY(-4px)}}
 /* menu rows: not ".mi" - that name is the masked icon above, whose background:currentColor painted the rows solid */
 .mit{display:flex;align-items:center;gap:10px;width:100%;height:32px;padding:0 10px;border-radius:8px;text-align:left;white-space:nowrap;color:var(--ink);background:transparent}
@@ -480,6 +488,14 @@ select.sel{height:32px;border-radius:9px;border:1px solid var(--line-2);backgrou
 .pal-sec span{float:right;font-weight:400}
 .pal-sec kbd{padding:0 5px;margin-right:5px;border-radius:5px;border:1px solid var(--line-2);color:var(--ink-2)}
 .pick{border-radius:4px;background:var(--accent-soft);box-shadow:0 0 0 1.5px var(--accent);padding:0 1px}
+.pv-kv b.pp{cursor:pointer;border-radius:4px}
+.pv-kv b.pp:hover{background:var(--hover);box-shadow:0 0 0 1.5px var(--line-2)}
+.pv-kv b.pp.pick:hover{background:var(--accent-soft);box-shadow:0 0 0 1.5px var(--accent)}
+.pv-parts{display:flex;flex-wrap:wrap;align-items:center;gap:5px;margin-top:10px;padding-top:9px;border-top:1px solid var(--line)}
+.pv-pl{width:100%;font-size:11px;font-weight:650;color:var(--ink-3)}
+.pv-parts .pp{max-width:100%;padding:3px 9px;border-radius:7px;border:1px solid var(--line-2);background:var(--paper);color:var(--ink);font-size:12.5px;line-height:1.4;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pv-parts .pp:hover{border-color:var(--accent);color:var(--accent-ink)}
+.pv-parts .pp.pick{background:var(--accent-soft);border-color:var(--accent);color:var(--accent-ink);box-shadow:none;padding:3px 9px}
 .cell-sep{font-style:normal;color:var(--ink-3);margin:0 7px}
 .pal-pv{flex:0 0 37%;min-width:0;border-left:1px solid var(--line);padding:12px 14px;overflow:hidden;font-size:12.5px;line-height:1.55;background:linear-gradient(180deg,var(--hover),transparent 140px)}
 .pv-head{display:flex;align-items:center;gap:8px;margin-bottom:8px;min-width:0}
@@ -1792,10 +1808,10 @@ $('#hSide').onclick = () => {
   st.sidebar = !st.sidebar; app.classList.toggle('sb-off', !st.sidebar); saveStateSoon(); posOvSoon();
 };
 $('#pane').addEventListener('mousedown', () => app.classList.remove('sb-peek'));
-$('#hColor').onclick = e => { const r = e.currentTarget.getBoundingClientRect(); colorMenu(cur, r.left, r.bottom + 6); };
+$('#hColor').onclick = e => { const r = e.currentTarget.getBoundingClientRect(); popAnchorTop = r.top; colorMenu(cur, r.left, r.bottom + 6); };
 $('#hHotkey').onclick = () => setNoteHotkey(cur);
 $('#hPin').onclick = () => togglePin(cur);
-$('#hMore').onclick = e => { const r = e.currentTarget.getBoundingClientRect(); noteMenu(cur, r.right - 220, r.bottom + 6); };
+$('#hMore').onclick = e => { const r = e.currentTarget.getBoundingClientRect(); popAnchorTop = r.top; noteMenu(cur, r.right - 220, r.bottom + 6); };
 $('#btnBack').onclick = showBoard;
 for (const g of $$('.vseg')) g.onclick = e => { const b = e.target.closest('button[data-home]'); if (b) setHome(b.dataset.home); };
 $('#btnSbNew').onclick = newNote;
@@ -1910,26 +1926,35 @@ function ensureRoot() {
 }
 
 // ---------------------------------------------------------------- undo history (snapshots; we own it so table edits undo too)
+// What one Ctrl+Z takes back, the way word processors do it:
+//  - typing: a word with the space after it; a pause (1 s) also ends a step
+//  - typing and deleting (Backspace / Delete) are separate steps; Enter starts a step with the line after it
+//  - moving the caret (click, arrows) ends the step being typed, so two places never come back together
+//  - every command (format, list, table, paste, picture ...) is its own step (edit() below)
+// Undo puts the caret where the undone change began, redo where it ended.
 const H = new Map();
 let histT = 0, burstSel = null, composing = false;
+let grpKind = '', grpWord = false, grpAt = null, grpAtKey = '';   // the step being typed: ins / del / para, has a word yet, caret after its last input
 function histInit(id, html) { if (!H.has(id)) H.set(id, { st: [{ h: html || editor.innerHTML, s: null, u: null }], i: 0 }); }
-function histSoon() { clearTimeout(histT); histT = setTimeout(histCommit, isBig ? 1500 : 500); }
+function histSoon() { clearTimeout(histT); histT = setTimeout(histCommit, isBig ? 1500 : 1000); }
 // Big notes (~80KB+ of HTML): the whole-note work done on typing pauses (undo snapshot, character count)
 // runs less often. (content-visibility on every block was tried and made opening big notes far slower.)
 let isBig = false;
 function setBig(len) { isBig = len > 80000; editor.classList.toggle('big', isBig); }
-function histCommit() {
+function histCommit(keepNodes) {
   clearTimeout(histT); histT = 0;
   const hs = H.get(cur);
   if (!hs || composing) return;
-  editor.normalize();
+  const typed = burstSel ? grpAt : null;          // a typed step: redo puts the caret where the typing ended
+  grpKind = ''; grpWord = false; grpAt = null; grpAtKey = '';
+  if (!keepNodes) editor.normalize();             // (not when an IME is about to compose: its text node stays as it is)
   const h = editor.innerHTML;
   const top = hs.st[hs.i];
   if (top.h === h) { burstSel = null; return; }
   if (burstSel) top.u = burstSel;
   burstSel = null;
   hs.st.length = hs.i + 1;
-  hs.st.push({ h, s: selSave(), u: null });
+  hs.st.push({ h, s: typed || selSave(), u: null });
   hs.i = hs.st.length - 1;
   let size = 0;
   for (const e of hs.st) size += e.h.length;
@@ -1998,10 +2023,17 @@ function edit(fn) {
 function exec(cmd, val = null) { return document.execCommand(cmd, false, val); }
 
 // ---------------------------------------------------------------- editor events
+const inputKind = t => t.startsWith('delete') ? 'del' : t === 'insertParagraph' || t === 'insertLineBreak' ? 'para'
+  : t === 'insertText' || t === 'insertCompositionText' || t === 'insertReplacementText' ? 'ins' : 'other';
 editor.addEventListener('beforeinput', e => {
   if (e.inputType === 'historyUndo') { e.preventDefault(); undo(); return; }
   if (e.inputType === 'historyRedo') { e.preventDefault(); redo(); return; }
+  const kind = inputKind(e.inputType);
+  // a new step: typing after deleting (or the other way round), Enter, a drop / anything else, or the caret was
+  // moved since the last key (checked here too, in case its selectionchange hasn't come yet)
+  if (burstSel && !composing && (kind === 'para' || kind === 'other' || (kind === 'del') !== (grpKind === 'del') || (grpAtKey && JSON.stringify(selSave()) !== grpAtKey))) histCommit();
   if (!histT && !burstSel) burstSel = selSave();
+  grpKind = kind;
   if (e.inputType.startsWith('insert')) editor.classList.remove('is-empty');   // hide the hint on the first keystroke
 });
 editor.addEventListener('input', e => {
@@ -2017,8 +2049,19 @@ editor.addEventListener('input', e => {
   statsSoon();
   posOvSoon();
   if (findOpen) findSoon();
+  if (burstSel) {                                 // where the caret is now: moved away from here = the step ends
+    grpAt = selSave(); grpAtKey = JSON.stringify(grpAt);
+    if (/^insert(Text|CompositionText)$/.test(e.inputType) && e.data) {
+      if (/\S/.test(e.data)) grpWord = true;
+      else if (grpWord && !composing && e.inputType === 'insertText') histCommit();   // a word and its space: one step
+    }
+    if (grpKind === 'other') histCommit();        // a drop / an IME suggestion ... on its own
+  }
 });
-editor.addEventListener('compositionstart', () => { composing = true; editor.classList.remove('is-empty'); });
+editor.addEventListener('compositionstart', () => {
+  if (burstSel && (grpKind === 'del' || (grpAtKey && JSON.stringify(selSave()) !== grpAtKey))) histCommit(true);   // Korean typing after deleting / somewhere else: a new step
+  composing = true; editor.classList.remove('is-empty');
+});
 editor.addEventListener('compositionend', () => { composing = false; if (needsRoot()) ensureRoot(); histSoon(); if (tipAfterIme) { tipAfterIme = false; tipReplace(); } });
 editor.addEventListener('keydown', e => {
   if (objSel && !e.isComposing && objKey(e)) return;   // a selected picture / divider / table
@@ -2124,6 +2167,7 @@ function linkifyBefore() {
 function openUrl(u) { if (!/^(https?:|mailto:)/i.test(u)) return; if (HOST) host.send('openUrl', u); else window.open(u, '_blank'); }
 document.addEventListener('selectionchange', () => {
   if (view !== 'editor') return;
+  if (burstSel && grpAtKey && !composing && selRange() && JSON.stringify(selSave()) !== grpAtKey) histCommit();   // the caret moved: the typed step ends here
   if (selRange()) { lastSel = selSave(); syncNav(); }
   if (!tbRaf) tbRaf = requestAnimationFrame(() => { tbRaf = 0; updateToolbar(); caretTable(); selCount(); });
 });
@@ -2512,6 +2556,7 @@ toolbar.addEventListener('click', e => {
 function toolPop(kind, anchor) {
   ensureEditorFocus();
   const r = anchor.getBoundingClientRect();
+  popAnchorTop = r.top;
   if (kind === 'block') {
     const look = { div: 'font-size:13.5px', h1: 'font-size:19px;font-weight:800', h2: 'font-size:16.5px;font-weight:750', h3: 'font-size:14.5px;font-weight:700', blockquote: 'font-size:13.5px;border-left:3px solid var(--accent);padding-left:8px', pre: 'font:12.5px var(--mono)' };
     const now0 = (document.queryCommandValue('formatBlock') || 'div').toLowerCase();
@@ -3834,13 +3879,28 @@ $('#findX').onclick = () => findClose();
 let popPick = null;
 let menuOn = false;                               // a showMenu() list is open: arrows / Enter drive it
 let popKey = null;                                // a popover's own keys (the table size picker)
+// Below the point (or the button it drops from); else above that button, not over it; in a low window the compact
+// form (smaller grid, no hint), and if that still doesn't fit, the roomier side with a scroll.
+let popAnchorTop = null;                          // top of the button a menu drops from (set just before showPop)
 function showPop(x, y, html, onPick) {
   pop.innerHTML = html;
   pop.hidden = false;
+  pop.classList.remove('tight');
+  pop.style.maxHeight = '';
   popPick = onPick;
-  const w = pop.offsetWidth, h = pop.offsetHeight;
-  pop.style.left = clamp(x, 8, innerWidth - w - 8) + 'px';
-  pop.style.top = (y + h > innerHeight - 8 ? Math.max(8, y - h - 12) : y) + 'px';
+  const top0 = popAnchorTop == null ? y - 6 : popAnchorTop;
+  popAnchorTop = null;
+  const below = innerHeight - 8 - y, above = top0 - 6 - 8;
+  let h = pop.offsetHeight;
+  if (h > below && h > above) { pop.classList.add('tight'); h = pop.offsetHeight; }
+  let t = y;
+  if (h > below) {
+    if (h <= above) t = top0 - 6 - h;
+    else if (above > below) { t = 8; pop.style.maxHeight = above + 'px'; }
+    else pop.style.maxHeight = Math.max(80, below) + 'px';
+  }
+  pop.style.left = clamp(x, 8, innerWidth - pop.offsetWidth - 8) + 'px';
+  pop.style.top = t + 'px';
 }
 function closePop() { if (pop.hidden) return; pop.hidden = true; pop.innerHTML = ''; popPick = null; menuOn = false; popKey = null; }
 pop.addEventListener('mousedown', e => { if (!e.target.closest('input')) e.preventDefault(); });
@@ -4222,8 +4282,8 @@ function openPalette(mode) {
   const isPop = mode === 'pop', inNote = (mode === 'in' || mode === 'key') && view === 'editor' && !!cur;   // inNote: Alt+Enter puts it here
   openModal(`<div class="dlg qs pal"><div class="qs-in">${ic('i-search')}<input id="palIn" placeholder="${mode === 'quick' ? '다른 메모에서 찾아 넣기 (초성도 돼요)' : '찾을 단어 (초성 ㄱㅊㅅ도 돼요)'}" spellcheck="false" autocomplete="off"><span class="pal-count" id="palCount"></span></div>` +
     `<div class="pal-body"><div class="qs-list" id="palList"></div><div class="pal-pv" id="palPv"></div></div>` +
-    (mode === 'quick' ? `<div class="pal-foot"><span><kbd>Enter</kbd>넣기</span><span><kbd>Tab</kbd>칸·단어만</span><span><kbd>Shift+Enter</kbd>복사만</span><span class="fill"></span><span><kbd>Esc</kbd>닫기</span></div></div>`
-      : `<div class="pal-foot">${inNote ? '<span><kbd>Alt+Enter</kbd>이 메모에 넣기</span>' : ''}<span><kbd>Enter</kbd>${isPop ? '붙여넣기' : '이전 창에 붙여넣기'}</span><span><kbd>Tab</kbd>칸·단어만</span>` +
+    (mode === 'quick' ? `<div class="pal-foot"><span><kbd>Enter</kbd>넣기</span><span><kbd>Tab</kbd><kbd>Shift+Tab</kbd>칸·단어 고르기</span><span><kbd>Shift+Enter</kbd>복사만</span><span class="fill"></span><span><kbd>Esc</kbd>닫기</span></div></div>`
+      : `<div class="pal-foot">${inNote ? '<span><kbd>Alt+Enter</kbd>이 메모에 넣기</span>' : ''}<span><kbd>Enter</kbd>${isPop ? '붙여넣기' : '이전 창에 붙여넣기'}</span><span><kbd>Tab</kbd><kbd>Shift+Tab</kbd>칸·단어 고르기</span>` +
         `<span><kbd>Shift+Enter</kbd>${isPop ? '복사만' : '복사하고 이전 창으로'}</span><span><kbd>Ctrl+Enter</kbd>메모 열기</span>${inNote ? '' : '<span><kbd>Alt+1~9</kbd>바로 붙여넣기</span>'}<span class="fill"></span><span><kbd>Esc</kbd>${isPop ? '돌아가기' : '닫기'}</span></div></div>`),
     () => { paletteOn = false; app.classList.remove('pal-pop'); modal.classList.remove('palm'); host.send('palette', '0'); });
   modal.classList.add('palm');                    // the quick memo shows it over the whole window
@@ -4246,7 +4306,8 @@ function openPalette(mode) {
     const P = it.part >= 0 ? partsOf(it.x)[it.part] : null;
     let h = `<div class="pv-head"><span class="c-dot" data-c="${it.n.color}" style="--c:${NOTE_COLORS[it.n.color]}"></span><b>${esc(titleOf(it.n) || '제목 없음')}</b><small>${relTime(it.n.updated)}</small></div>`;
     if (it.x.c && it.x.h) {                       // a table row: each column name with its value, then rows near it
-      h += '<div class="pv-kv">' + it.x.c.map((v, j) => `<span>${esc(it.x.h[j] || '')}</span><b${P && P.j === j ? ' class="pick"' : ''}>${mark(v, terms) || '&nbsp;'}</b>`).join('') + '</div>';
+      const pk = j => partsOf(it.x).findIndex(p => p.j === j);   // the part a column's value is (Tab picks the same)
+      h += '<div class="pv-kv">' + it.x.c.map((v, j) => { const k = pk(j); return `<span>${esc(it.x.h[j] || '')}</span><b class="${k >= 0 ? 'pp' : ''}${P && P.j === j ? ' pick' : ''}"${k >= 0 ? ` data-part="${k}" title="클릭: 이 칸만 붙여넣기 · Shift+클릭: 복사만"` : ''}>${mark(v, terms) || '&nbsp;'}</b>`; }).join('') + '</div>';
       const near = [];
       for (let d = 1; d < 4; d++) for (const j of [i - d, i + d]) if (L[j] && L[j].h === it.x.h && near.length < 3) near.push(j);   // same table, not its header
       for (const j of near.sort((x, y) => x - y)) h += `<div class="pv-l">${lineHTML(L[j].s, terms, null, 160)}</div>`;
@@ -4254,6 +4315,10 @@ function openPalette(mode) {
       const a = Math.max(0, i - 4), b = Math.min(L.length, a + 14);
       for (let j = a; j < b; j++) h += `<div class="pv-l${j === i ? ' on' : ''}">${lineHTML(L[j].s, terms, j === i ? P : null, j === i ? 600 : 160)}</div>`;
     }
+    const PS = partsOf(it.x);
+    if (PS.length) h += '<div class="pv-parts"><span class="pv-pl">골라서 붙여넣기</span>' +   // what Tab / Shift+Tab walk through, to click
+      `<button class="pp${it.part < 0 ? ' pick' : ''}" data-part="-1" title="클릭: 줄 전체 붙여넣기 · Shift+클릭: 복사만">줄 전체</button>` +
+      PS.map((p, k) => `<button class="pp${k === it.part ? ' pick' : ''}" data-part="${k}" title="${p.k ? esc(p.k) + ' · ' : ''}클릭: 이것만 붙여넣기 · Shift+클릭: 복사만">${mark(p.v.length > 40 ? p.v.slice(0, 40) + '…' : p.v, terms)}</button>`).join('') + '</div>';
     pv.innerHTML = h;
   };
   const render = () => {
@@ -4333,10 +4398,13 @@ function openPalette(mode) {
     toast('최근 목록에서 뺐어요', '되돌리기', () => { (st.palUse || (st.palUse = {}))[key] = old; saveStateSoon(); if (inp.isConnected && !inp.value.trim()) render(); });
   };
   const howOf = e => e.ctrlKey ? 'open' : e.shiftKey ? 'copy' : e.altKey && inNote ? 'note' : 'paste';
-  let raf = 0;
+  let raf = 0, tabAfterIme = 0;
+  inp.addEventListener('compositionend', () => { if (tabAfterIme) { const d = tabAfterIme; tabAfterIme = 0; setTimeout(() => cyclePart(d), 0); } });
   inp.addEventListener('input', () => { idx = 0; if (!raf) raf = requestAnimationFrame(() => { raf = 0; render(); }); });
   inp.addEventListener('keydown', e => {
-    if (e.isComposing) return;                    // Korean IME: the key that ends the syllable comes again
+    const isTab = e.key === 'Tab' || e.code === 'Tab';
+    if (isTab) e.preventDefault();                // never moves the focus (Shift+Tab used to leave the box mid-syllable)
+    if (e.isComposing) { if (isTab) tabAfterIme = e.shiftKey ? -1 : 1; return; }   // Korean IME: done once the syllable ends
     const k = e.key;
     if (k === 'ArrowDown') { e.preventDefault(); move(idx + 1); }
     else if (k === 'ArrowUp') { e.preventDefault(); move(idx - 1); }
@@ -4356,6 +4424,12 @@ function openPalette(mode) {
   list.addEventListener('mousemove', e => { const it = e.target.closest('.qs-item'); if (it && +it.dataset.i !== idx) move(+it.dataset.i); });
   modal.querySelector('.pal').addEventListener('mousedown', e => { if (e.target !== inp) e.preventDefault(); });   // keep typing in the box
   list.addEventListener('click', e => { const it = e.target.closest('.qs-item'); if (it) pick(+it.dataset.i, howOf(e)); });
+  pv.addEventListener('click', e => {             // a cell / word in the preview: that part only, like Tab then Enter
+    const b = e.target.closest('[data-part]'), it = items[idx];
+    if (!b || !it) return;
+    it.part = +b.dataset.part;
+    pick(idx, howOf(e));
+  });
   render();
   inp.focus();
 }
@@ -5073,7 +5147,7 @@ function openSettings(tab, keep) {               // keep: back from the key reco
       ? row('Windows 시작 시', '<span class="wrap">로그인하면 <b>단축키 대기</b>로 켜져서 꺼져 있어도 단축키가 동작해요.<br>끄려면 작업 관리자 › 시작 앱(또는 설정 › 앱 › 시작 프로그램)에서 Super Speed Note를 끄세요.</span>', '')
       : row('Windows 시작 시', '<span class="wrap"><b>단축키 대기</b> 꺼져 있어도 단축키로 열림 · 메모리 거의 안 씀 · 첫 호출 약 1초<br><b>트레이 상주</b> 언제나 바로 열림 · 메모리 더 사용 · <b>창 열기</b> 로그인하면 앱 창이 바로 열려요<br><b>끔</b> 자동으로 켜지지 않아요 · 앱을 끄면 메모 단축키도 함께 꺼져요<br>exe 파일을 옮기거나 이름을 바꿔도 Windows 시작 때 계속 켜져요</span>', `<div class="seg" id="setStart"><button data-v="standby">단축키 대기 (권장)</button><button data-v="tray">트레이 상주</button><button data-v="open">창 열기</button><button data-v="off">끔</button></div>`).replace('<div class="row">', '<div class="row col">')}
     <h4 class="kh">데이터</h4>
-    ${row('데이터 폴더 · 백업', `메모 · 이미지 · 백업이 있는 곳 · 매일 자동 백업(최근 14일)<br>${esc(boot.dataDir || '')}`, `<div class="row-btns"><button class="btn" id="setOpen"${HOST ? '' : ' disabled'}>폴더 열기</button><button class="btn" id="setBackup">지금 백업</button></div>`)}
+    ${row('데이터 폴더 · 백업', `메모 · 이미지 · 백업이 있는 곳 · 매일 자동 백업(최근 14일)<br>${esc(boot.dataDir || '')}${startMode() === 'package' ? '<br>Store 버전은 앱을 제거하면 이 폴더도 함께 지워져요 · 보관하려면 폴더를 열어 복사해 두세요' : ''}`, `<div class="row-btns"><button class="btn" id="setOpen"${HOST ? '' : ' disabled'}>폴더 열기</button><button class="btn" id="setBackup">지금 백업</button></div>`)}
     ${row('휴지통', '삭제한 메모는 휴지통을 비우기 전까지 보관해요 · 빈 메모는 바로 없어져요', `<button class="btn" id="setTrash">휴지통 열기</button>`)}`;
   }
   openModal(`<div class="dlg wide set"><div class="dlg-head">${ic('i-gear')}<h3>설정</h3><span style="flex:1"></span><div class="seg" id="setTabs"><button data-v="general"${tab === 'general' ? ' class="on"' : ''}>일반</button><button data-v="keys"${tab === 'keys' ? ' class="on"' : ''}>단축키</button></div></div><div class="dlg-body" id="setBody">${body}</div>` +
@@ -5394,7 +5468,7 @@ setInterval(() => {                                // "3분 전" labels
     if (n && t) { const v = relTime(n.updated); if (t.textContent !== v) t.textContent = v; }
   }
 }, 60000);
-window.__ssn = { S, bodies, openNote, showBoard, newNote, applyHotkeys, saveStateSoon, doPaste, tableOp, undo, redo, searchLines, openPalette, quickStart, quickEnd, deleteNotes, openTrash, toPlain };   // debugging handle
+window.__ssn = { S, bodies, openNote, showBoard, newNote, applyHotkeys, saveStateSoon, doPaste, tableOp, undo, redo, searchLines, openPalette, quickStart, quickEnd, deleteNotes, openTrash, toPlain, hist: () => ({ burst: !!burstSel, kind: grpKind, word: grpWord, at: grpAtKey, timer: !!histT, i: (H.get(cur) || {}).i, n: ((H.get(cur) || {}).st || []).length }) };   // debugging handle
 })();
 </script>
 </body>

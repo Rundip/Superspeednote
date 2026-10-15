@@ -79,6 +79,7 @@ dist\SuperSpeedNote.exe
 - 띄어쓰기로 단어를 더 넣으면 좁혀짐. 나머지 단어는 **메모 제목, 위쪽 제목(#), 표의 열 이름**에 있어도 됨. 열 이름으로 찾으면 그 칸이 미리 골라져서 `대한물산 계좌` → Enter = 계좌번호만 붙여넣기 (`한빛 전화`도 마찬가지)
 - **초성 검색**: `ㄱㅊㅅ` → 김철수 (`ㅄ`처럼 IME가 합친 자음도 됨) · 전화·계좌번호는 `-` 없이 숫자만 넣어도 찾음 (`021234` → 02-1234-5678)
 - **Tab / Shift+Tab** = 표의 행이면 **칸 하나만**, 일반 줄이면 `전화: 010-…`의 값이나 단어 하나만 골라 붙여넣기. 고른 칸의 열 이름과 몇 번째인지(2/4)가 함께 보임. `전화`처럼 이름표로 찾은 줄은 값이 미리 골라져 있음
+- **마우스로 고르기**: 오른쪽 미리보기의 '골라서 붙여넣기'(줄 전체 · 칸 · 단어)나 표의 값을 클릭하면 그것만 붙여넣기, Shift+클릭은 복사만
 - **Alt+1~9** = N번째 결과 바로 붙여넣기
 - 빈 검색창 = **최근 붙여넣은 줄** (마지막에 고른 칸까지 기억). 자주 붙여넣는 줄일수록 위로. 메모에서 그 줄이 바뀌거나 지워지면 목록에서도 빠져서 옛날 값이 붙는 일이 없음
 - 오른쪽 미리보기에 그 줄 앞뒤 내용과 표의 열 이름이 보여서 붙여넣기 전에 확인 가능
@@ -122,7 +123,7 @@ dist\SuperSpeedNote.exe
 - 링크 자동 변환, Ctrl+클릭으로 열기
 
 **그 밖에**
-- 메모 안 찾기(Ctrl+F, 다음/이전 F3 · Shift+F3, 없으면 '결과 없음'). 찾은 값이 표 안에 있으면 그 칸을 **오른쪽 클릭 = 칸 값 복사**, 실행 취소/다시(표 편집 포함), 확대/축소(Ctrl+휠 · 70~200% 단계, 100%가 아닐 때만 상태 표시줄에 표시)
+- 메모 안 찾기(Ctrl+F, 다음/이전 F3 · Shift+F3, 없으면 '결과 없음'). 찾은 값이 표 안에 있으면 그 칸을 **오른쪽 클릭 = 칸 값 복사**, 실행 취소/다시(Ctrl+Z / Ctrl+Y · Ctrl+Shift+Z): 워드처럼 **단어 하나(띄어쓰기까지)** 씩, 입력과 지우기는 따로, 커서를 옮기면 새 단계, 서식·표·붙여넣기는 한 번에 하나씩. 되돌리면 커서가 그 자리로, 확대/축소(Ctrl+휠 · 70~200% 단계, 100%가 아닐 때만 상태 표시줄에 표시)
 - 메모 안에서 F2 = 제목 고치기(비워 두면 첫 줄이 제목, 입력칸에 회색으로 보임). 글을 선택하면 상태 표시줄에 선택한 글자 수
 - 사이드바 메모 목록: 클릭하면 그 메모가 열리고 키는 목록에 남음. **Del = 삭제**(확인 창 · Del 한 번 더 또는 [삭제], 휴지통으로 · 다음 메모가 열림), ↑/↓ 메모 이동(보기만, 표 안의 커서는 그대로), Enter·Tab 또는 아무 글자 = 다시 쓰기, Esc = 보드(목록 보기에서는 목록이 처음 화면)
 - 라이트 / 다크 네이비 테마, 에디터 글꼴 선택, 항상 위에 표시
@@ -167,7 +168,7 @@ powershell -ExecutionPolicy Bypass -File package.ps1
 
 - `dist\store\SuperSpeedNote_<버전>_x64.msix`를 만듭니다. Partner Center에 이 파일을 올리면 **Store가 무료로 서명**합니다(인증서 구입 필요 없음).
 - 첫 실행 때 nuget.org에서 Microsoft Windows SDK 빌드 도구(약 21MB, makeappx·makepri)를 한 번 받아 `packages\`에 둡니다.
-- Store 버전도 메모를 `%APPDATA%\SuperSpeedNote`에 저장합니다. exe 버전과 같은 메모를 쓰고, 앱을 삭제해도 메모는 남습니다.
+- Store 버전은 메모를 앱 전용 폴더(`%LOCALAPPDATA%\Packages\Mukhodeveloper.Superspeednote_…\LocalState`)에 저장합니다(제한된 기능은 runFullTrust뿐). 처음 실행할 때 이 PC에 exe 버전 메모가 있으면 한 번 복사해 오고, 그 뒤로는 따로 저장됩니다. 앱을 제거하면 메모도 지워지니 옮길 때는 설정 › 데이터 폴더에서 복사해 두세요.
 - Windows 시작 시 '단축키 대기'로 켜지는 것은 Store의 시작 작업이 맡습니다(작업 관리자 › 시작 앱에서 켜고 끄기). Store 버전이 처음 실행되면 exe 버전이 등록해 둔 시작 항목은 지웁니다(둘 다 켜지지 않게).
 - 로컬 테스트: `package.ps1 -Register`(개발자 모드 필요) → 시작 메뉴에서 실행, 끝나면 `package.ps1 -Unregister`.
 
@@ -176,7 +177,7 @@ powershell -ExecutionPolicy Bypass -File package.ps1
 2. Partner Center에서 앱 이름 `Super Speed Note` 예약 → **제품 관리 › 제품 ID**의 `Package/Identity/Name`, `Package/Identity/Publisher`, `Package/Properties/PublisherDisplayName` 세 값을 `store\store.json`에 붙여넣기.
 3. `package.ps1` 다시 실행 → 새 `.msix`를 **패키지** 단계에 업로드.
 4. **스토어 등록 정보**: `store\listing-ko.md`의 설명·기능·키워드를 붙여넣고 `store\screenshots\`의 이미지 업로드. 개인정보 처리방침 URL은 `PRIVACY.md`의 GitHub 주소.
-5. **제출 옵션**: `runFullTrust`, `unvirtualizedResources` 사용 이유(영문)를 `store\listing-ko.md`에서 붙여넣기 → 제출. 심사는 보통 며칠 걸립니다.
+5. **제출 옵션**: `runFullTrust` 사용 이유(영문)를 `store\listing-ko.md`에서 붙여넣기 → 제출. 심사는 보통 며칠 걸립니다. 지원 연락처는 이메일(GitHub 링크 불가).
 
 ## 라이선스 · 개인정보 · 보안 검토
 

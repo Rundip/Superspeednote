@@ -33,14 +33,25 @@ namespace SuperSpeedNote
 {
     static class Program
     {
-        public const string Version = "1.4.2";
+        public const string Version = "1.4.3";
         public const string WebView2Version = "1.0.4258.31";
         public static string DataDir, LocalDir;
         public static bool Portable;                  // a "data" folder next to the exe holds the notes (test / USB copies)
+        public static bool Imported;                  // Store version: the exe version's notes were copied in on this start
 
         // Installed from the Microsoft Store (MSIX package) rather than run as a plain exe
         public static readonly bool Packaged = IsPackaged();
         [DllImport("kernel32.dll", CharSet = CharSet.Unicode)] static extern int GetCurrentPackageFullName(ref int length, StringBuilder name);
+        [DllImport("kernel32.dll", CharSet = CharSet.Unicode)] static extern int GetCurrentPackageFamilyName(ref int length, StringBuilder name);
+        // the package's own data folder, %LOCALAPPDATA%\Packages\<family name> (where a Store app keeps its data)
+        static string PackageDataRoot()
+        {
+            int n = 0;
+            GetCurrentPackageFamilyName(ref n, null);
+            var sb = new StringBuilder(n);
+            if (n == 0 || GetCurrentPackageFamilyName(ref n, sb) != 0) return null;
+            return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Packages", sb.ToString());
+        }
         static bool IsPackaged()
         {
             try { int n = 0; return GetCurrentPackageFullName(ref n, null) != 15700 /*APPMODEL_ERROR_NO_PACKAGE*/; }
@@ -77,6 +88,8 @@ namespace SuperSpeedNote
                 Native.PostMessage((IntPtr)0xFFFF, Native.RegisterWindowMessage("SuperSpeedNote.Quit"), IntPtr.Zero, IntPtr.Zero);
                 try { created = mutex.WaitOne(10000); } catch (AbandonedMutexException) { created = true; }
             }
+            if (!created && (standby || tray) && !quit) return;   // started with Windows while one already runs (exe and Store
+                                                                    // versions both set to start): leave it be, no window pops up
             if (!created)
             {
                 // Already running (in the tray or in standby): ask it to come forward (or to quit) and exit.
@@ -92,6 +105,16 @@ namespace SuperSpeedNote
             DataDir = Portable ? portable
                 : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "SuperSpeedNote");
             LocalDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SuperSpeedNote");
+            string pkg = Packaged ? PackageDataRoot() : null;
+            if (pkg != null)
+            {
+                // Store version: the package's own folders (real paths, so "open data folder" shows them), and the
+                // notes of the exe version on this PC copied in once when there are none yet
+                string legacy = DataDir;
+                DataDir = Path.Combine(pkg, "LocalState");
+                LocalDir = Path.Combine(pkg, "LocalCache");
+                ImportOnce(legacy, DataDir);
+            }
             Directory.CreateDirectory(DataDir);
             Directory.CreateDirectory(LocalDir);
             BackupOnVersionChange();
@@ -127,6 +150,28 @@ namespace SuperSpeedNote
             }
             catch (Exception) { }
             return false;
+        }
+
+        // First start of the Store version on a PC that had the exe version: its notes (not its backups) are copied in;
+        // state.json goes last, so an interrupted copy is simply done again next time.
+        static void ImportOnce(string from, string to)
+        {
+            try
+            {
+                if (File.Exists(Path.Combine(to, "state.json")) || !File.Exists(Path.Combine(from, "state.json"))) return;
+                string[] skip = { Path.Combine(from, "backups") + "\\", Path.Combine(from, "version.txt") };
+                foreach (string f in Directory.GetFiles(from, "*", SearchOption.AllDirectories))
+                {
+                    if (f.StartsWith(skip[0], StringComparison.OrdinalIgnoreCase) || string.Equals(f, skip[1], StringComparison.OrdinalIgnoreCase)) continue;
+                    if (string.Equals(Path.GetFileName(f), "state.json", StringComparison.OrdinalIgnoreCase) && Path.GetDirectoryName(f) == from) continue;
+                    string dst = Path.Combine(to, f.Substring(from.Length + 1));
+                    Directory.CreateDirectory(Path.GetDirectoryName(dst));
+                    File.Copy(f, dst, true);
+                }
+                File.Copy(Path.Combine(from, "state.json"), Path.Combine(to, "state.json"), true);
+                Imported = true;
+            }
+            catch (Exception ex) { Log(ex); }
         }
 
         // Notes live outside the exe, so updates never touch them. Still, the first start of a new
@@ -1298,6 +1343,7 @@ namespace SuperSpeedNote
                     }
                     catch { }
                     if (pendingOpen != null) { Post("open", pendingOpen); pendingOpen = null; }
+                    if (Program.Imported) { Program.Imported = false; Post("toast", "이 PC의 기존 메모를 Store 버전으로 가져왔어요 · 이제부터는 Store 버전에 따로 저장돼요"); }
                     if (pendingNew) { Post("new"); pendingNew = false; }
                     if (pendingPalette != null) { if (pendingPalette != "pop" || popWanted) Post("palette", pendingPalette); pendingPalette = null; }
                     if (pendingQuick) { pendingQuick = false; if (quickOpen) Post("quick", "open"); }
@@ -1568,12 +1614,7 @@ namespace SuperSpeedNote
         {
             try
             {
-                if (Program.Packaged)   // Store version: its startup task replaces the old entry (else both would start)
-                {
-                    using (RegistryKey k = Registry.CurrentUser.OpenSubKey(RunKey, true))
-                        if (k != null && k.GetValue("SuperSpeedNote") != null) k.DeleteValue("SuperSpeedNote", false);
-                    return;
-                }
+                if (Program.Packaged) return;   // Store version: its own startup task (a second start-up launch just exits)
                 string v;
                 using (RegistryKey k = Registry.CurrentUser.OpenSubKey(RunKey))
                     v = k == null ? null : k.GetValue("SuperSpeedNote") as string;
