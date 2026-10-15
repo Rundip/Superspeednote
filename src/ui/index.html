@@ -1993,6 +1993,8 @@ function applySnap(h, sel) {
   if (!editor.firstChild) editor.innerHTML = '<div><br></div>';
   editor.focus({ preventScroll: true });
   if (sel) selRestore(sel); else placeCaret(editor.lastChild, true);
+  // the "type here" hint goes (or comes back) with the undone text at once, not with the delayed character count
+  editor.classList.toggle('is-empty', !editor.textContent && !editor.querySelector('img,table,hr,li'));
   markDirty(); statsSoon(); posOvSoon(); updateToolbar();
   if (findOpen) findSoon();
 }
