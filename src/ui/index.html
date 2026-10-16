@@ -67,7 +67,9 @@ mark{background:rgba(255,213,79,.6);color:var(--ink);border-radius:3px}
 .brand{display:flex;align-items:center;gap:9px;padding:0 10px 0 14px;height:100%}
 .wordmark{font:italic 900 12.5px/1 "Segoe UI Black","Segoe UI",sans-serif;letter-spacing:.07em;white-space:nowrap}
 .wordmark span{font:300 11.5px/1 "Segoe UI",sans-serif;letter-spacing:.32em;opacity:.7;margin-left:7px;font-style:normal}
-.tb-mid{flex:1;height:100%;display:flex;align-items:center;justify-content:center;min-width:0;color:rgba(255,255,255,.55);font-size:12px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;padding:0 12px}
+.appver{font:600 10px/1 "Segoe UI",sans-serif;letter-spacing:.03em;opacity:.45;margin:2px 0 0 -3px;white-space:nowrap}
+.tb-mid{flex:1;height:100%;line-height:40px;text-align:center;min-width:0;color:rgba(255,255,255,.55);font-size:12px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;padding:0 12px}   /* a block, so a long title ends in "…" instead of being cut on both sides */
+@media (max-width:600px){.tb-mid{visibility:hidden}}   /* too narrow for it: the note's own header shows the title */
 .tbtn{width:34px;height:30px;border-radius:8px;display:grid;place-items:center;color:rgba(255,255,255,.75)}
 .tbtn:hover{background:rgba(255,255,255,.1);color:#fff}
 .tbtn.on{color:#a9c4ff;background:rgba(110,155,255,.2)}
@@ -92,7 +94,8 @@ body[data-view=editor] #editorView{display:flex}
 .crumb-t{font-size:17px;font-weight:700;letter-spacing:-.015em}
 .pill{display:inline-flex;align-items:center;height:22px;padding:0 9px;border-radius:999px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.12);color:rgba(255,255,255,.82);font:600 11.5px "Segoe UI",var(--ui)}
 .pill.warn{background:rgba(245,158,11,.22);color:#ffd28a}
-.hero-act{display:flex;gap:10px;align-items:center}
+.hero-act{display:flex;gap:10px;align-items:center;min-width:0;max-width:100%}
+@media (max-width:640px){.hero-act{width:100%}.hero-act .search{flex:1 1 120px;width:auto;max-width:none;min-width:0}.hero-act .search kbd{display:none}.btn-new{padding:0 12px}}   /* a narrow window: the search box gives way, nothing runs off the edge */
 .search{display:flex;align-items:center;gap:9px;height:40px;width:340px;max-width:56vw;padding:0 10px 0 13px;border-radius:12px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.13);color:rgba(255,255,255,.7);transition:background .15s,border-color .15s,box-shadow .15s}
 .search .i{width:16px;height:16px}
 .search .s-clear{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;flex:none;background:rgba(255,255,255,.12);color:rgba(255,255,255,.85)}
@@ -316,6 +319,8 @@ body.sb-off #sidebar{display:none}
 .tbar.r{top:0;bottom:0;right:-22px;width:16px;cursor:col-resize}
 .tghost{position:absolute;display:none;pointer-events:none;border:1.5px dashed var(--accent);border-radius:4px;box-shadow:0 8px 20px -10px rgba(10,22,50,.35)}
 .tghost.none{border-color:var(--ink-3);background:var(--paper)!important}
+.tghost.del{border-color:var(--danger);background:color-mix(in srgb,var(--danger) 13%,transparent)!important;box-shadow:none}
+.tghost.del span{background:var(--danger)}
 .tghost span{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);padding:2px 9px;border-radius:999px;background:var(--accent);color:#fff;font:700 11.5px "Segoe UI",var(--ui);white-space:nowrap}
 .tins{position:absolute;left:-9px;top:-9px;pointer-events:auto;width:18px;height:18px;border-radius:50%;background:var(--accent);color:#fff;display:none;place-items:center;box-shadow:0 2px 6px rgba(30,70,180,.3);transition:scale .1s}
 .tins.show{display:grid}
@@ -334,9 +339,6 @@ body.sb-off #sidebar{display:none}
 #cellbox.edit{background:none;box-shadow:0 0 0 4px var(--accent-soft)}      /* editing: a halo, no tint - typing adds */
 #stHint.tbl{color:var(--accent-ink);font-weight:600}
 #cellbox.copied,#objbox.copied{border-style:dashed}
-.tflash{position:absolute;pointer-events:none;display:none;border-radius:3px;background:var(--accent-soft)}
-.tflash.go{display:block;animation:tflash .7s ease-out forwards}
-@keyframes tflash{from{opacity:1}to{opacity:0}}
 #tblOv.cold .tbar{opacity:.18}
 #tblOv.cold .tgrip{opacity:0;pointer-events:none}
 .tbar,.tgrip{transition:opacity .15s,background .12s,border-color .12s}
@@ -344,9 +346,21 @@ body.sb-off #sidebar{display:none}
 #editor.cellnav ::selection,#editor.objsel ::selection,#editor img::selection{background:transparent}   /* a selected cell keeps its text selected (IME types over it) - unseen */
 /* selected image / divider / table */
 #objbox{position:absolute;display:none;pointer-events:none;z-index:4;border:2px solid var(--accent);border-radius:5px;box-shadow:0 0 0 4px var(--accent-soft)}
+#objbox .oh{display:none;position:absolute;width:12px;height:12px;border-radius:3px;background:var(--paper);border:2px solid var(--accent);pointer-events:auto;touch-action:none}
+#objbox.img .oh{display:block}
+#objbox .oh[data-h=e]{right:-7px;top:calc(50% - 6px);cursor:ew-resize}
+#objbox .oh[data-h=se]{right:-7px;bottom:-7px;cursor:nwse-resize}
+#objbox .osz{display:none;position:absolute;right:8px;bottom:8px;padding:2px 8px;border-radius:999px;background:var(--accent);color:#fff;font:700 11px/1.5 "Segoe UI",var(--ui)}
+#objbox.drag .osz{display:block}
 
 /* ---------- popovers, menus, modals ---------- */
-.pop{position:fixed;z-index:100;min-width:190px;padding:6px;border-radius:13px;background:var(--menu);border:1px solid var(--line);box-shadow:var(--sh-pop);color:var(--ink);font-size:13px;animation:pop .1s ease-out}
+.pop{position:fixed;z-index:100;min-width:190px;padding:6px;border-radius:13px;background:var(--menu);border:1px solid var(--line);box-shadow:var(--sh-pop);color:var(--ink);font-size:13px;animation:pop .1s ease-out;overflow-y:auto;overscroll-behavior:contain}
+.pop.tight{padding:4px}
+.pop.tight .mit{height:28px}
+.pop.tight .tghint{display:none}
+.pop.tight .tgrid{grid-template-columns:repeat(8,15px);gap:2px;padding:5px 5px 2px}
+.pop.tight .tgrid i{width:15px;height:15px;border-radius:3px}
+.pop.tight .tglabel{padding:2px 0 1px}
 @keyframes pop{from{opacity:0;transform:translateY(-4px)}}
 /* menu rows: not ".mi" - that name is the masked icon above, whose background:currentColor painted the rows solid */
 .mit{display:flex;align-items:center;gap:10px;width:100%;height:32px;padding:0 10px;border-radius:8px;text-align:left;white-space:nowrap;color:var(--ink);background:transparent}
@@ -412,6 +426,8 @@ body.sb-off #sidebar{display:none}
 .keys.bad kbd{border-color:#f3b4b0;color:#d1343a;background:rgba(229,72,77,.06)}
 .hk-cap{font-size:11.5px;color:var(--ink-2);text-align:center;margin-top:6px}
 .row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 0;border-bottom:1px solid var(--line)}
+.row.col{flex-direction:column;align-items:stretch;gap:10px}
+.row.col .seg{align-self:flex-start}
 .row:last-child{border-bottom:0}
 .row .lbl{min-width:0}
 .row .lbl b{display:block;font-weight:650;font-size:13.5px}
@@ -472,6 +488,14 @@ select.sel{height:32px;border-radius:9px;border:1px solid var(--line-2);backgrou
 .pal-sec span{float:right;font-weight:400}
 .pal-sec kbd{padding:0 5px;margin-right:5px;border-radius:5px;border:1px solid var(--line-2);color:var(--ink-2)}
 .pick{border-radius:4px;background:var(--accent-soft);box-shadow:0 0 0 1.5px var(--accent);padding:0 1px}
+.pv-kv b.pp{cursor:pointer;border-radius:4px}
+.pv-kv b.pp:hover{background:var(--hover);box-shadow:0 0 0 1.5px var(--line-2)}
+.pv-kv b.pp.pick:hover{background:var(--accent-soft);box-shadow:0 0 0 1.5px var(--accent)}
+.pv-parts{display:flex;flex-wrap:wrap;align-items:center;gap:5px;margin-top:10px;padding-top:9px;border-top:1px solid var(--line)}
+.pv-pl{width:100%;font-size:11px;font-weight:650;color:var(--ink-3)}
+.pv-parts .pp{max-width:100%;padding:3px 9px;border-radius:7px;border:1px solid var(--line-2);background:var(--paper);color:var(--ink);font-size:12.5px;line-height:1.4;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pv-parts .pp:hover{border-color:var(--accent);color:var(--accent-ink)}
+.pv-parts .pp.pick{background:var(--accent-soft);border-color:var(--accent);color:var(--accent-ink);box-shadow:none;padding:3px 9px}
 .cell-sep{font-style:normal;color:var(--ink-3);margin:0 7px}
 .pal-pv{flex:0 0 37%;min-width:0;border-left:1px solid var(--line);padding:12px 14px;overflow:hidden;font-size:12.5px;line-height:1.55;background:linear-gradient(180deg,var(--hover),transparent 140px)}
 .pv-head{display:flex;align-items:center;gap:8px;margin-bottom:8px;min-width:0}
@@ -551,7 +575,17 @@ body.quick #modal.palm .pal-foot span:last-child{margin-left:auto}
 .hero-btn{min-width:40px;height:40px;padding:0 12px;gap:6px;border-radius:12px;display:inline-flex;align-items:center;justify-content:center;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.13);color:rgba(255,255,255,.72);flex:none}
 .hero-btn:hover{background:rgba(255,255,255,.15);color:#fff}
 .hero-btn .i{width:17px;height:17px}
-.hb-l{font-size:13px;font-weight:650}   /* "휴지통" in words: a bare bin next to a selected card read as "delete it" */
+.hb-l{font-size:13px;font-weight:650}
+.vseg{display:inline-flex;height:40px;padding:3px;gap:2px;border-radius:12px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.13);flex:none}
+.vseg button{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-width:34px;padding:0 10px;border-radius:9px;color:rgba(255,255,255,.72);font-size:13px;font-weight:650}
+.vseg button:hover{background:rgba(255,255,255,.1);color:#fff}
+.vseg button.on{background:rgba(255,255,255,.92);color:#0f2152;cursor:default}
+.vseg .i{width:16px;height:16px}
+.sb-seg{display:none;flex:1;height:36px;border-radius:11px;padding:2px}
+.sb-seg button{flex:1;border-radius:9px;font-size:12.5px}
+.sb-seg .i{width:15px;height:15px}
+body.home-list .sb-seg{display:inline-flex}
+body.home-list .sb-back{display:none}   /* "휴지통" in words: a bare bin next to a selected card read as "delete it" */
 @media (max-width:899px){.hb-l{display:none}.hero-btn{padding:0}}
 .dlg.trash{width:min(600px,calc(100vw - 32px))}
 .tr-item.cur{background:var(--hover)}
@@ -657,7 +691,7 @@ body.maxed:not(.quick) .rz,body.web .rz{display:none}
     <button class="qb-btn" id="qbOpen" title="앱에서 이어서 쓰기"><svg class="i"><use href="#i-open"/></svg></button><button class="qb-btn x" id="qbClose" title="닫기"><svg class="i"><use href="#i-close"/></svg></button></header>
   <header id="titlebar" data-drag>
     <div class="brand">
-      <div class="wordmark">SUPER SPEED<span>NOTE</span></div>
+      <div class="wordmark">SUPER SPEED<span>NOTE</span></div><span class="appver" id="appVer"></span>
     </div>
     <div class="tb-mid" id="tbMid"></div>
     <button class="tbtn" id="btnSwitch" data-k="switcher" data-t="빠른 이동" title="빠른 이동 (Ctrl+K)"><svg class="i"><use href="#i-search"/></svg></button>
@@ -675,6 +709,7 @@ body.maxed:not(.quick) .rz,body.web .rz{display:none}
     <section class="hero" data-drag>
       <div class="crumb"><span class="crumb-t">전체 메모</span><span class="pill" id="noteCount">0 / 500</span><span class="pill sel-pill" id="selCount" hidden></span></div>
       <div class="hero-act">
+        <div class="vseg" role="group" aria-label="보기 방식"><button class="on" data-home="board" title="보드로 보기 (카드)"><svg class="i"><use href="#i-grid"/></svg><span class="hb-l">보드</span></button><button data-home="list" title="목록으로 보기 · 오른쪽에 마지막으로 본 메모"><svg class="i"><use href="#i-list"/></svg><span class="hb-l">목록</span></button></div>
         <button class="hero-btn" id="btnTrash" data-k="trash" data-t="휴지통 · 삭제한 메모 복원" title="휴지통 · 삭제한 메모 복원"><svg class="i"><use href="#i-trash"/></svg><span class="hb-l">휴지통</span></button>
         <label class="search"><svg class="i"><use href="#i-search"/></svg><input id="boardSearch" placeholder="바로 입력해서 찾기 (초성도 돼요)" spellcheck="false" autocomplete="off"><button class="s-clear" id="sClear" title="검색 지우기 (Esc)" hidden><svg class="i"><use href="#i-close"/></svg></button><kbd data-k="find">Ctrl+F</kbd></label>
         <button class="btn-new" id="btnNew" data-k="newNote" data-t="새 메모"><svg class="i"><use href="#i-plus"/></svg>새 메모</button>
@@ -691,6 +726,7 @@ body.maxed:not(.quick) .rz,body.web .rz{display:none}
     <aside id="sidebar">
       <div class="sb-head" data-drag>
         <button class="sb-back" id="btnBack" title="보드로 (Esc)"><svg class="i"><use href="#i-grid"/></svg>메모 보드<kbd>Esc</kbd></button>
+        <div class="vseg sb-seg" role="group" aria-label="보기 방식"><button data-home="board" title="보드로 보기 (카드)"><svg class="i"><use href="#i-grid"/></svg>보드</button><button class="on" data-home="list" title="목록으로 보기"><svg class="i"><use href="#i-list"/></svg>목록</button></div>
         <button class="sb-add" id="btnSbNew" data-k="newNote" data-t="새 메모" title="새 메모 (Ctrl+N)"><svg class="i"><use href="#i-plus"/></svg></button>
       </div>
       <div class="sb-label" id="sbLabel">메모 목록</div>
@@ -734,15 +770,15 @@ body.maxed:not(.quick) .rz,body.web .rz{display:none}
         <div id="sheet">
           <div id="editor" contenteditable="true" spellcheck="false" data-ph="여기에 바로 입력하세요.&#10;줄 맨 앞에서 # 제목 · - 목록 · [] 체크 · ``` 코드 · 엑셀 셀을 붙여넣으면 표가 돼요"></div>
           <div id="tblOv">
-            <div id="cellbox"></div><i class="tflash"></i>
+            <div id="cellbox"></div>
             <i class="tinsln"></i>
             <button class="tins"><svg class="i"><use href="#i-plus"/></svg></button>
             <div class="tghost"><span></span></div>
-            <button class="tbar b" data-dir="row" title="클릭: 맨 아래에 행 추가 · 아래로 끌면 여러 행"><svg class="i"><use href="#i-plus"/></svg></button>
-            <button class="tbar r" data-dir="col" title="클릭: 맨 오른쪽에 열 추가 · 오른쪽으로 끌면 여러 열"><svg class="i"><use href="#i-plus"/></svg></button>
+            <button class="tbar b" data-dir="row" title="클릭: 맨 아래에 행 추가 · 아래로 끌면 여러 행 · 위(표 쪽)로 끌면 끝의 빈 행 지우기"><svg class="i"><use href="#i-plus"/></svg></button>
+            <button class="tbar r" data-dir="col" title="클릭: 맨 오른쪽에 열 추가 · 오른쪽으로 끌면 여러 열 · 왼쪽(표 쪽)으로 끌면 끝의 빈 열 지우기"><svg class="i"><use href="#i-plus"/></svg></button>
             <button class="tgrip" title="표 선택 · Ctrl+C 복사 · Delete 삭제"><svg class="i"><use href="#i-table"/></svg></button>
           </div>
-          <div id="objbox"></div>
+          <div id="objbox"><i class="oh" data-h="e" title="끌어서 크기 조절"></i><i class="oh" data-h="se" title="끌어서 크기 조절"></i><span class="osz"></span></div>
         </div>
       </div>
       <footer id="status"><span id="stSave">저장됨</span><span id="stCount"></span><span class="fill"></span><span id="stHint">Esc 보드 · Ctrl+K 빠른 이동</span><span id="stZoom" title="클릭하면 100%로" hidden>100%</span></footer>
@@ -1443,7 +1479,7 @@ function deleteNotes(ids) {
   if (gone.has(selId)) selId = nextSel;
   stateDirty = true; flushState();
   applyHotkeys();
-  if (cur && gone.has(cur)) { cur = null; showBoard(); } else rerender();
+  if (cur && gone.has(cur)) { cur = null; goHome(); } else rerender();
   markSb();
   if (view === 'board') { const c = grid.querySelector('.card.sel'); if (c) c.scrollIntoView({ block: 'nearest' }); }
   const kept = items.filter(x => !x.empty).length, purged = items.length - kept;
@@ -1524,12 +1560,13 @@ function openNote(id, o = {}) {
   const n = noteById(id);
   if (!n) return;
   closePop();
-  app.classList.remove('sb-peek');
-  boardUndo = null;
+  if (!o.browse) app.classList.remove('sb-peek');   // (walking the list in a narrow window keeps its drawer open)
+  if (!o.browse) boardUndo = null;                // looking at notes in the list keeps Ctrl+Z for the note just deleted
   const same = cur === id && view === 'editor';
   if (!same) {
     if (cur) leaveNote();
     clearNav(); clearObj();
+    if (o.browse) getSelection().removeAllRanges();   // shown from the list: no caret in it (a table cell would take the keys)
     cur = id; selId = id;
     editor.innerHTML = bodies[id] || '<div><br></div>';
     if (!editor.firstChild) editor.innerHTML = '<div><br></div>';
@@ -1546,6 +1583,11 @@ function openNote(id, o = {}) {
   host.send('active', id);
   if (o.focusTitle) { titleIn.focus(); titleIn.select(); return; }
   const m = memo.get(id) || n.at;
+  if (o.browse) {                                  // the keys stay in the list; Enter / a click goes in where you left off
+    if (!same) { lastSel = m && m.sel || null; scroller.scrollTop = m ? m.top : 0; }
+    updateToolbar();
+    return;
+  }
   editor.focus({ preventScroll: true });
   if (!same) {
     if (m && m.sel) { selRestore(m.sel); scroller.scrollTop = m.top; }
@@ -1583,6 +1625,30 @@ function showBoard() {
   const c = grid.querySelector('.card.sel');
   if (c) c.scrollIntoView({ block: 'nearest' });
 }
+// Home is the board (cards) or the list (notes on the left, the one you looked at last on the right)
+function listHome() { return st.home === 'list'; }
+function setHome(h) {
+  if ((st.home || 'board') !== h) { st.home = h; saveStateSoon(); }
+  app.classList.toggle('home-list', h === 'list');
+  updateKeyHints();
+  if (h === 'list') showList(); else showBoard();
+}
+function showList(id) {
+  const n = noteById(id) || noteById(cur) || noteById(S.lastOpen) || noteById(selId) || ordered()[0];
+  if (!n) { showBoard(); if (listHome()) toast('메모가 없어서 보드로 보여요 · 새 메모를 만들면 목록으로 볼 수 있어요'); return; }
+  if (!narrow.matches && !st.sidebar) { st.sidebar = true; app.classList.remove('sb-off'); saveStateSoon(); }
+  clearNav(); clearObj();
+  if (n.id === cur && view === 'editor') {        // back from writing it: keep where the caret was, but take it out of
+    const at = selSave();                         // the note, or a table cell would pull the keys back in
+    if (at) lastSel = at;
+    getSelection().removeAllRanges();
+  }
+  openNote(n.id, { browse: true });
+  if (narrow.matches) app.classList.add('sb-peek');
+  sbList.focus({ preventScroll: true });
+  markSb();
+}
+function goHome() { if (listHome()) showList(); else showBoard(); }
 function cycle(d) {
   const list = ordered();
   if (!list.length) return;
@@ -1652,8 +1718,8 @@ sbList.addEventListener('click', e => {
   } else if (e.ctrlKey || e.metaKey) {
     if (sbMulti.has(id)) sbMulti.delete(id); else sbMulti.add(id);
     sbAnchor = id;
-  } else {                                        // like a file list: the note opens, the keys stay here (Del deletes it)
-    clearSb(); sbAnchor = null; openNote(id);
+  } else {                                        // like a file list: the note shows, the keys stay here (Del deletes it)
+    clearSb(); sbAnchor = null; openNote(id, { browse: !narrow.matches });
     if (!narrow.matches) sbList.focus({ preventScroll: true });
     return;
   }
@@ -1666,7 +1732,7 @@ function sbDelete(ids) {
   const last = Math.max(...ids.map(id => order.indexOf(id)));
   const next = order.slice(last + 1).find(id => !gone.has(id)) || order.slice(0, last).reverse().find(id => !gone.has(id));
   const stay = () => { if (view === 'editor') sbList.focus({ preventScroll: true }); };
-  askDeleteNotes(ids, { confirm: true, cancel: stay, after: () => { if (next && noteById(next) && (!cur || gone.has(cur) || view !== 'editor')) openNote(next); stay(); } });
+  askDeleteNotes(ids, { confirm: true, cancel: stay, after: () => { if (next && noteById(next) && (!cur || gone.has(cur) || view !== 'editor')) openNote(next, { browse: true }); stay(); } });
 }
 sbList.addEventListener('keydown', e => {
   if (e.isComposing) return;
@@ -1681,10 +1747,13 @@ sbList.addEventListener('keydown', e => {
       e.preventDefault(); e.stopPropagation();
       const ids = $$('.sb-item', sbList).map(x => x.dataset.id), i = ids.indexOf(cur);
       const to = ids[clamp(i + (e.key === 'ArrowDown' ? 1 : -1), 0, ids.length - 1)];
-      if (to && to !== cur) openNote(to);
+      if (to && to !== cur) openNote(to, { browse: true });   // only shows it: the caret stays out of the note
       sbList.focus({ preventScroll: true });
     } else if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); e.stopPropagation(); refocus(); }
-    else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); showBoard(); }   // as from the note: Esc = the board
+    else if (e.key === 'Escape') {                // as from the note: Esc = home (the board; in the list view the list is home)
+      e.preventDefault(); e.stopPropagation();
+      if (!listHome()) showBoard(); else if (app.classList.contains('sb-peek')) { app.classList.remove('sb-peek'); refocus(); }
+    }
     // a key that writes: into the note (the list can't take Korean input, so this first key only switches over)
     else if (!mods && (e.key.length === 1 || e.key === 'Backspace' || e.key === 'Process' || e.keyCode === 229)) { e.preventDefault(); e.stopPropagation(); refocus(); }
     return;
@@ -1739,11 +1808,12 @@ $('#hSide').onclick = () => {
   st.sidebar = !st.sidebar; app.classList.toggle('sb-off', !st.sidebar); saveStateSoon(); posOvSoon();
 };
 $('#pane').addEventListener('mousedown', () => app.classList.remove('sb-peek'));
-$('#hColor').onclick = e => { const r = e.currentTarget.getBoundingClientRect(); colorMenu(cur, r.left, r.bottom + 6); };
+$('#hColor').onclick = e => { const r = e.currentTarget.getBoundingClientRect(); popAnchorTop = r.top; colorMenu(cur, r.left, r.bottom + 6); };
 $('#hHotkey').onclick = () => setNoteHotkey(cur);
 $('#hPin').onclick = () => togglePin(cur);
-$('#hMore').onclick = e => { const r = e.currentTarget.getBoundingClientRect(); noteMenu(cur, r.right - 220, r.bottom + 6); };
+$('#hMore').onclick = e => { const r = e.currentTarget.getBoundingClientRect(); popAnchorTop = r.top; noteMenu(cur, r.right - 220, r.bottom + 6); };
 $('#btnBack').onclick = showBoard;
+for (const g of $$('.vseg')) g.onclick = e => { const b = e.target.closest('button[data-home]'); if (b) setHome(b.dataset.home); };
 $('#btnSbNew').onclick = newNote;
 $('#btnNew').onclick = newNote;
 $('#btnTrash').onclick = openTrash;
@@ -1856,32 +1926,50 @@ function ensureRoot() {
 }
 
 // ---------------------------------------------------------------- undo history (snapshots; we own it so table edits undo too)
+// What one Ctrl+Z takes back, the way word processors do it:
+//  - typing: a word with the space after it; a pause (1 s) also ends a step
+//  - typing and deleting (Backspace / Delete) are separate steps; Enter starts a step with the line after it
+//  - moving the caret (click, arrows) ends the step being typed, so two places never come back together
+//  - every command (format, list, table, paste, picture ...) is its own step (edit() below)
+// Undo puts the caret where the undone change began, redo where it ended.
 const H = new Map();
 let histT = 0, burstSel = null, composing = false;
+let grpKind = '', grpWord = false, grpAt = null, grpAtKey = '';   // the step being typed: ins / del / para, has a word yet, caret after its last input
 function histInit(id, html) { if (!H.has(id)) H.set(id, { st: [{ h: html || editor.innerHTML, s: null, u: null }], i: 0 }); }
-function histSoon() { clearTimeout(histT); histT = setTimeout(histCommit, isBig ? 1500 : 500); }
+function histSoon() { clearTimeout(histT); histT = setTimeout(histCommit, isBig ? 1500 : 1000); }
 // Big notes (~80KB+ of HTML): the whole-note work done on typing pauses (undo snapshot, character count)
 // runs less often. (content-visibility on every block was tried and made opening big notes far slower.)
 let isBig = false;
 function setBig(len) { isBig = len > 80000; editor.classList.toggle('big', isBig); }
-function histCommit() {
+function histCommit(keepNodes) {
   clearTimeout(histT); histT = 0;
   const hs = H.get(cur);
   if (!hs || composing) return;
-  editor.normalize();
+  const typed = burstSel ? grpAt : null;          // a typed step: redo puts the caret where the typing ended
+  grpKind = ''; grpWord = false; grpAt = null; grpAtKey = '';
+  if (!keepNodes) editor.normalize();             // (not when an IME is about to compose: its text node stays as it is)
   const h = editor.innerHTML;
   const top = hs.st[hs.i];
   if (top.h === h) { burstSel = null; return; }
   if (burstSel) top.u = burstSel;
   burstSel = null;
   hs.st.length = hs.i + 1;
-  hs.st.push({ h, s: selSave(), u: null });
+  hs.st.push({ h, s: typed || selSave(), u: null });
   hs.i = hs.st.length - 1;
   let size = 0;
   for (const e of hs.st) size += e.h.length;
   while (hs.st.length > 2 && (hs.st.length > 200 || size > 30e6)) { size -= hs.st.shift().h.length; hs.i--; }
 }
+// Ctrl+Z / Ctrl+Y in the middle of a Korean syllable: the IME is told to finish it first (blur / focus), so the
+// syllable is recorded with the words before it and undone with them - not skipped (the step before undone instead)
+// and not typed in again after the undo
+function finishIme() {
+  if (!composing) return;
+  editor.blur(); editor.focus({ preventScroll: true });
+  composing = false;
+}
 function undo() {
+  finishIme();
   histCommit();
   const hs = H.get(cur);
   if (!hs || hs.i <= 0) return;
@@ -1890,6 +1978,7 @@ function undo() {
   applySnap(e.h, e.u || e.s);
 }
 function redo() {
+  finishIme();
   histCommit();
   const hs = H.get(cur);
   if (!hs || hs.i >= hs.st.length - 1) return;
@@ -1904,8 +1993,22 @@ function applySnap(h, sel) {
   if (!editor.firstChild) editor.innerHTML = '<div><br></div>';
   editor.focus({ preventScroll: true });
   if (sel) selRestore(sel); else placeCaret(editor.lastChild, true);
+  // the "type here" hint goes (or comes back) with the undone text at once, not with the delayed character count
+  editor.classList.toggle('is-empty', !editor.textContent && !editor.querySelector('img,table,hr,li'));
   markDirty(); statsSoon(); posOvSoon(); updateToolbar();
   if (findOpen) findSoon();
+}
+// A toast's 되돌리기 undoes the step it is about - only while nothing else was done since (in this note).
+// Ctrl+Z would take back whatever came last; the button refuses instead of undoing something else.
+// pending: the step is still being typed (a cell started over), so it is the next one recorded.
+function undoThis(pending) {
+  const id = cur, h0 = H.get(cur), at = h0 ? h0.i + (pending ? 1 : 0) : -1;
+  return () => {
+    if (id === cur && view === 'editor') histCommit();
+    const hs = H.get(id);
+    if (id !== cur || view !== 'editor' || !hs || hs.i !== at) { toast('그 뒤에 다른 편집이 있어서 되돌리지 않았어요 · 메모에서 Ctrl+Z로 하나씩 되돌릴 수 있어요'); return; }
+    undo();
+  };
 }
 // run a structural/formatting change as exactly one undo step
 function edit(fn) {
@@ -1922,10 +2025,17 @@ function edit(fn) {
 function exec(cmd, val = null) { return document.execCommand(cmd, false, val); }
 
 // ---------------------------------------------------------------- editor events
+const inputKind = t => t.startsWith('delete') ? 'del' : t === 'insertParagraph' || t === 'insertLineBreak' ? 'para'
+  : t === 'insertText' || t === 'insertCompositionText' || t === 'insertReplacementText' ? 'ins' : 'other';
 editor.addEventListener('beforeinput', e => {
   if (e.inputType === 'historyUndo') { e.preventDefault(); undo(); return; }
   if (e.inputType === 'historyRedo') { e.preventDefault(); redo(); return; }
+  const kind = inputKind(e.inputType);
+  // a new step: typing after deleting (or the other way round), Enter, a drop / anything else, or the caret was
+  // moved since the last key (checked here too, in case its selectionchange hasn't come yet)
+  if (burstSel && !composing && (kind === 'para' || kind === 'other' || (kind === 'del') !== (grpKind === 'del') || (grpAtKey && JSON.stringify(selSave()) !== grpAtKey))) histCommit();
   if (!histT && !burstSel) burstSel = selSave();
+  grpKind = kind;
   if (e.inputType.startsWith('insert')) editor.classList.remove('is-empty');   // hide the hint on the first keystroke
 });
 editor.addEventListener('input', e => {
@@ -1941,8 +2051,19 @@ editor.addEventListener('input', e => {
   statsSoon();
   posOvSoon();
   if (findOpen) findSoon();
+  if (burstSel) {                                 // where the caret is now: moved away from here = the step ends
+    grpAt = selSave(); grpAtKey = JSON.stringify(grpAt);
+    if (/^insert(Text|CompositionText)$/.test(e.inputType) && e.data) {
+      if (/\S/.test(e.data)) grpWord = true;
+      else if (grpWord && !composing && e.inputType === 'insertText') histCommit();   // a word and its space: one step
+    }
+    if (grpKind === 'other') histCommit();        // a drop / an IME suggestion ... on its own
+  }
 });
-editor.addEventListener('compositionstart', () => { composing = true; editor.classList.remove('is-empty'); });
+editor.addEventListener('compositionstart', () => {
+  if (burstSel && (grpKind === 'del' || (grpAtKey && JSON.stringify(selSave()) !== grpAtKey))) histCommit(true);   // Korean typing after deleting / somewhere else: a new step
+  composing = true; editor.classList.remove('is-empty');
+});
 editor.addEventListener('compositionend', () => { composing = false; if (needsRoot()) ensureRoot(); histSoon(); if (tipAfterIme) { tipAfterIme = false; tipReplace(); } });
 editor.addEventListener('keydown', e => {
   if (objSel && !e.isComposing && objKey(e)) return;   // a selected picture / divider / table
@@ -2048,6 +2169,7 @@ function linkifyBefore() {
 function openUrl(u) { if (!/^(https?:|mailto:)/i.test(u)) return; if (HOST) host.send('openUrl', u); else window.open(u, '_blank'); }
 document.addEventListener('selectionchange', () => {
   if (view !== 'editor') return;
+  if (burstSel && grpAtKey && !composing && selRange() && JSON.stringify(selSave()) !== grpAtKey) histCommit();   // the caret moved: the typed step ends here
   if (selRange()) { lastSel = selSave(); syncNav(); }
   if (!tbRaf) tbRaf = requestAnimationFrame(() => { tbRaf = 0; updateToolbar(); caretTable(); selCount(); });
 });
@@ -2436,6 +2558,7 @@ toolbar.addEventListener('click', e => {
 function toolPop(kind, anchor) {
   ensureEditorFocus();
   const r = anchor.getBoundingClientRect();
+  popAnchorTop = r.top;
   if (kind === 'block') {
     const look = { div: 'font-size:13.5px', h1: 'font-size:19px;font-weight:800', h2: 'font-size:16.5px;font-weight:750', h3: 'font-size:14.5px;font-weight:700', blockquote: 'font-size:13.5px;border-left:3px solid var(--accent);padding-left:8px', pre: 'font:12.5px var(--mono)' };
     const now0 = (document.queryCommandValue('formatBlock') || 'div').toLowerCase();
@@ -2625,9 +2748,9 @@ function tableOp(op, t, cell) {
     }
     if (target) placeCaret(target, false);
   });
-  if (gone || !t.isConnected) toast('표를 삭제했어요', '되돌리기', undo);
+  if (gone || !t.isConnected) toast('표를 삭제했어요', '되돌리기', undoThis());
   else if (inRc && (op === 'delRow' || op === 'delCol') && (op === 'delRow' ? rc.r1 > rc.r0 : rc.c1 > rc.c0))
-    toast(`${op === 'delRow' ? '행' : '열'} ${op === 'delRow' ? rc.r1 - rc.r0 + 1 : rc.c1 - rc.c0 + 1}개를 삭제했어요`, '되돌리기', undo);
+    toast(`${op === 'delRow' ? '행' : '열'} ${op === 'delRow' ? rc.r1 - rc.r0 + 1 : rc.c1 - rc.c0 + 1}개를 삭제했어요`, '되돌리기', undoThis());
 }
 // table shortcuts (Settings > 단축키): the cell being edited / selected, else the one holding the caret
 function tblAct(op) {
@@ -2641,6 +2764,8 @@ function tblAct(op) {
 // F2 / double-click edit it with the caret at the end, Esc while editing restores the old value.
 let nav = null;                                   // { t, ar, ac, fr, fc }  anchor / focus row + column
 let editCell = null, editKind = '', editOrig = '';
+let editMark = null;                              // { id, i }: the undo step a cell edit began after (Esc drops what it added)
+function markEdit() { const hs = H.get(cur); editMark = hs ? { id: cur, i: hs.i } : null; }
 let tabFrom = -1;                                 // column a run of Tabs started in: Enter goes back to it, like Excel
 // the status bar says what a key will do in a table (written only when the mode changes)
 let hintMode = '', defaultHint = '', tipAfterIme = false;
@@ -2694,11 +2819,21 @@ function setNav(t, r, c, extend) {
   if (td) { parkNav(td); td.scrollIntoView({ block: 'nearest', inline: 'nearest' }); }
   showOv(t); posOv(); updateToolbar(); tblHint('nav');
 }
+// Esc on a cell edit: the steps recorded while typing in it are dropped too, so the next Ctrl+Z takes back what was
+// done before the edit - not the cancelled text (it used to come back)
+function dropEditSteps() {
+  const hs = H.get(cur), m = editMark;
+  editMark = null;
+  clearTimeout(histT); histT = 0; burstSel = null;
+  if (hs && m && m.id === cur && hs.i > m.i && m.i >= 0) { hs.st.length = m.i + 1; hs.i = m.i; }
+  histCommit();                                   // a change made before the edit and not yet recorded: its own step
+}
 function startEdit(kind, td, keepCaret) {
   td = td || (nav && cellAt(nav.t, nav.fr, nav.fc));
   if (!td) return;
   const r = td.parentElement.rowIndex, c = td.cellIndex;
   nav = { t: td.closest('table'), ar: r, ac: c, fr: r, fc: c };
+  if (editCell !== td) markEdit();
   editCell = td; editKind = kind; editOrig = td.innerHTML;
   editor.classList.remove('cellnav');
   if (!keepCaret) parkCaret(td);
@@ -2711,6 +2846,7 @@ function beginReplace() {                         // a key typed on a selected c
   const hs = H.get(cur);
   if (hs) hs.st[hs.i].u = selSave();
   const orig = td.innerHTML;
+  markEdit();
   td.innerHTML = '<br>';
   startEdit('type', td);
   editOrig = orig;
@@ -2720,7 +2856,8 @@ function beginReplace() {                         // a key typed on a selected c
 function tipReplace() {                           // once: why the cell's text went away
   if (st.tipReplace) return;
   st.tipReplace = 1; saveStateSoon();
-  setTimeout(() => toast('선택한 칸에 입력하면 내용이 새로 바뀌어요 · 이어 쓰려면 F2나 더블클릭', '되돌리기', undo), 0);
+  const back = undoThis(true);
+  setTimeout(() => toast('선택한 칸에 입력하면 내용이 새로 바뀌어요 · 이어 쓰려면 F2나 더블클릭', '되돌리기', back), 0);
 }
 // the IME's first key on a selected cell: no DOM or selection change here (see parkNav) - the composition replaces
 // the parked selection by itself; we only switch the cell to editing
@@ -2728,6 +2865,7 @@ function imeReplace() {
   const r = selRange(), td = (r && cellOf(r.startContainer)) || cellAt(nav.t, nav.fr, nav.fc);
   if (!td) return;
   const row = td.parentElement.rowIndex, col = td.cellIndex;
+  markEdit();
   editCell = td; editKind = 'type'; editOrig = td.innerHTML;
   nav = { t: td.closest('table'), ar: row, ac: col, fr: row, fc: col };
   requestAnimationFrame(() => { if (editCell === td) { editor.classList.remove('cellnav'); tblHint('edit'); } });   // not even a class change on this key
@@ -2800,7 +2938,8 @@ function editKey(e) {
   const back = () => { histCommit(); nav = { t, ar: r, ac: c, fr: r, fc: c }; editCell = null; };
   if (e.key === 'Escape') {                      // cancel the edit
     e.preventDefault(); e.stopPropagation();
-    if (td.innerHTML !== editOrig) { td.innerHTML = editOrig; markDirty(); histSoon(); }
+    if (td.innerHTML !== editOrig) { td.innerHTML = editOrig; markDirty(); }
+    dropEditSteps();
     setNav(t, r, c);
     return true;
   }
@@ -2947,15 +3086,6 @@ function caretTable() {
   else if (ovTable) { posOv(); if (!ovHover) hideOvSoon(); }
 }
 // the row / column border nearest to y / x (binary search: big tables stay cheap)
-const tflash = $('.tflash', ov);
-function flashLine(t, row, i) {                   // a soft glow over a row / column just added
-  const tr = t.getBoundingClientRect();
-  let r;
-  if (row) { const x = t.rows[i]; if (!x) return; r = x.getBoundingClientRect(); r = { left: tr.left, top: r.top, width: tr.width, height: r.height }; }
-  else { const a = t.rows[0].cells[i], b = t.rows[t.rows.length - 1].cells[i]; if (!a || !b) return; const ra = a.getBoundingClientRect(), rb = b.getBoundingClientRect(); r = { left: ra.left, top: ra.top, width: ra.width, height: rb.bottom - ra.top }; }
-  Object.assign(tflash.style, { left: (r.left - tr.left) + 'px', top: (r.top - tr.top) + 'px', width: r.width + 'px', height: r.height + 'px' });
-  tflash.classList.remove('go'); void tflash.offsetWidth; tflash.classList.add('go');
-}
 function rowBorder(t, y) {
   const rows = t.rows;
   let lo = 0, hi = rows.length - 1;
@@ -3060,24 +3190,51 @@ tins.addEventListener('click', () => {
   clearObj();
   edit(() => { if (at.row) addRow(t, at.i); else addCol(t, at.i); });
   if (at.row) setNav(t, at.i, c); else setNav(t, r >= t.rows.length ? 0 : r, at.i);
-  posOv(); flashLine(t, at.row, at.i);
+  posOv();
 });
 tgrip.addEventListener('click', () => { if (ovTable) selectObj(ovTable); });
-// add bars: a click adds one row / column, dragging adds as many as the dashed preview shows
+// add bars: a click adds one row / column, dragging out adds as many as the dashed preview shows, dragging back
+// into the table takes off the empty rows / columns at the end - it stops before one with anything in it
 function lastColWidth(t) {
   let w = 0;
   for (const tr of t.rows) { const c = tr.cells[tr.cells.length - 1]; if (c) { w = c.getBoundingClientRect().width; break; } }
   return w;
 }
+function colRect(t, j) { for (const tr of t.rows) if (tr.cells[j]) return tr.cells[j].getBoundingClientRect(); return null; }
+const cellBlank = td => !td.textContent.replace(/[\s\u200b]/g, '') && !td.querySelector('img,hr,table');
+function emptyTail(t, row) {                      // empty rows / columns at the end (one always stays)
+  let k = 0;
+  if (row) { for (let i = t.rows.length - 1; i > 0 && Array.from(t.rows[i].cells).every(cellBlank); i--) k++; }
+  else { for (let j = tableCols(t) - 1; j > 0 && Array.from(t.rows).every(tr => !tr.cells[j] || cellBlank(tr.cells[j])); j--) k++; }
+  return k;
+}
+function tailUnder(d, x, y) {                     // the empty ones at the end whose middle the pointer has passed
+  const t = d.t, c = tableCols(t);
+  let k = 0;
+  for (; k < d.max; k++) {
+    const r = d.row ? t.rows[t.rows.length - 1 - k].getBoundingClientRect() : colRect(t, c - 1 - k);
+    if (!r || (d.row ? y > (r.top + r.bottom) / 2 : x > (r.left + r.right) / 2)) break;
+  }
+  return k;
+}
 function showGhost() {
   const d = barDrag;
   if (!d) { tghost.style.display = 'none'; return; }
+  const what = d.row ? '행' : '열';
+  tghost.classList.toggle('none', !d.n);
+  tghost.classList.toggle('del', d.n < 0);
+  if (d.n < 0) {                                   // the rows / columns that go, tinted where they are
+    const t = d.t, tr = t.getBoundingClientRect();
+    if (d.row) Object.assign(tghost.style, { display: 'block', left: '0', right: '0', top: (t.rows[t.rows.length + d.n].getBoundingClientRect().top - tr.top) + 'px', bottom: '0', width: '', height: '', background: '' });
+    else Object.assign(tghost.style, { display: 'block', top: '0', bottom: '0', left: (colRect(t, tableCols(t) + d.n).left - tr.left) + 'px', right: '0', width: '', height: '', background: '' });
+    tghost.firstChild.textContent = `빈 ${what} ${-d.n}개 지우기`;
+    return;
+  }
   const len = Math.max(d.n, .8) * d.step, line = 'color-mix(in srgb,var(--accent) 35%,transparent)', fill = 'linear-gradient(var(--accent-soft),var(--accent-soft)) var(--paper)';
   Object.assign(tghost.style, d.row
     ? { display: 'block', left: '0', right: '0', top: 'calc(100% + 2px)', bottom: '', width: '', height: len + 'px', background: `repeating-linear-gradient(180deg,transparent 0 ${d.step - 1}px,${line} ${d.step - 1}px ${d.step}px),${fill}` }
     : { display: 'block', top: '0', bottom: '0', left: 'calc(100% + 2px)', right: '', height: '', width: len + 'px', background: `repeating-linear-gradient(90deg,transparent 0 ${d.step - 1}px,${line} ${d.step - 1}px ${d.step}px),${fill}` });
-  tghost.classList.toggle('none', !d.n);
-  tghost.firstChild.textContent = d.n ? `+${d.n}${d.row ? '행' : '열'}` : '놓으면 취소';
+  tghost.firstChild.textContent = d.n ? `+${d.n}${what}` : d.into && !d.max ? `지울 빈 ${what}이 없어요` : '놓으면 취소';
 }
 function finishBar(commit) {
   const d = barDrag;
@@ -3089,9 +3246,26 @@ function finishBar(commit) {
   if (!commit || !d.n || !t.isConnected || view !== 'editor' || !editor.contains(t)) { posOvSoon(); return; }
   const r = nav && nav.t === t ? nav.fr : 0, c = nav && nav.t === t ? nav.fc : 0;
   clearObj();
-  if (d.row) { const r0 = t.rows.length; edit(() => { for (let k = 0; k < d.n; k++) addRow(t, t.rows.length); }); setNav(t, r0, c); posOv(); flashLine(t, true, r0); }
-  else { const c0 = tableCols(t); edit(() => { for (let k = 0; k < d.n; k++) addCol(t, tableCols(t)); }); setNav(t, r, c0); posOv(); flashLine(t, false, c0); }
-  if (d.n > 1) toast(`${d.row ? '행' : '열'} ${d.n}개를 추가했어요`, '되돌리기', undo);
+  if (d.n < 0) { dropTail(t, d.row, -d.n); return; }
+  if (d.row) { const r0 = t.rows.length; edit(() => { for (let k = 0; k < d.n; k++) addRow(t, t.rows.length); }); setNav(t, r0, c); posOv(); }
+  else { const c0 = tableCols(t); edit(() => { for (let k = 0; k < d.n; k++) addCol(t, tableCols(t)); }); setNav(t, r, c0); posOv(); }
+  if (d.n > 1) toast(`${d.row ? '행' : '열'} ${d.n}개를 추가했어요`, '되돌리기', undoThis());
+}
+function dropTail(t, row, k) {
+  k = Math.min(k, emptyTail(t, row));             // checked again: only ever empty ones
+  if (!k) { posOvSoon(); return; }
+  const inNav = !!nav && nav.t === t, fr = inNav ? nav.fr : 0, fc = inNav ? nav.fc : 0;
+  const held = closestSel('td'), heldIn = !!held && t.contains(held);
+  const hr = heldIn ? held.parentElement.rowIndex : 0, hc = heldIn ? held.cellIndex : 0;
+  edit(() => {
+    if (row) for (let i = 0; i < k; i++) t.deleteRow(t.rows.length - 1);
+    else { const c = tableCols(t); for (const tr of Array.from(t.rows)) for (let j = Math.min(tr.cells.length, c) - 1; j >= c - k; j--) tr.deleteCell(j); }
+  });
+  // a selected cell / the caret that was in a removed row / column moves to the nearest one left
+  if (inNav) setNav(t, fr, fc);
+  else if (heldIn && !held.isConnected) placeCaret(cellAt(t, Math.min(hr, t.rows.length - 1), Math.min(hc, tableCols(t) - 1)), true);
+  posOv();
+  if (k > 1) toast(`빈 ${row ? '행' : '열'} ${k}개를 지웠어요`, '되돌리기', undoThis());
 }
 document.addEventListener('keydown', e => { if (barDrag && e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); finishBar(false); } }, true);
 for (const b of $$('.tbar', ov)) {
@@ -3100,7 +3274,7 @@ for (const b of $$('.tbar', ov)) {
     e.preventDefault();
     const t = ovTable, row = b.dataset.dir === 'row';
     const step = Math.round(clamp(row ? t.rows[t.rows.length - 1].getBoundingClientRect().height : lastColWidth(t), 24, 400));
-    barDrag = { t, row, step, b, x: e.clientX, y: e.clientY, n: 1 };
+    barDrag = { t, row, step, b, x: e.clientX, y: e.clientY, n: 1, max: emptyTail(t, row), into: false };
     insAt = null; placeIns();
     b.setPointerCapture(e.pointerId);
     b.classList.add('drag');
@@ -3109,9 +3283,15 @@ for (const b of $$('.tbar', ov)) {
   b.addEventListener('pointermove', e => {
     const d = barDrag;
     if (!d || d.b !== b) return;
-    const dist = d.row ? e.clientY - d.y : e.clientX - d.x;   // back above where you pressed: nothing (cancel)
-    const n = dist < -d.step / 3 ? 0 : clamp(Math.round(dist / d.step), 1, d.row ? 200 : 50);
-    if (n !== d.n) { d.n = n; showGhost(); }
+    const dist = d.row ? e.clientY - d.y : e.clientX - d.x;
+    let n, into = false;
+    if (dist >= -d.step / 3) n = clamp(Math.round(dist / d.step), 1, d.row ? 200 : 50);   // away from the table: add
+    else {                                         // back toward it: empty ones at the end go, or nothing (cancel)
+      const k = tailUnder(d, e.clientX, e.clientY);
+      n = k ? -k : 0;
+      if (!d.max) { const t = d.t, r = d.row ? t.rows[t.rows.length - 1].getBoundingClientRect() : colRect(t, tableCols(t) - 1); into = !!r && (d.row ? e.clientY < (r.top + r.bottom) / 2 : e.clientX < (r.left + r.right) / 2); }
+    }
+    if (n !== d.n || into !== d.into) { d.n = n; d.into = into; showGhost(); }
   });
   b.addEventListener('pointerup', () => { if (barDrag && barDrag.b === b) finishBar(true); });
   b.addEventListener('pointercancel', () => finishBar(false));
@@ -3137,6 +3317,7 @@ function selectObj(el) {
     tgrip.classList.add('on'); tblHint('obj');
   } else r.selectNode(el);
   const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+  objbox.classList.toggle('img', el.nodeName === 'IMG');
   posObj();
 }
 function clearObj() {
@@ -3144,6 +3325,7 @@ function clearObj() {
   objSel = null;
   editor.classList.remove('objsel');
   objbox.style.display = 'none';
+  objbox.classList.remove('img');
   tgrip.classList.remove('on');
   if (hintMode === 'obj') tblHint('');
 }
@@ -3157,7 +3339,7 @@ function deleteObj() {
   const el = objSel;
   clearObj();
   if (!el || !el.isConnected) return;
-  if (el.nodeName === 'TABLE') { edit(() => removeTable(el)); toast('표를 삭제했어요', '되돌리기', undo); return; }
+  if (el.nodeName === 'TABLE') { edit(() => removeTable(el)); toast('표를 삭제했어요', '되돌리기', undoThis()); return; }
   edit(() => {
     const p = el.parentNode;
     if (p === editor) {                           // a divider (or a picture on its own line)
@@ -3197,7 +3379,40 @@ function objKey(e) {
   return true;
 }
 // any click elsewhere lets go (a click on the same picture selects it again)
-document.addEventListener('mousedown', e => { if (objSel && !(e.target.closest && e.target.closest('.tgrip'))) clearObj(); }, true);
+document.addEventListener('mousedown', e => { if (objSel && !(e.target.closest && e.target.closest('.tgrip, .oh'))) clearObj(); }, true);
+// a selected picture: drag the right edge / corner to size it (the height follows). Nothing runs until a handle is
+// pressed; while dragging only the picture's width changes, and letting go makes it one undo step.
+let objDrag = null;
+const osz = $('.osz', objbox);
+function endObjDrag(commit) {
+  const d = objDrag;
+  if (!d) return;
+  objDrag = null;
+  cancelAnimationFrame(d.raf);
+  objbox.classList.remove('drag');
+  if (d.style === null) d.img.removeAttribute('style'); else d.img.setAttribute('style', d.style);   // as it was, then
+  if (commit && d.img.isConnected && Math.abs(d.w - d.w0) >= 1) edit(() => { d.img.style.width = d.w + 'px'; d.img.style.removeProperty('height'); });
+  posObj();
+}
+for (const h of $$('.oh', objbox)) {
+  h.addEventListener('pointerdown', e => {
+    if (e.button !== 0 || !objSel || objSel.nodeName !== 'IMG') return;
+    e.preventDefault(); e.stopPropagation();
+    const img = objSel, box = img.closest('td,li,blockquote,div,p'), w0 = Math.round(img.getBoundingClientRect().width);
+    objDrag = { img, h, x: e.clientX, w0, w: w0, style: img.getAttribute('style'), max: Math.max(24, (box && editor.contains(box) ? box : editor).clientWidth), raf: 0 };
+    h.setPointerCapture(e.pointerId);
+    objbox.classList.add('drag'); osz.textContent = w0 + 'px';
+  });
+  h.addEventListener('pointermove', e => {
+    const d = objDrag;
+    if (!d || d.h !== h) return;
+    d.w = Math.round(clamp(d.w0 + e.clientX - d.x, 24, d.max));
+    if (!d.raf) d.raf = requestAnimationFrame(() => { d.raf = 0; d.img.style.width = d.w + 'px'; d.img.style.removeProperty('height'); posObj(); osz.textContent = d.w + 'px'; });
+  });
+  h.addEventListener('pointerup', () => endObjDrag(true));
+  h.addEventListener('pointercancel', () => endObjDrag(false));
+  h.addEventListener('lostpointercapture', () => endObjDrag(false));
+}
 editor.addEventListener('click', e => {
   if (e.button !== 0 || e.shiftKey || e.ctrlKey || e.metaKey) return;
   const o = e.target.closest && e.target.closest('img, hr');
@@ -3400,8 +3615,9 @@ function pasteGrid(rows, src) {
       placeCaret(t.nextElementSibling || t.rows[0].cells[0], false);
     }
   });
-  if (td) toast(`${rows.length}행 × ${w}열을 붙여넣었어요${grew ? ' · 표를 늘렸어요' : ''}`, '되돌리기', undo);
-  else toast(`표로 붙여넣었어요 · ${rows.length}행 × ${w}열`, '텍스트로', () => { undo(); doPaste(src || rowsText(rows), '', [], true); });
+  const back = undoThis();
+  if (td) toast(`${rows.length}행 × ${w}열을 붙여넣었어요${grew ? ' · 표를 늘렸어요' : ''}`, '되돌리기', back);
+  else toast(`표로 붙여넣었어요 · ${rows.length}행 × ${w}열`, '텍스트로', () => { const n = H.get(cur), i = n && n.i; back(); if (n && n.i < i) doPaste(src || rowsText(rows), '', [], true); });
 }
 const KEEP = new Set(['B', 'I', 'U', 'S', 'BR', 'P', 'DIV', 'H1', 'H2', 'H3', 'UL', 'OL', 'LI', 'A', 'BLOCKQUOTE', 'PRE', 'CODE', 'HR', 'TABLE', 'TBODY', 'TR', 'TD', 'IMG', 'SUB', 'SUP']);
 const DROP = new Set(['SCRIPT', 'STYLE', 'META', 'LINK', 'TITLE', 'HEAD', 'IFRAME', 'OBJECT', 'EMBED', 'NOSCRIPT', 'TEMPLATE', 'SVG', 'BUTTON', 'INPUT', 'SELECT', 'TEXTAREA', 'FORM', 'CANVAS', 'VIDEO', 'AUDIO', 'COLGROUP', 'COL']);
@@ -3513,8 +3729,21 @@ async function pasteFromClipboard(plain) {
     doPaste(text, html, files, plain);
   } catch (err) { toast('클립보드를 읽지 못했어요. Ctrl+V를 써 주세요'); }
 }
+// the find bar is open and the cell has a match: a right-click copies the cell's value (no menu)
+function copyFoundCell(e) {
+  if (!findOpen || !hits.length) return false;
+  const td = e.target.closest && e.target.closest('td');
+  if (!td || !editor.contains(td) || !hits.some(h => td.contains(h.startContainer))) return false;
+  const v = cellText(td);
+  if (!v) return false;
+  if (HOST) host.send('clip', String(v.length), v); else navigator.clipboard.writeText(v).catch(() => {});
+  const one = v.replace(/\s*\n\s*/g, ' ');
+  toast(`‘${one.length > 40 ? one.slice(0, 40) + '…' : one}’ 복사했어요`);
+  return true;
+}
 editor.addEventListener('contextmenu', e => {
   e.preventDefault();
+  if (copyFoundCell(e)) return;
   const s = getSelection();
   const r = s.rangeCount ? s.getRangeAt(0) : null;
   const inSel = inNavRect(e.target.closest && e.target.closest('td')) ||
@@ -3652,13 +3881,28 @@ $('#findX').onclick = () => findClose();
 let popPick = null;
 let menuOn = false;                               // a showMenu() list is open: arrows / Enter drive it
 let popKey = null;                                // a popover's own keys (the table size picker)
+// Below the point (or the button it drops from); else above that button, not over it; in a low window the compact
+// form (smaller grid, no hint), and if that still doesn't fit, the roomier side with a scroll.
+let popAnchorTop = null;                          // top of the button a menu drops from (set just before showPop)
 function showPop(x, y, html, onPick) {
   pop.innerHTML = html;
   pop.hidden = false;
+  pop.classList.remove('tight');
+  pop.style.maxHeight = '';
   popPick = onPick;
-  const w = pop.offsetWidth, h = pop.offsetHeight;
-  pop.style.left = clamp(x, 8, innerWidth - w - 8) + 'px';
-  pop.style.top = (y + h > innerHeight - 8 ? Math.max(8, y - h - 12) : y) + 'px';
+  const top0 = popAnchorTop == null ? y - 6 : popAnchorTop;
+  popAnchorTop = null;
+  const below = innerHeight - 8 - y, above = top0 - 6 - 8;
+  let h = pop.offsetHeight;
+  if (h > below && h > above) { pop.classList.add('tight'); h = pop.offsetHeight; }
+  let t = y;
+  if (h > below) {
+    if (h <= above) t = top0 - 6 - h;
+    else if (above > below) { t = 8; pop.style.maxHeight = above + 'px'; }
+    else pop.style.maxHeight = Math.max(80, below) + 'px';
+  }
+  pop.style.left = clamp(x, 8, innerWidth - pop.offsetWidth - 8) + 'px';
+  pop.style.top = t + 'px';
 }
 function closePop() { if (pop.hidden) return; pop.hidden = true; pop.innerHTML = ''; popPick = null; menuOn = false; popKey = null; }
 pop.addEventListener('mousedown', e => { if (!e.target.closest('input')) e.preventDefault(); });
@@ -4040,8 +4284,8 @@ function openPalette(mode) {
   const isPop = mode === 'pop', inNote = (mode === 'in' || mode === 'key') && view === 'editor' && !!cur;   // inNote: Alt+Enter puts it here
   openModal(`<div class="dlg qs pal"><div class="qs-in">${ic('i-search')}<input id="palIn" placeholder="${mode === 'quick' ? '다른 메모에서 찾아 넣기 (초성도 돼요)' : '찾을 단어 (초성 ㄱㅊㅅ도 돼요)'}" spellcheck="false" autocomplete="off"><span class="pal-count" id="palCount"></span></div>` +
     `<div class="pal-body"><div class="qs-list" id="palList"></div><div class="pal-pv" id="palPv"></div></div>` +
-    (mode === 'quick' ? `<div class="pal-foot"><span><kbd>Enter</kbd>넣기</span><span><kbd>Tab</kbd>칸·단어만</span><span><kbd>Shift+Enter</kbd>복사만</span><span class="fill"></span><span><kbd>Esc</kbd>닫기</span></div></div>`
-      : `<div class="pal-foot">${inNote ? '<span><kbd>Alt+Enter</kbd>이 메모에 넣기</span>' : ''}<span><kbd>Enter</kbd>${isPop ? '붙여넣기' : '이전 창에 붙여넣기'}</span><span><kbd>Tab</kbd>칸·단어만</span>` +
+    (mode === 'quick' ? `<div class="pal-foot"><span><kbd>Enter</kbd>넣기</span><span><kbd>Tab</kbd><kbd>Shift+Tab</kbd>칸·단어 고르기</span><span><kbd>Shift+Enter</kbd>복사만</span><span class="fill"></span><span><kbd>Esc</kbd>닫기</span></div></div>`
+      : `<div class="pal-foot">${inNote ? '<span><kbd>Alt+Enter</kbd>이 메모에 넣기</span>' : ''}<span><kbd>Enter</kbd>${isPop ? '붙여넣기' : '이전 창에 붙여넣기'}</span><span><kbd>Tab</kbd><kbd>Shift+Tab</kbd>칸·단어 고르기</span>` +
         `<span><kbd>Shift+Enter</kbd>${isPop ? '복사만' : '복사하고 이전 창으로'}</span><span><kbd>Ctrl+Enter</kbd>메모 열기</span>${inNote ? '' : '<span><kbd>Alt+1~9</kbd>바로 붙여넣기</span>'}<span class="fill"></span><span><kbd>Esc</kbd>${isPop ? '돌아가기' : '닫기'}</span></div></div>`),
     () => { paletteOn = false; app.classList.remove('pal-pop'); modal.classList.remove('palm'); host.send('palette', '0'); });
   modal.classList.add('palm');                    // the quick memo shows it over the whole window
@@ -4064,7 +4308,8 @@ function openPalette(mode) {
     const P = it.part >= 0 ? partsOf(it.x)[it.part] : null;
     let h = `<div class="pv-head"><span class="c-dot" data-c="${it.n.color}" style="--c:${NOTE_COLORS[it.n.color]}"></span><b>${esc(titleOf(it.n) || '제목 없음')}</b><small>${relTime(it.n.updated)}</small></div>`;
     if (it.x.c && it.x.h) {                       // a table row: each column name with its value, then rows near it
-      h += '<div class="pv-kv">' + it.x.c.map((v, j) => `<span>${esc(it.x.h[j] || '')}</span><b${P && P.j === j ? ' class="pick"' : ''}>${mark(v, terms) || '&nbsp;'}</b>`).join('') + '</div>';
+      const pk = j => partsOf(it.x).findIndex(p => p.j === j);   // the part a column's value is (Tab picks the same)
+      h += '<div class="pv-kv">' + it.x.c.map((v, j) => { const k = pk(j); return `<span>${esc(it.x.h[j] || '')}</span><b class="${k >= 0 ? 'pp' : ''}${P && P.j === j ? ' pick' : ''}"${k >= 0 ? ` data-part="${k}" title="클릭: 이 칸만 붙여넣기 · Shift+클릭: 복사만"` : ''}>${mark(v, terms) || '&nbsp;'}</b>`; }).join('') + '</div>';
       const near = [];
       for (let d = 1; d < 4; d++) for (const j of [i - d, i + d]) if (L[j] && L[j].h === it.x.h && near.length < 3) near.push(j);   // same table, not its header
       for (const j of near.sort((x, y) => x - y)) h += `<div class="pv-l">${lineHTML(L[j].s, terms, null, 160)}</div>`;
@@ -4072,6 +4317,10 @@ function openPalette(mode) {
       const a = Math.max(0, i - 4), b = Math.min(L.length, a + 14);
       for (let j = a; j < b; j++) h += `<div class="pv-l${j === i ? ' on' : ''}">${lineHTML(L[j].s, terms, j === i ? P : null, j === i ? 600 : 160)}</div>`;
     }
+    const PS = partsOf(it.x);
+    if (PS.length) h += '<div class="pv-parts"><span class="pv-pl">골라서 붙여넣기</span>' +   // what Tab / Shift+Tab walk through, to click
+      `<button class="pp${it.part < 0 ? ' pick' : ''}" data-part="-1" title="클릭: 줄 전체 붙여넣기 · Shift+클릭: 복사만">줄 전체</button>` +
+      PS.map((p, k) => `<button class="pp${k === it.part ? ' pick' : ''}" data-part="${k}" title="${p.k ? esc(p.k) + ' · ' : ''}클릭: 이것만 붙여넣기 · Shift+클릭: 복사만">${mark(p.v.length > 40 ? p.v.slice(0, 40) + '…' : p.v, terms)}</button>`).join('') + '</div>';
     pv.innerHTML = h;
   };
   const render = () => {
@@ -4151,10 +4400,13 @@ function openPalette(mode) {
     toast('최근 목록에서 뺐어요', '되돌리기', () => { (st.palUse || (st.palUse = {}))[key] = old; saveStateSoon(); if (inp.isConnected && !inp.value.trim()) render(); });
   };
   const howOf = e => e.ctrlKey ? 'open' : e.shiftKey ? 'copy' : e.altKey && inNote ? 'note' : 'paste';
-  let raf = 0;
+  let raf = 0, tabAfterIme = 0;
+  inp.addEventListener('compositionend', () => { if (tabAfterIme) { const d = tabAfterIme; tabAfterIme = 0; setTimeout(() => cyclePart(d), 0); } });
   inp.addEventListener('input', () => { idx = 0; if (!raf) raf = requestAnimationFrame(() => { raf = 0; render(); }); });
   inp.addEventListener('keydown', e => {
-    if (e.isComposing) return;                    // Korean IME: the key that ends the syllable comes again
+    const isTab = e.key === 'Tab' || e.code === 'Tab';
+    if (isTab) e.preventDefault();                // never moves the focus (Shift+Tab used to leave the box mid-syllable)
+    if (e.isComposing) { if (isTab) tabAfterIme = e.shiftKey ? -1 : 1; return; }   // Korean IME: done once the syllable ends
     const k = e.key;
     if (k === 'ArrowDown') { e.preventDefault(); move(idx + 1); }
     else if (k === 'ArrowUp') { e.preventDefault(); move(idx - 1); }
@@ -4174,6 +4426,12 @@ function openPalette(mode) {
   list.addEventListener('mousemove', e => { const it = e.target.closest('.qs-item'); if (it && +it.dataset.i !== idx) move(+it.dataset.i); });
   modal.querySelector('.pal').addEventListener('mousedown', e => { if (e.target !== inp) e.preventDefault(); });   // keep typing in the box
   list.addEventListener('click', e => { const it = e.target.closest('.qs-item'); if (it) pick(+it.dataset.i, howOf(e)); });
+  pv.addEventListener('click', e => {             // a cell / word in the preview: that part only, like Tab then Enter
+    const b = e.target.closest('[data-part]'), it = items[idx];
+    if (!b || !it) return;
+    it.part = +b.dataset.part;
+    pick(idx, howOf(e));
+  });
   render();
   inp.focus();
 }
@@ -4227,7 +4485,7 @@ function quickEnd(how) {
   if (empty) dropNote(id); else leaveNote();
   cur = null;
   const p = quickPrev;
-  if (p && p.view === 'editor' && p.cur && noteById(p.cur)) openNote(p.cur); else showBoard();
+  if (p && p.view === 'editor' && p.cur && noteById(p.cur)) openNote(p.cur); else goHome();
 }
 $('#qbClose').onclick = () => { quickEnd('close'); host.send('quick', '0'); };
 $('#qbOpen').onclick = () => { quickEnd('main'); host.send('quick', 'main'); };
@@ -4714,7 +4972,7 @@ const ACTIONS = [
   { id: 'find', g: '앱 전체', n: '찾기 (메모 안 / 보드 검색)', k: [2, 'KeyF'], run: () => { if (view === 'editor') openFind(); else { boardSearch.focus(); boardSearch.select(); } } },
   { id: 'nextNote', g: '앱 전체', n: '다음 메모', k: [2, 'Tab'], run: () => cycle(1) },
   { id: 'prevNote', g: '앱 전체', n: '이전 메모', k: [6, 'Tab'], run: () => cycle(-1) },
-  { id: 'closeView', g: '앱 전체', n: '보드로 / 창 닫기', k: [2, 'KeyW'], run: () => { if (view === 'editor') showBoard(); else { flushAll(); host.send('close'); } } },
+  { id: 'closeView', g: '앱 전체', n: '보드로 / 창 닫기', k: [2, 'KeyW'], run: () => { if (view === 'editor' && !listHome()) showBoard(); else { flushAll(); host.send('close'); } } },
   { id: 'save', g: '앱 전체', n: '저장 (원래 자동 저장)', k: [2, 'KeyS'], run: () => { flushAll(); toast('저장했어요 · 따로 누르지 않아도 자동으로 저장돼요'); } },
   { id: 'quit', g: '앱 전체', n: '끄기 (단축키는 계속 대기)', k: [2, 'KeyQ'], run: () => { flushAll(); host.send('quit'); } },
   { id: 'settings', g: '앱 전체', n: '설정', k: [2, 'Comma'], run: () => openSettings() },
@@ -4823,7 +5081,7 @@ function updateKeyHints() {
     if (!t) el.hidden = !k;
   }
   const sw = kl('switcher'), nx = kl('nextNote');
-  defaultHint = ['Esc 보드', sw && sw + ' 빠른 이동'].filter(Boolean).join(' · ');
+  defaultHint = [listHome() ? 'Esc 목록' : 'Esc 보드', sw && sw + ' 빠른 이동'].filter(Boolean).join(' · ');
   if (!hintMode) $('#stHint').textContent = defaultHint;
   $('#sbFoot').textContent = [nx && nx + ' 다음 메모', sw && sw + ' 빠른 이동'].filter(Boolean).join(' · ');
 }
@@ -4889,9 +5147,9 @@ function openSettings(tab, keep) {               // keep: back from the key reco
     ${row('닫기(X) → 트레이로 숨기기', '켜 두면 다음에 부를 때 바로 열려요 (권장) · 끄면 X가 앱을 끄고 단축키만 대기해요', sw('closeToTray', st.closeToTray))}
     ${startMode() === 'package'
       ? row('Windows 시작 시', '<span class="wrap">로그인하면 <b>단축키 대기</b>로 켜져서 꺼져 있어도 단축키가 동작해요.<br>끄려면 작업 관리자 › 시작 앱(또는 설정 › 앱 › 시작 프로그램)에서 Super Speed Note를 끄세요.</span>', '')
-      : row('Windows 시작 시', '<span class="wrap"><b>단축키 대기</b> 꺼져 있어도 단축키로 열림 · 메모리 거의 안 씀 · 첫 호출 약 1초<br><b>트레이 상주</b> 언제나 바로 열림 · 메모리 더 사용<br><b>끔</b> 자동으로 켜지지 않아요 · 앱을 끄면 메모 단축키도 함께 꺼져요</span>', `<div class="seg" id="setStart"><button data-v="standby">단축키 대기 (권장)</button><button data-v="tray">트레이 상주</button><button data-v="off">끔</button></div>`)}
+      : row('Windows 시작 시', '<span class="wrap"><b>단축키 대기</b> 꺼져 있어도 단축키로 열림 · 메모리 거의 안 씀 · 첫 호출 약 1초<br><b>트레이 상주</b> 언제나 바로 열림 · 메모리 더 사용 · <b>창 열기</b> 로그인하면 앱 창이 바로 열려요<br><b>끔</b> 자동으로 켜지지 않아요 · 앱을 끄면 메모 단축키도 함께 꺼져요<br>exe 파일을 옮기거나 이름을 바꿔도 Windows 시작 때 계속 켜져요</span>', `<div class="seg" id="setStart"><button data-v="standby">단축키 대기 (권장)</button><button data-v="tray">트레이 상주</button><button data-v="open">창 열기</button><button data-v="off">끔</button></div>`).replace('<div class="row">', '<div class="row col">')}
     <h4 class="kh">데이터</h4>
-    ${row('데이터 폴더 · 백업', `메모 · 이미지 · 백업이 있는 곳 · 매일 자동 백업(최근 14일)<br>${esc(boot.dataDir || '')}`, `<div class="row-btns"><button class="btn" id="setOpen"${HOST ? '' : ' disabled'}>폴더 열기</button><button class="btn" id="setBackup">지금 백업</button></div>`)}
+    ${row('데이터 폴더 · 백업', `메모 · 이미지 · 백업이 있는 곳 · 매일 자동 백업(최근 14일)<br>${esc(boot.dataDir || '')}${startMode() === 'package' ? '<br>Store 버전은 앱을 제거하면 이 폴더도 함께 지워져요 · 보관하려면 폴더를 열어 복사해 두세요' : ''}`, `<div class="row-btns"><button class="btn" id="setOpen"${HOST ? '' : ' disabled'}>폴더 열기</button><button class="btn" id="setBackup">지금 백업</button></div>`)}
     ${row('휴지통', '삭제한 메모는 휴지통을 비우기 전까지 보관해요 · 빈 메모는 바로 없어져요', `<button class="btn" id="setTrash">휴지통 열기</button>`)}`;
   }
   openModal(`<div class="dlg wide set"><div class="dlg-head">${ic('i-gear')}<h3>설정</h3><span style="flex:1"></span><div class="seg" id="setTabs"><button data-v="general"${tab === 'general' ? ' class="on"' : ''}>일반</button><button data-v="keys"${tab === 'keys' ? ' class="on"' : ''}>단축키</button></div></div><div class="dlg-body" id="setBody">${body}</div>` +
@@ -4991,7 +5249,7 @@ function showHelp() {
     ${g('한 줄 찾아 붙여넣기 검색창', [['원래 창에 바로 붙여넣기', 'Enter / 클릭'], ['N번째 결과 바로 붙여넣기', 'Alt+1~9'], ['칸 · 단어만 골라 붙여넣기', 'Tab / Shift+Tab'], ['복사만 하고 돌아가기', 'Shift+Enter'], ['그 메모 열기', 'Ctrl+Enter'], ['그냥 돌아가기', 'Esc'], ['초성으로 찾기', 'ㄱㅊㅅ → 김철수']])}
     ${g('메모 보드', [['선택 이동', '← ↑ → ↓'], ['열기', 'Enter / 더블클릭'], ['이름 바꾸기', 'F2'], ['삭제 (되돌리기 · 휴지통에서 복원)', 'Del'], ['여러 개 선택', 'Shift+클릭·방향키 / Ctrl+클릭 / Ctrl+A'], ['새 메모', k('newNote')], ['N번째 메모 열기', 'Ctrl+1~9'], ['빠른 이동', k('switcher')], ['검색', k('find')]])}
     ${g('편집', [['굵게 / 밑줄 / 기울임', join('bold', 'underline', 'italic')], ['취소선', k('strike')], ['글자색', k('fgColor')], ['형광펜', k('hl')], ['서식 지우기', k('clearFmt')], ['글머리 / 번호 목록', join('ul', 'ol')], ['체크리스트', k('chk')], ['체크 표시 / 해제', 'Ctrl+Enter'], ['제목 1 / 2 / 3', join('h1', 'h2', 'h3')], ['구분선', k('hr')], ['날짜·시간', k('stamp')], ['서식 없이 붙여넣기', 'Ctrl+Shift+V'], ['찾기', k('find')], ['확대 / 축소', ['Ctrl+휠', join('zoomIn', 'zoomOut')].filter(Boolean).join(', ')], ['보드로', 'Esc'], ['다음 / 이전 메모', join('nextNote', 'prevNote')], ['실행 취소 / 다시', 'Ctrl+Z / Ctrl+Y'], [ACT.get('quit').n, k('quit')]])}
-    ${g('표 (엑셀처럼)', [['칸 선택·이동', '클릭 / 방향키'], ['범위 선택', 'Shift+방향키 / 드래그'], ['선택한 칸에 바로 입력', '기존 값을 새로 씀'], ['칸 편집 (끝에 커서)', 'F2 / 더블클릭'], ['편집 취소', 'Esc'], ['칸 지우기', 'Delete'], ['아래 칸 / 마지막 행이면 행 추가', 'Enter'], ['칸 안 줄바꿈', 'Shift+Enter / Alt+Enter'], ['다음 / 이전 칸 (마지막 열이면 열 추가)', 'Tab / Shift+Tab'], ['모든 칸 선택 (한 번 더: 메모 전체)', 'Ctrl+A'], ['표 넣기 / 빠져나가기', [k('table'), 'Ctrl+Enter'].filter(Boolean).join(' / ')], ['위 / 아래에 행 삽입', join('rowAbove', 'rowBelow')], ['왼쪽 / 오른쪽에 열 삽입', join('colBefore', 'colAfter')], ['행 / 열 삭제', join('delRow', 'delCol')], ['중간에 행·열 넣기', '표 왼쪽·위쪽 여백의 +'], ['끝에 행·열 추가 (끌면 여러 개)', '표 아래·오른쪽 막대'], ['엑셀 붙여넣기 · 범위 복사', 'Ctrl+V / Ctrl+C']])}
+    ${g('표 (엑셀처럼)', [['칸 선택·이동', '클릭 / 방향키'], ['범위 선택', 'Shift+방향키 / 드래그'], ['선택한 칸에 바로 입력', '기존 값을 새로 씀'], ['칸 편집 (끝에 커서)', 'F2 / 더블클릭'], ['편집 취소', 'Esc'], ['칸 지우기', 'Delete'], ['아래 칸 / 마지막 행이면 행 추가', 'Enter'], ['칸 안 줄바꿈', 'Shift+Enter / Alt+Enter'], ['다음 / 이전 칸 (마지막 열이면 열 추가)', 'Tab / Shift+Tab'], ['모든 칸 선택 (한 번 더: 메모 전체)', 'Ctrl+A'], ['표 넣기 / 빠져나가기', [k('table'), 'Ctrl+Enter'].filter(Boolean).join(' / ')], ['위 / 아래에 행 삽입', join('rowAbove', 'rowBelow')], ['왼쪽 / 오른쪽에 열 삽입', join('colBefore', 'colAfter')], ['행 / 열 삭제', join('delRow', 'delCol')], ['중간에 행·열 넣기', '표 왼쪽·위쪽 여백의 +'], ['끝에 행·열 추가 (끌면 여러 개)', '표 아래·오른쪽 막대'], ['끝의 빈 행·열 지우기', '그 막대를 표 쪽으로 끌기'], ['엑셀 붙여넣기 · 범위 복사', 'Ctrl+V / Ctrl+C']])}
     ${g('개체 (그림 · 구분선 · 표)', [['선택', '클릭 (표는 왼쪽 위 손잡이)'], ['삭제', 'Delete / Backspace'], ['선택 풀기', 'Esc / 다른 곳 클릭']])}
     ${g('꺼내 쓰기', [['한 줄 찾아 붙여넣기 (앱 안)', k('palette')], ['복사 → 원래 창에 바로 붙여넣기', k('sendPaste')], ['복사 → 원래 창으로', k('sendCopy')], ['보낼 내용', '선택 > 칸 > 현재 줄 (보드: 메모 전체)'], ['메모 전체 복사 (보드)', 'Ctrl+C / 카드 복사 버튼'], ['검색한 곳으로 바로 이동', (k('switcher') || '빠른 이동') + ' → Enter']])}
     ${g('빠른 서식 (줄 맨 앞에서 입력 후 Space)', [['제목 1 / 2 / 3', '# / ## / ###'], ['글머리 목록', '-'], ['번호 목록', '1.'], ['체크리스트', '[]'], ['인용', '>'], ['코드', '```'], ['구분선', '--- 후 Enter']])}
@@ -5096,7 +5354,7 @@ document.addEventListener('keydown', e => {
     let hit = true;
     switch (code) {
       case 'KeyA': if (view === 'board' && !isTyping(e.target) && !e.shiftKey) selectAllCards(); else hit = false; break;
-      case 'KeyZ': if (view === 'board' && !e.shiftKey && boardUndo && !(isTyping(e.target) && e.target.value)) boardUndo(); else hit = false; break;
+      case 'KeyZ': if ((view === 'board' || document.activeElement === sbList) && !e.shiftKey && boardUndo && !(isTyping(e.target) && e.target.value)) boardUndo(); else hit = false; break;
       case 'KeyC': if (!e.shiftKey && view === 'board' && !isTyping(e.target) && selId) copySel(); else hit = false; break;
       case 'NumpadAdd': zoom(1); break;
       case 'NumpadSubtract': zoom(-1); break;
@@ -5108,7 +5366,7 @@ document.addEventListener('keydown', e => {
     if (hit) { e.preventDefault(); return; }
   }
   if (e.key === 'Escape') {
-    if (view === 'editor') { e.preventDefault(); if (app.classList.contains('sb-peek')) app.classList.remove('sb-peek'); else if (findOpen) findClose(); else showBoard(); }
+    if (view === 'editor') { e.preventDefault(); if (app.classList.contains('sb-peek') && !listHome()) app.classList.remove('sb-peek'); else if (findOpen) findClose(); else if (listHome()) showList(); else showBoard(); }
     else if (!isTyping(e.target)) { if (clearMulti()) e.preventDefault(); else if (query) { e.preventDefault(); clearSearch(); } }   // board: one Esc at a time back to all cards
     return;
   }
@@ -5122,7 +5380,7 @@ if (HOST) window.chrome.webview.addEventListener('message', e => {
   const cmd = i < 0 ? m : m.slice(0, i), arg = i < 0 ? '' : m.slice(i + 1);
   switch (cmd) {
     case 'open': if (noteById(arg)) { closeModal(); closePop(); openNote(arg); } break;
-    case 'board': closeModal(); showBoard(); break;
+    case 'board': closeModal(); goHome(); break;
     case 'new': closeModal(); newNote(); break;
     case 'focus': refocus(); break;
     case 'hidden': flushAll(); closePop(); if (recording || (paletteOn && palMode !== 'pop')) closeModal(); break;
@@ -5180,10 +5438,12 @@ if (firstRun) welcome();
 applyTheme(); applyZoom(); applyFont(); updateSwatches();
 syncQuitLabel(); rebuildKeys(); updateKeyHints();
 app.classList.toggle('sb-off', !st.sidebar);
+app.classList.toggle('home-list', listHome());
+$('#appVer').textContent = 'v' + (boot.version || '');
 $('#btnTop').classList.toggle('on', !!st.onTop);
 $('#btnTop').title = `항상 위에 표시 · ${st.onTop ? '켜짐' : '꺼짐'}`;
-renderBoard();
-boardSearch.focus({ preventScroll: true });
+if (listHome() && S.notes.length) showList();
+else { renderBoard(); boardSearch.focus({ preventScroll: true }); }
 host.send('ready');
 warmSearch();
 host.send('closeToTray', st.closeToTray ? '1' : '0');
@@ -5210,7 +5470,7 @@ setInterval(() => {                                // "3분 전" labels
     if (n && t) { const v = relTime(n.updated); if (t.textContent !== v) t.textContent = v; }
   }
 }, 60000);
-window.__ssn = { S, bodies, openNote, showBoard, newNote, applyHotkeys, saveStateSoon, doPaste, tableOp, undo, redo, searchLines, openPalette, quickStart, quickEnd, deleteNotes, openTrash, toPlain };   // debugging handle
+window.__ssn = { S, bodies, openNote, showBoard, newNote, applyHotkeys, saveStateSoon, doPaste, tableOp, undo, redo, searchLines, openPalette, quickStart, quickEnd, deleteNotes, openTrash, toPlain, hist: () => ({ burst: !!burstSel, kind: grpKind, word: grpWord, at: grpAtKey, timer: !!histT, i: (H.get(cur) || {}).i, n: ((H.get(cur) || {}).st || []).length }) };   // debugging handle
 })();
 </script>
 </body>

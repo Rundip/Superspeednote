@@ -7,8 +7,9 @@
 | 앱 이름 (예약한 이름과 똑같이) | Super speed note |
 | 카테고리 | 생산성 (Productivity) |
 | 가격 | 무료 |
-| 개인정보 처리방침 URL | https://github.com/Rundip/Superspeednote/blob/main/PRIVACY.md |
-| 지원 연락처 / 웹사이트 | https://github.com/Rundip/Superspeednote/issues |
+| 개인정보 처리방침 URL | https://github.com/Rundip/Superspeednote/blob/main/PRIVACY.md (심사에서 GitHub 주소를 문제 삼으면 같은 내용을 Notion 공개 페이지·Google Sites 등에 올리고 그 주소로 교체) |
+| 지원 연락처 | **공개해도 되는 이메일 주소** (GitHub 링크는 허용되지 않음 · 2026-10-15 심사 의견) |
+| 웹사이트 | 비워 두기 (GitHub가 아닌 개인 웹사이트가 있을 때만) |
 | 저작권 | © 2026 Mukhodeveloper |
 | 시스템 요구 사항 | Windows 10 버전 2004 이상, Windows 11 · Microsoft Edge WebView2 런타임(Windows 11과 최신 Windows 10에 기본 포함) |
 | 연령 등급 설문 | 사용자 간 공유·채팅·구매·위치·개인정보 수집 모두 "아니요" → 3세 이상 예상 |
@@ -59,19 +60,20 @@
 
 메모, 메모장, 빠른 메모, 단축키, 클립보드, 붙여넣기, 노트
 
-## 이번 버전의 새로운 기능 (1.3.0)
+## 이번 버전의 새로운 기능 (1.4.2)
 
-빠른 메모(Ctrl+Alt+M), 휴지통 복원, 빈 메모 자동 정리, 모든 단축키 변경, 한 줄 찾아 붙여넣기 창.
+보드·목록 보기, 이미지 크기 조절, 표에서 끝의 빈 행·열 끌어서 지우기, 찾은 칸 값 오른쪽 클릭 복사, 실행 취소 개선, 빠른 메모·한 줄 찾아 붙여넣기·휴지통.
 
 ## 제한된 기능(restricted capability) 사용 이유 — Partner Center '제출 옵션'에 영어로 입력
 
-**runFullTrust**
-Super Speed Note is a Win32 desktop app (WinForms + WebView2) packaged with the Desktop Bridge. It needs full trust to register the global hotkeys the user assigns, to bring its window to the front when a hotkey is pressed, and to paste into the window the user came from.
+1.4.2부터 제한된 기능은 **runFullTrust 하나뿐**입니다 (`unvirtualizedResources`는 2026-10-15 심사 의견에 따라 뺐음).
 
-**unvirtualizedResources**
-The app keeps all user notes in %APPDATA%\SuperSpeedNote. Users of the earlier non-Store version already have their notes there, and keeping that location (instead of the virtualized package folder) means the Store version opens the same notes and that notes are never lost when the app is uninstalled or reinstalled. Registry virtualization is disabled only so the app can remove the start-up entry (HKCU\...\Run\SuperSpeedNote) that the earlier non-Store version created, since the Store version starts through its own startup task. The app writes nothing else outside %APPDATA%\SuperSpeedNote and %LOCALAPPDATA%\SuperSpeedNote.
+**runFullTrust**
+Super Speed Note is a Win32 desktop app (WinForms + WebView2) packaged with the Desktop Bridge. It needs full trust to register the global hotkeys the user assigns, to bring its window to the front when a hotkey is pressed, to paste into the window the user came from, and to start through its startup task (hotkeys stay available after sign-in).
 
 ## 심사 담당자 메모 (Notes for certification, 영어)
+
+Changes since the last review (product ID 9N4JKW5GFTHS): the unvirtualizedResources restricted capability and the desktop6 FileSystemWriteVirtualization / RegistryWriteVirtualization properties have been removed. All app data now lives in the package's own data folders (LocalState / LocalCache) under standard MSIX virtualization, so the only restricted capability left is runFullTrust (a Win32 desktop app). Minimum supported version: Windows 10, version 2004 (build 19041). The support contact is now an e-mail address (no GitHub links).
 
 No account or sign-in is needed. Try: press Ctrl+Alt+F in any app (e.g. Notepad) to open the search window, type a word from a note and press Enter to paste that line back. Ctrl+Alt+M opens a quick memo in the screen corner; press it again to close. The app has no network communication.
 
