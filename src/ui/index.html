@@ -900,8 +900,13 @@ const FONTS = {
 
 // ---------------------------------------------------------------- host bridge
 // Messages are "cmd<US>arg<US>payload"; the payload always goes last so it may contain anything.
+// The notes didn't come with the page (the app couldn't build or load them): never start empty over them. Nothing
+// is saved this time - only the window itself still answers - and the page says so.
+const BOOT_FAILED = HOST && !window.__SSN__;
+const BOOT_SAFE = new Set(['ready', 'drag', 'resize', 'stretch', 'min', 'max', 'close', 'quit', 'openData', 'openUrl', 'theme']);
 const host = {
   send(...parts) {
+    if (BOOT_FAILED && !BOOT_SAFE.has(parts[0])) return;
     if (HOST) window.chrome.webview.postMessage(parts.join(SEP));
     else devHost(parts);
   }
@@ -929,14 +934,19 @@ function devBoot() {
 function startMode() { const a = boot.autostart; return typeof a === 'string' ? a : a ? 'tray' : 'off'; }
 
 // ---------------------------------------------------------------- state
-const boot = window.__SSN__ || devBoot();
+const boot = window.__SSN__ || (HOST ? { notes: {}, version: '' } : devBoot());
 const bodies = boot.notes || {};           // id -> html
 let S = null, recovered = false;
 for (const src of [boot.state, boot.stateBak]) {           // state.json, then the copy kept before the last save
   if (S || !src) continue;
   try { const v = JSON.parse(src); if (v && Array.isArray(v.notes)) { S = v; recovered = src !== boot.state; } } catch (e) { /* try the next one */ }
 }
-const firstRun = !S && !Object.keys(bodies).length;
+const firstRun = !BOOT_FAILED && !S && !Object.keys(bodies).length;
+// notes whose file is there but couldn't be read this time: shown read-only, never saved over
+const unread = new Set(boot.unread || []);
+// in the list but no file came with them (one that couldn't be read, a write that never landed): never deleted
+// for good as 'empty' - into the trash like any other note
+const missing = new Set();
 if (!S || !Array.isArray(S.notes)) S = { v: 1, notes: [], settings: {} };
 S.settings = Object.assign({
   theme: 'light', closeToTray: true, onTop: false, fontSize: 15, font: 'ui', sidebar: true,
@@ -954,7 +964,7 @@ if (!st.findHotkeyMine && st.findHotkey && st.findHotkey.label === 'Ctrl+Alt+Spa
     S.notes.push({ id, title: '', color: 'navy', pinned: false, hotkey: null, created: now(), updated: now(), preview: previewOf(frag(bodies[id])) });
   }
   for (const n of S.notes) {
-    if (!(n.id in bodies)) bodies[n.id] = '';
+    if (!(n.id in bodies)) { bodies[n.id] = ''; missing.add(n.id); }
     if (!NOTE_COLORS[n.color]) n.color = 'navy';
     if (n.line1 === undefined) n.line1 = firstLineOf(frag(bodies[n.id]));   // notes saved by older versions
   }
@@ -1137,6 +1147,7 @@ function flushNote() {
   clearTimeout(saveT); saveT = 0;
   if (!dirty || !cur) return;
   dirty = false;
+  if (unread.has(cur)) return;                    // its file couldn't be read: nothing goes over it
   const h = editor.innerHTML;
   bodies[cur] = h;
   if (isBig !== h.length > 80000) setBig(h.length);
@@ -1369,15 +1380,21 @@ grid.addEventListener('contextmenu', e => {
   setSel(c.dataset.id, false); noteMenu(c.dataset.id, e.clientX, e.clientY);
 });
 let dragId = null, dropAt = null, dragTold = 0;   // dropAt: { id, after } - exactly where the line is shown
-// Dragging a note out of the app (the desktop, a folder, a mail): the drag carries the note as a file named after
-// it (DownloadURL: Windows fetches it from the app's own loopback server when it is dropped) and as plain text
-// for programs that take text. Settings › 데이터 picks HTML or text.
+// Dragging a note out of the app (the desktop, a folder in Explorer): the drag carries the note as a file named
+// after it (DownloadURL: Windows fetches it from the app's own loopback server when it is dropped) and as plain
+// text for programs that take text (Notepad, a mail body). Settings › 데이터 picks HTML or text.
 let noteDrag = 0, dragSeq = 0;
+const isNoteDrag = e => !!e.dataTransfer && Array.from(e.dataTransfer.types).includes('text/x-ssn');
+function dragDone() { noteDrag = 0; dragId = null; dropAt = null; $$('.card', grid).forEach(c => c.classList.remove('dragging', 'drop-l', 'drop-r')); }
 function dragNoteOut(e, id) {
   const n = noteById(id);
   if (!n) return;
   if (id === cur) flushNote();
   noteDrag = now();
+  e.dataTransfer.setData('text/x-ssn', id);
+  // dragend goes to the element the drag started on, even once a re-render (a reorder, a save) has taken it off
+  // the page - where it no longer reaches the board's or the list's own listener
+  e.target.addEventListener('dragend', dragDone, { once: true });
   const kind = st.dragFormat === 'txt' ? 'txt' : 'html', { name, content } = exportContent(id, kind);
   const text = (n.title ? n.title + '\n\n' : '') + noteText(id);
   e.dataTransfer.setData('text/plain', text);
@@ -1392,11 +1409,14 @@ grid.addEventListener('dragstart', e => {
   if (!c) { e.preventDefault(); return; }
   dragId = query.trim() ? null : c.dataset.id;     // while searching the order can't change, but the note still drags out
   e.dataTransfer.effectAllowed = 'copyMove';
-  e.dataTransfer.setData('text/x-ssn', c.dataset.id);
   dragNoteOut(e, c.dataset.id);
   c.classList.add('dragging');
 });
-grid.addEventListener('dragend', () => { dragId = null; dropAt = null; noteDrag = 0; $$('.card', grid).forEach(c => c.classList.remove('dragging', 'drop-l', 'drop-r')); boardSearch.focus({ preventScroll: true }); });
+grid.addEventListener('dragend', () => { dragDone(); boardSearch.focus({ preventScroll: true }); });
+// a note dragged over a text field (the title, a search box, the open note) must not drop its text in there
+const noteDropBlocked = e => isNoteDrag(e) && e.target.closest && e.target.closest('input, textarea, [contenteditable="true"]');
+document.addEventListener('dragover', e => { if (noteDropBlocked(e)) { e.preventDefault(); e.dataTransfer.dropEffect = 'none'; } }, true);
+document.addEventListener('drop', e => { if (noteDropBlocked(e)) { e.preventDefault(); e.stopPropagation(); } }, true);
 grid.addEventListener('dragover', e => {
   if (!dragId) {                                   // searching: no reordering - over another card, say why (the note still drags out)
     const c = noteDrag && query.trim() && e.target.closest('.card[data-id]');
@@ -1426,8 +1446,10 @@ grid.addEventListener('drop', e => {
   let to = S.notes.findIndex(n => n.id === at.id);
   if (at.after) to++;
   S.notes.splice(to, 0, m);
+  dragDone();                                      // before the cards are redrawn: dragend lands on the old card
   saveStateSoon();
   renderBoard();
+  boardSearch.focus({ preventScroll: true });
 });
 // The search box is where the keyboard rests on the board: Windows' Korean IME only composes in an editable
 // field, so a first syllable typed on the grid came out as a Latin letter. The box passes the board keys on.
@@ -1559,7 +1581,7 @@ function deleteNotes(ids) {
   S.notes = S.notes.filter(n => !gone.has(n.id));
   for (const x of items) {                        // empty: gone for good; else to the trash with its title, colour, place
     const id = x.meta.id;
-    x.empty = !x.meta.title && emptyHtml(x.html);
+    x.empty = !x.meta.title && emptyHtml(x.html) && !missing.has(id) && !unread.has(id);
     delete bodies[id]; H.delete(id); textCache.delete(id); memo.delete(id); sentNames.delete(id);
     host.send('delNote', id, x.empty ? 'purge' : 'trash', x.empty ? '' : JSON.stringify(Object.assign({}, x.meta, { pos: x.i })));
   }
@@ -1626,11 +1648,13 @@ const EXPORT_LIST_CSS = '@counter-style ko-ga{system:alphabetic;symbols:"가" "�
   'li.nob{display:block}ul.checklist li.nob::before{content:none}';
 // a Windows file name that reads as the note's name (the same rule as the readable copies in the 메모 folder):
 // refused characters become their full-width twins, at most 80 characters, never a device name
+// (Windows' refused characters, and the ones Chromium would swap for '_' in a dropped file's name: invisible
+// format characters go, '~' becomes its full-width twin, no dots or spaces at either end)
 function fileBaseOf(name) {
-  let s = String(name || '').normalize('NFC').replace(/[\x00-\x1f\x7f]+/g, ' ').replace(/[\\/:*?"<>|]/g, c => '＼／：＊？＂＜＞｜'['\\/:*?"<>|'.indexOf(c)]);
+  let s = String(name || '').normalize('NFC').replace(/[\x00-\x1f\x7f]+/g, ' ').replace(/\p{Cf}+/gu, '').replace(/[\\/:*?"<>|~]/g, c => '＼／：＊？＂＜＞｜～'['\\/:*?"<>|~'.indexOf(c)]);
   s = s.replace(/\s+/g, ' ').trim();
   if (s.length > 80) s = s.slice(0, /[\ud800-\udbff]/.test(s[79]) ? 79 : 80);
-  s = s.replace(/[. ]+$/, '');
+  s = s.replace(/[. ]+$/, '').replace(/^[. ]+/, '');
   if (!s) s = '제목 없음';
   if (/^(CON|PRN|AUX|NUL|COM[0-9¹²³]|LPT[0-9¹²³]) *(\..*)?$/i.test(s)) s = '_' + s;
   return s;
@@ -1672,6 +1696,8 @@ function openNote(id, o = {}) {
     clearNav(); clearObj();
     if (o.browse) getSelection().removeAllRanges();   // shown from the list: no caret in it (a table cell would take the keys)
     cur = id; selId = id;
+    editor.contentEditable = unread.has(id) ? 'false' : 'true';
+    if (unread.has(id)) setTimeout(() => toast('이 메모 파일을 읽지 못해서 지금은 고칠 수 없어요 · 앱을 다시 시작해 보세요'), 0);
     editor.innerHTML = bodies[id] || '<div><br></div>';
     if (!editor.firstChild) editor.innerHTML = '<div><br></div>';
     setBig((bodies[id] || '').length);
@@ -1873,7 +1899,7 @@ sbList.addEventListener('dragstart', e => {
   e.dataTransfer.effectAllowed = 'copy';
   dragNoteOut(e, it.dataset.id);
 });
-sbList.addEventListener('dragend', () => { noteDrag = 0; });
+sbList.addEventListener('dragend', dragDone);
 sbList.addEventListener('contextmenu', e => {
   e.preventDefault();
   const it = e.target.closest('.sb-item');
@@ -3733,14 +3759,19 @@ function pasteGrid(rows, src) {
 const KEEP = new Set(['B', 'I', 'U', 'S', 'BR', 'P', 'DIV', 'H1', 'H2', 'H3', 'UL', 'OL', 'LI', 'A', 'BLOCKQUOTE', 'PRE', 'CODE', 'HR', 'TABLE', 'TBODY', 'TR', 'TD', 'IMG', 'SUB', 'SUP']);
 const DROP = new Set(['SCRIPT', 'STYLE', 'META', 'LINK', 'TITLE', 'HEAD', 'IFRAME', 'OBJECT', 'EMBED', 'NOSCRIPT', 'TEMPLATE', 'SVG', 'BUTTON', 'INPUT', 'SELECT', 'TEXTAREA', 'FORM', 'CANVAS', 'VIDEO', 'AUDIO', 'COLGROUP', 'COL']);
 const RENAME = { STRONG: 'B', EM: 'I', STRIKE: 'S', DEL: 'S', INS: 'U', H4: 'H3', H5: 'H3', H6: 'H3', THEAD: 'TBODY', TFOOT: 'TBODY', TH: 'TD', SECTION: 'DIV', ARTICLE: 'DIV', HEADER: 'DIV', FOOTER: 'DIV', MAIN: 'DIV', ASIDE: 'DIV', NAV: 'DIV', FIGURE: 'DIV', DD: 'DIV', DT: 'DIV', DL: 'DIV' };
-function sanitize(html) {
+// '#fff176' for 'rgb(255, 241, 118)' (a highlight's colour as the editor writes it)
+function rgbHex(c) { const m = /^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/.exec(c || ''); return m ? '#' + m.slice(1).map(x => (+x).toString(16).padStart(2, '0')).join('') : String(c || '').toLowerCase(); }
+// o.doc: build in that (inert) document, so nothing loads yet; o.own: the app's own file (an export, a dragged-out
+// note) - its checklists, colours, highlights and header rows stay
+function sanitize(html, o = {}) {
+  const D = o.doc || document;
   const doc = new DOMParser().parseFromString(html, 'text/html');
-  const out = document.createDocumentFragment();
+  const out = D.createDocumentFragment();
   const walk = (src, dst, pre) => {
     for (let n = src.firstChild; n; n = n.nextSibling) {
       if (n.nodeType === 3) {
         const t = pre ? n.nodeValue : n.nodeValue.replace(/[ \t\r\n]+/g, ' ');
-        if (t) dst.appendChild(document.createTextNode(t));
+        if (t) dst.appendChild(D.createTextNode(t));
         continue;
       }
       if (n.nodeType !== 1) continue;
@@ -3750,16 +3781,22 @@ function sanitize(html) {
       tag = RENAME[tag] || tag;
       const stl = n.style || {};
       const fw = stl.fontWeight || '';
+      if (o.own && tag === 'FONT' && FG.some(f => f.v && f.v === (n.getAttribute('color') || '').toLowerCase())) {
+        const el = D.createElement('font'); el.setAttribute('color', n.getAttribute('color').toLowerCase()); dst.appendChild(el); walk(n, el, pre); continue;
+      }
+      if (o.own && tag === 'SPAN' && HL.some(h => h.v === rgbHex(stl.backgroundColor))) {
+        const el = D.createElement('span'); el.style.backgroundColor = stl.backgroundColor; dst.appendChild(el); walk(n, el, pre); continue;
+      }
       if (!KEEP.has(tag) || (tag === 'B' && (fw === 'normal' || fw === '400'))) {
         // unknown wrapper (span, font, Google Docs <b style=normal> ...): keep only bold/italic/underline/strike from its style
         let inner = dst;
         const deco = (stl.textDecorationLine || stl.textDecoration || '');
         const wraps = [[fw === 'bold' || +fw >= 600, 'b'], [stl.fontStyle === 'italic', 'i'], [deco.includes('underline'), 'u'], [deco.includes('line-through'), 's']];
-        for (const [on, t2] of wraps) if (on && tag !== 'B') { const e2 = document.createElement(t2); inner.appendChild(e2); inner = e2; }
+        for (const [on, t2] of wraps) if (on && tag !== 'B') { const e2 = D.createElement(t2); inner.appendChild(e2); inner = e2; }
         walk(n, inner, pre);
         continue;
       }
-      const el = document.createElement(tag);
+      const el = D.createElement(tag);
       if (tag === 'A') {
         const h = n.getAttribute('href') || '';
         if (!/^(https?:|mailto:)/i.test(h)) { walk(n, dst, pre); continue; }
@@ -3767,10 +3804,12 @@ function sanitize(html) {
       }
       if (tag === 'IMG') {
         const s = n.getAttribute('src') || '';
-        if (/^(https?:|data:image\/(png|jpeg|gif|webp))/i.test(s)) { el.setAttribute('src', s); dst.appendChild(el); }
+        if (/^(https?:|data:image\/(png|jpe?g|gif|webp|bmp)[;,])/i.test(s)) { el.setAttribute('src', s); dst.appendChild(el); }
         continue;
       }
-      if (tag === 'TABLE') el.className = 't';
+      if (tag === 'TABLE') el.className = o.own && n.classList.contains('hdr') ? 't hdr' : 't';
+      if (o.own && tag === 'UL' && n.classList.contains('checklist')) el.className = 'checklist';
+      if (o.own && tag === 'LI' && /^(true|false)$/.test(n.getAttribute('data-checked') || '')) el.setAttribute('data-checked', n.getAttribute('data-checked'));
       if (tag === 'TD') { if (n.colSpan > 1) el.colSpan = n.colSpan; if (n.rowSpan > 1) el.rowSpan = n.rowSpan; }   // spread out below
       dst.appendChild(el);
       walk(n, el, pre || tag === 'PRE');
@@ -3781,12 +3820,12 @@ function sanitize(html) {
     if (!t.rows.length) { t.remove(); return; }
     // one cell per slot: merged cells spread out, short rows padded (the editor's tables are plain grids)
     const loose = Array.from(t.childNodes).filter(n => !/^(TBODY|TR)$/.test(n.nodeName));   // a caption's text
-    if (loose.some(n => n.textContent.trim())) { const d = document.createElement('div'); loose.forEach(n => d.appendChild(n)); t.before(d); }
-    const g = tableGrid(t, td => td, null), tb = document.createElement('tbody');
+    if (loose.some(n => n.textContent.trim())) { const d = D.createElement('div'); loose.forEach(n => d.appendChild(n)); t.before(d); }
+    const g = tableGrid(t, td => td, null), tb = D.createElement('tbody');
     for (const row of g) {
       const tr = tb.insertRow();
       for (const v of row) {
-        const td = v || document.createElement('td');
+        const td = v || D.createElement('td');
         td.removeAttribute('colspan'); td.removeAttribute('rowspan');
         if (!td.firstChild) td.innerHTML = '<br>';
         tr.appendChild(td);
@@ -3816,9 +3855,9 @@ function insertImageFile(file) {
   };
   rd.readAsDataURL(file);
 }
-editor.addEventListener('dragover', e => { if (noteDrag) { e.preventDefault(); e.dataTransfer.dropEffect = 'none'; } });
+editor.addEventListener('dragover', e => { if (isNoteDrag(e)) { e.preventDefault(); e.dataTransfer.dropEffect = 'none'; } });
 editor.addEventListener('drop', e => {
-  if (noteDrag) { e.preventDefault(); return; }
+  if (isNoteDrag(e)) { e.preventDefault(); return; }
   const files = Array.from((e.dataTransfer && e.dataTransfer.files) || []).filter(f => /^image\/(png|jpeg|gif|webp|bmp)$/.test(f.type));
   if (!files.length) return;
   e.preventDefault();
@@ -3829,73 +3868,163 @@ editor.addEventListener('drop', e => {
 document.addEventListener('dragover', e => { if (e.dataTransfer && Array.from(e.dataTransfer.types).includes('Files')) e.preventDefault(); });
 // Text and HTML files dropped anywhere become notes named after the files (pictures dropped in a note go in it)
 const TEXT_FILE = /\.(txt|text|md|markdown|log|csv|html?|xhtml)$/i;
+const IMG_FILE = /^image\/(png|jpeg|gif|webp|bmp)$/;
+const isTextFile = f => TEXT_FILE.test(f.name) || /^text\/(plain|html|markdown|csv)$/.test(f.type);
+const isHtmlFile = f => /\.x?html?$/i.test(f.name) || f.type === 'text/html';
 document.addEventListener('drop', e => {
-  const files = Array.from((e.dataTransfer && e.dataTransfer.files) || []).filter(f => TEXT_FILE.test(f.name) || /^text\/(plain|html|markdown|csv)$/.test(f.type));
-  if (!files.length) return;
+  if (!e.dataTransfer || isNoteDrag(e)) return;
+  const items = Array.from(e.dataTransfer.items || []).filter(it => it.kind === 'file');
+  const dropped = items.length ? items.map(it => { const en = it.webkitGetAsEntry && it.webkitGetAsEntry(); return { f: it.getAsFile(), dir: !!(en && en.isDirectory) }; })
+    : Array.from(e.dataTransfer.files || []).map(f => ({ f, dir: false }));
+  if (!dropped.length) return;
+  const files = dropped.filter(x => x.f && !x.dir && isTextFile(x.f)).map(x => x.f);
+  const inNote = view === 'editor' && editor.isContentEditable && editor.contains(e.target);
+  const pics = inNote ? dropped.filter(x => x.f && !x.dir && IMG_FILE.test(x.f.type)).map(x => x.f) : [];
+  if (!files.length && pics.length) return;        // pictures only: the note's own drop puts them in
   e.preventDefault(); e.stopPropagation();
-  importFiles(files);
+  if (pics.length) {                               // pictures and text files together: the pictures still go in the note
+    const r = document.caretRangeFromPoint(e.clientX, e.clientY);
+    if (r) { const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); }
+    pics.forEach(insertImageFile);
+  }
+  const dirs = dropped.filter(x => x.dir).length, other = dropped.length - files.length - pics.length - dirs;
+  if (!files.length) { toast(dirs ? '폴더는 넣을 수 없어요 · 폴더 안의 텍스트·HTML 파일을 골라 끌어 주세요' : '텍스트·HTML 파일만 메모로 넣을 수 있어요 (txt · md · csv · html)'); return; }
+  importFiles(files, dirs + other);
 }, true);
-// bytes -> text: a BOM says it, else UTF-8 if it is valid, else what an HTML file declares, else Korean Windows (CP949)
+// bytes -> text: a BOM says it, else UTF-8 if it is valid, else what an HTML file declares, else whichever of
+// UTF-8 and Korean Windows (CP949) reads with fewer broken characters (one stray byte doesn't garble a UTF-8 file)
 function decodeText(buf, html) {
   const b = new Uint8Array(buf);
   if (b[0] === 0xEF && b[1] === 0xBB && b[2] === 0xBF) return new TextDecoder('utf-8').decode(b.subarray(3));
   if (b[0] === 0xFF && b[1] === 0xFE) return new TextDecoder('utf-16le').decode(b.subarray(2));
   if (b[0] === 0xFE && b[1] === 0xFF) return new TextDecoder('utf-16be').decode(b.subarray(2));
-  try { return new TextDecoder('utf-8', { fatal: true }).decode(b); } catch (err) { /* not UTF-8 */ }
+  try { return new TextDecoder('utf-8', { fatal: true }).decode(b); } catch (err) { /* not clean UTF-8 */ }
+  // UTF-16 without a BOM: every other byte is 0 in Latin text
+  let z0 = 0, z1 = 0;
+  const n = Math.min(b.length & ~1, 4096);
+  for (let i = 0; i < n; i += 2) { if (!b[i]) z0++; if (!b[i + 1]) z1++; }
+  if (n >= 8 && z1 > n / 6 && z0 < n / 40) return new TextDecoder('utf-16le').decode(b);
+  if (n >= 8 && z0 > n / 6 && z1 < n / 40) return new TextDecoder('utf-16be').decode(b);
   if (html) {
     const m = /<meta[^>]+charset\s*=\s*["']?([\w-]+)/i.exec(new TextDecoder('latin1').decode(b.subarray(0, 2048)));
-    if (m) try { return new TextDecoder(m[1]).decode(b); } catch (err) { /* unknown label */ }
+    if (m && !/^utf-?8$/i.test(m[1])) try { return new TextDecoder(m[1]).decode(b); } catch (err) { /* unknown label */ }
   }
-  return new TextDecoder('euc-kr').decode(b);
+  const bad = t => (t.match(/�/g) || []).length;
+  const u = new TextDecoder('utf-8').decode(b), k = new TextDecoder('euc-kr').decode(b);
+  return bad(u) <= bad(k) ? u : k;
 }
 function textToNoteHtml(text) {
   const lines = text.replace(/\r\n?/g, '\n').replace(/\n$/, '').split('\n');
   return lines.map(l => `<div>${l ? esc(l) : '<br>'}</div>`).join('') || '<div><br></div>';
 }
-// an HTML file -> { title, html }: our own export's title line becomes the title; pictures inside are saved
-// like pasted ones
+// an imported page laid out like the editor's own lines: the source's indentation and line breaks between tags
+// don't become empty lines (the editor keeps white space as typed), loose text at the top goes in a line of its own
+function tidyImported(box) {
+  const isBlock = n => !!n && n.nodeType === 1 && BLOCK_TAGS.test(n.nodeName);
+  const walk = el => {
+    for (let c = el.firstChild; c;) {
+      const next = c.nextSibling;
+      if (c.nodeType === 3 && !/[^ \t\r\n]/.test(c.nodeValue)) {
+        if (/^(UL|OL|TABLE|TBODY|TR)$/.test(el.nodeName) || !c.previousSibling || !next || isBlock(c.previousSibling) || isBlock(next)) c.remove();
+      } else if (c.nodeType === 3 && (el === box || isBlock(el))) {     // a line's text starts and ends at its words
+        const p = c.previousSibling;
+        if (!p || isBlock(p) || p.nodeName === 'BR') c.nodeValue = c.nodeValue.replace(/^ +/, '');
+        if (!next || isBlock(next) || next.nodeName === 'BR') c.nodeValue = c.nodeValue.replace(/ +$/, '');
+      } else if (c.nodeType === 1 && c.nodeName !== 'PRE') walk(c);
+      c = next;
+    }
+  };
+  walk(box);
+  let run = null;
+  for (let c = box.firstChild; c;) {
+    const next = c.nextSibling;
+    if (isBlock(c)) run = null;
+    else if (c.nodeName === 'BR') { if (!run) { const d = box.ownerDocument.createElement('div'); d.appendChild(box.ownerDocument.createElement('br')); box.insertBefore(d, c); } c.remove(); run = null; }
+    else { if (!run) { run = box.ownerDocument.createElement('div'); box.insertBefore(run, c); } run.appendChild(c); }
+    c = next;
+  }
+}
+// an HTML file -> { title, html }: our own export's title line becomes the title (an empty one: the note had no
+// title, its file was named after the first line); pictures inside are saved like pasted ones, a copy from the
+// 메모 folder finds its pictures in images\; nothing in it is fetched while it comes in
 function htmlToNote(text, fallback) {
   const doc = new DOMParser().parseFromString(text, 'text/html');
   let title = fallback;
   const h = doc.body && doc.body.firstElementChild;
-  if (h && h.matches('h1.title')) { if (h.textContent.trim()) title = h.textContent.trim(); h.remove(); }
+  const own = !!(h && h.matches('h1.title')) || /^<!--ssn:[\w-]+-->/.test(text);
+  if (h && h.matches('h1.title')) { title = h.textContent.trim(); h.remove(); }
+  for (const img of doc.querySelectorAll('img[src]')) {
+    const src = img.getAttribute('src').replace(/\s+/g, ''), m = /^(?:\.\.\/)?images\/([A-Za-z0-9_-]+\.(?:png|jpe?g|gif|webp|bmp))$/i.exec(src);
+    img.setAttribute('src', m ? IMG_URL + m[1] : src);
+  }
   const only = doc.body && doc.body.children.length === 1 && doc.body.firstElementChild.nodeName === 'DIV' ? doc.body.firstElementChild : doc.body;
-  const frag0 = sanitize(only ? only.innerHTML : text), box = document.createElement('div');
-  box.appendChild(frag0);
-  if (HOST) for (const img of box.querySelectorAll('img[src^="data:image/"]')) {
-    const m = /^data:image\/(png|jpeg|gif|webp);base64,(.*)$/i.exec(img.getAttribute('src'));
-    if (!m) continue;
-    const name = uid() + '.' + (m[1].toLowerCase() === 'jpeg' ? 'jpg' : m[1].toLowerCase());
+  const D = document.implementation.createHTMLDocument('');
+  const box = D.createElement('div');
+  box.appendChild(sanitize(only ? only.innerHTML : text, { doc: D, own }));
+  for (const img of box.querySelectorAll('img[src^="data:"]')) {
+    const m = /^data:image\/(png|jpe?g|gif|webp|bmp)(?:;[^,;]*)*;base64,([A-Za-z0-9+/=]+)$/i.exec(img.getAttribute('src'));
+    if (!m || !HOST) continue;
+    const ext = m[1].toLowerCase(), name = uid() + '.' + (ext === 'jpeg' ? 'jpg' : ext);
     host.send('saveImg', name, m[2]);
     img.setAttribute('src', IMG_URL + name);
   }
+  tidyImported(box);
   return { title, html: box.innerHTML.trim() || '<div><br></div>' };
 }
-async function importFiles(files) {
-  const room = MAX_NOTES - S.notes.length;
-  if (room <= 0) { toast(`메모는 ${MAX_NOTES}개까지예요 · 안 쓰는 메모를 지운 뒤 넣어 주세요`); return; }
-  const added = [], skipped = [];
-  for (const f of files.slice(0, room)) {
-    if (f.size > 5 * 1048576) { skipped.push(f.name); continue; }
+// Each file is read, checked and added one after another; a second drop waits for the first. A note has to stay
+// light enough to type in (about a million characters), and all notes together well inside what the app can load.
+const IMPORT_FILE_MAX = 30 * 1048576, IMPORT_NOTE_MAX = 1500000, NOTES_TOTAL_MAX = 150000000;
+let importing = Promise.resolve();
+function importFiles(files, ignored = 0) { importing = importing.then(() => importNow(files, ignored)).catch(err => console.error(err)); return importing; }
+async function importNow(files, ignored) {
+  const added = [], big = [], failed = [], same = [];
+  let over = 0, broken = false;
+  let total = 0;
+  for (const id in bodies) total += (bodies[id] || '').length;
+  for (const f of files) {
+    if (S.notes.length >= MAX_NOTES) { over++; continue; }
+    if (f.size > IMPORT_FILE_MAX) { big.push(f.name); continue; }
     let text;
-    try { text = decodeText(await f.arrayBuffer(), /\.x?html?$/i.test(f.name) || f.type === 'text/html'); } catch (err) { skipped.push(f.name); continue; }
+    try { text = decodeText(await f.arrayBuffer(), isHtmlFile(f)); } catch (err) { failed.push(f.name); continue; }
     const base = f.name.replace(/\.[^.]+$/, '').trim() || f.name;
-    const { title, html } = /\.x?html?$/i.test(f.name) || f.type === 'text/html' ? htmlToNote(text, base) : { title: base, html: textToNoteHtml(text) };
+    let title = base, html;
+    if (isHtmlFile(f)) ({ title, html } = htmlToNote(text, base));
+    else {
+      // our own .txt (the title, an empty line, the note) - or an untitled note's, named after its first line
+      const lines = text.replace(/\r\n?/g, '\n').split('\n');
+      if (lines.length > 1 && fileBaseOf(lines[0]) === fileBaseOf(base)) {
+        if (!lines[1].trim()) { title = lines[0].trim(); text = lines.slice(2).join('\n'); } else title = '';
+      }
+      html = textToNoteHtml(text);
+    }
+    if (html.length > IMPORT_NOTE_MAX || total + html.length > NOTES_TOTAL_MAX) { big.push(f.name); continue; }
+    if (S.notes.some(n => n.title === title && bodies[n.id] === html)) { same.push(f.name); continue; }   // the same file again
+    if (/�/.test(html)) broken = true;
     const n = { id: uid(), title, color: COLOR_KEYS[S.notes.length % COLOR_KEYS.length], pinned: false, hotkey: null, created: now(), updated: now() };
     const fr = frag(html);
     n.preview = previewOf(fr); n.line1 = firstLineOf(fr);
     bodies[n.id] = html;
+    total += html.length;
     S.notes.push(n);
     host.send('saveNote', n.id, html);
     added.push(n);
+    if (added.length % 20 === 0) { stateDirty = true; flushState(); }   // a long drop: the list is saved as it grows
   }
-  if (!added.length) { if (skipped.length) toast(`넣지 못했어요 · ${skipped.join(', ')} (5MB까지 텍스트·HTML 파일)`); return; }
-  saveStateSoon();
+  const why = [];
+  if (over) why.push(`${MAX_NOTES}개가 넘어 ${over}개는 넣지 않았어요`);
+  if (big.length) why.push(`너무 커서 못 넣었어요: ${big.slice(0, 3).join(', ')}${big.length > 3 ? ` 외 ${big.length - 3}개` : ''}`);
+  if (failed.length) why.push(`읽지 못했어요: ${failed.slice(0, 3).join(', ')}${failed.length > 3 ? ` 외 ${failed.length - 3}개` : ''}`);
+  if (same.length) why.push(same.length === 1 ? `‘${same[0]}’은 이미 있는 메모예요` : `${same.length}개는 이미 있는 메모예요`);
+  if (ignored) why.push(`텍스트·HTML이 아닌 ${ignored}개는 건너뛰었어요`);
+  if (broken) why.push('일부 글자가 깨졌을 수 있어요');
+  const more = why.length ? ' · ' + why.join(' · ') : '';
+  if (!added.length) { toast(over && !big.length && !failed.length && !same.length ? `메모는 ${MAX_NOTES}개까지예요 · 안 쓰는 메모를 지운 뒤 넣어 주세요` : `메모를 추가하지 못했어요${more}`); return; }
+  stateDirty = true; flushState();
   if (view === 'board') { multi.clear(); if (added.length > 1) added.forEach(n => multi.add(n.id)); selId = added[added.length - 1].id; }
   rerender();
   if (view === 'board') { const c = grid.querySelector(`.card[data-id="${selId}"]`); if (c) c.scrollIntoView({ block: 'nearest' }); }
-  const more = files.length > room ? ` · ${MAX_NOTES}개가 넘어 ${files.length - room}개는 넣지 않았어요` : skipped.length ? ` · ${skipped.length}개는 넣지 못했어요` : '';
-  if (added.length === 1) toast(`${josa(`‘${added[0].title}’ 메모`, '을', '를')} 추가했어요${more}`, '열기', () => openNote(added[0].id));
+  const t1 = added[0].title || titleOf(added[0]) || '제목 없음';
+  if (added.length === 1) toast(`${josa(`‘${t1}’ 메모`, '을', '를')} 추가했어요${more}`, '열기', () => openNote(added[0].id));
   else toast(`메모 ${added.length}개를 추가했어요${more}`);
 }
 document.addEventListener('drop', e => { if (!e.defaultPrevented && e.dataTransfer && Array.from(e.dataTransfer.types).includes('Files')) e.preventDefault(); });
@@ -4631,6 +4760,7 @@ function noteEmpty(id) {
   return !!n && !n.title && emptyHtml(id === cur ? editor.innerHTML : bodies[id]);
 }
 function dropNote(id) {                           // silent: nothing was written in it
+  if (missing.has(id) || unread.has(id)) return;
   if (cur === id) { clearTimeout(saveT); dirty = false; cur = null; }
   S.notes = S.notes.filter(n => n.id !== id);
   delete bodies[id]; H.delete(id); textCache.delete(id); memo.delete(id); sentNames.delete(id);
@@ -5621,6 +5751,15 @@ function welcome() {
   saveStateSoon();
 }
 
+function bootFailed() {
+  openModal(`<div class="dlg confirm"><div class="dlg-head">${ic('i-folder')}<h3>메모를 불러오지 못했어요</h3></div>` +
+    `<div class="dlg-body"><div class="khint">메모 파일은 그대로 있어요. 지금은 아무것도 저장하지 않으니 앱을 끝내고 다시 열어 주세요. 계속 이러면 데이터 폴더를 확인해 주세요.</div></div>` +
+    `<div class="dlg-foot"><span style="flex:1"></span><button class="btn" id="bfData">데이터 폴더 열기</button><button class="btn danger-fill" id="bfQuit" data-autofocus>끝내기</button></div></div>`,
+    () => setTimeout(bootFailed, 0));                // it stays: behind it is an empty app that saves nothing
+  $('#bfData').onclick = () => host.send('openData');
+  $('#bfQuit').onclick = () => host.send('quit');
+}
+
 // ---------------------------------------------------------------- start
 document.execCommand('defaultParagraphSeparator', false, 'div');
 document.execCommand('styleWithCSS', false, false);
@@ -5636,6 +5775,7 @@ $('#btnTop').title = `항상 위에 표시 · ${st.onTop ? '켜짐' : '꺼짐'}`
 if (listHome() && S.notes.length) showList();
 else { renderBoard(); boardSearch.focus({ preventScroll: true }); }
 host.send('ready');
+if (BOOT_FAILED) bootFailed();
 warmSearch();
 host.send('closeToTray', st.closeToTray ? '1' : '0');
 sendNames(true);

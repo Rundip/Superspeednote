@@ -392,6 +392,7 @@ namespace SuperSpeedNote
             webStarted = false;
             try { if (ctl != null) ctl.Close(); } catch { }
             ctl = null; wv = null; env = null; envTask = null; bootTask = null;
+            DragServer.Clear();
             activeNote = ""; hasReturn = false; pendingOpen = null; pendingNew = false; pendingPalette = null; paletteOpen = false;
             GC.Collect(); GC.WaitForPendingFinalizers(); GC.Collect();
             UpdateTrayText();
@@ -1283,13 +1284,23 @@ namespace SuperSpeedNote
             sb.Append(state == null ? "null" : Json(state));
             sb.Append(",stateBak:").Append(stateBak == null ? "null" : Json(stateBak));   // previous copy, used if state.json is damaged
             sb.Append(",notes:{");
+            var unread = new List<string>();
             try
             {
-                foreach (var kv in NoteFiles.Load(NotesDir, TrashDir))
+                var notes = NoteFiles.Load(NotesDir, TrashDir, (state ?? "") + (stateBak ?? ""), unread);   // (which ids are notes: either copy)
+                // the page can't start from a script over V8's string limit (~536M characters): the biggest notes
+                // stay out of it (read-only and empty in the app this time) rather than the app starting with nothing
+                long total = 0, budget = 300000000;
+                foreach (var kv in notes.OrderBy(kv => kv.Value.Length))
+                {
+                    total += kv.Value.Length + kv.Value.Length / 8 + 64;
+                    if (total > budget) { unread.Add(kv.Key); continue; }
                     sb.Append(Json(kv.Key)).Append(':').Append(Json(kv.Value)).Append(',');
+                }
             }
             catch (Exception ex) { Program.Log(ex); }
-            sb.Append("},autostart:").Append(Json(GetStartupMode()));
+            sb.Append("},unread:[").Append(string.Join(",", unread.Distinct().Select(Json))).Append("]");
+            sb.Append(",autostart:").Append(Json(GetStartupMode()));
             DragServer.Start();
             sb.Append(",dragBase:").Append(Json(DragServer.Base ?? ""));
             sb.Append(",dataDir:").Append(Json(Program.DataDir)).Append("};");
@@ -1475,9 +1486,10 @@ namespace SuperSpeedNote
                     break;
                 case "dragFile":                                 // key, "html" | "txt", the note as that file: fetched when dropped
                     {
-                        string key = Cut(ref a), kind = Cut(ref a);
-                        if (kind == "txt") DragServer.Put(key, "text/plain; charset=utf-8", new UTF8Encoding(true).GetPreamble().Concat(Encoding.UTF8.GetBytes(a.Replace("\r\n", "\n").Replace("\n", "\r\n"))).ToArray());
-                        else DragServer.Put(key, "text/html; charset=utf-8", Encoding.UTF8.GetBytes(InlineImages(a)));
+                        // only kept here: the file (pictures inlined) is made when something actually fetches it
+                        string key = Cut(ref a), kind = Cut(ref a), body = a;
+                        if (kind == "txt") DragServer.Put(key, "text/plain; charset=utf-8", () => new UTF8Encoding(true).GetPreamble().Concat(Encoding.UTF8.GetBytes(body.Replace("\r\n", "\n").Replace("\n", "\r\n"))).ToArray());
+                        else DragServer.Put(key, "text/html; charset=utf-8", () => Encoding.UTF8.GetBytes(InlineImages(body)));
                         break;
                     }
                 case "export": { string name = Cut(ref a), body = a; BeginInvoke(new Action(() => Export(name, body))); break; }
@@ -1724,6 +1736,7 @@ namespace SuperSpeedNote
         // empty notes thrown away by older versions: delete them for good (background, after start-up)
         static void SweepTrash()
         {
+            NoteFiles.StripTrash(TrashDir);
             try
             {
                 if (!Directory.Exists(TrashDir)) return;
@@ -1963,90 +1976,167 @@ namespace SuperSpeedNote
             string s = name ?? "";
             try { s = s.Normalize(NormalizationForm.FormC); } catch (ArgumentException) { }   // Hangul pasted from a Mac: one syllable, not jamo
             s = Regex.Replace(s, "[\\x00-\\x1f\\x7f]+", " ");
+            s = Regex.Replace(s, "\\p{Cf}+", "");                       // invisible format characters (a dropped file loses them too)
             var sb = new StringBuilder(s.Length);
             foreach (char c in s)
             {
-                int k = "\\/:*?\"<>|".IndexOf(c);
-                sb.Append(k < 0 ? c : "＼／：＊？＂＜＞｜"[k]);
+                int k = "\\/:*?\"<>|~".IndexOf(c);
+                sb.Append(k < 0 ? c : "＼／：＊？＂＜＞｜～"[k]);
             }
             s = Regex.Replace(sb.ToString(), "\\s+", " ").Trim();
             if (s.Length > 80) s = s.Substring(0, char.IsHighSurrogate(s[79]) ? 79 : 80);
-            s = s.TrimEnd('.', ' ');
+            s = s.TrimEnd('.', ' ').TrimStart('.', ' ');
             if (s.Length == 0) s = "제목 없음";
             // Windows maps the part before the first dot (trailing spaces dropped) to a device: CON, "CON .txt", "nul . 메모"
             if (Regex.IsMatch(s, "^(CON|PRN|AUX|NUL|COM[0-9¹²³]|LPT[0-9¹²³]) *(\\..*)?$", RegexOptions.IgnoreCase)) s = "_" + s;
             return s;
         }
 
-        // every note: id -> contents. Files 1.4.4 named after their notes are written back as notes\<id>.html first
-        // (the newest copy per id); the named file then leaves notes\ (into the trash when there is a second copy,
-        // so nothing is ever dropped silently).
-        public static Dictionary<string, string> Load(string dir, string trashDir)
+        sealed class Entry { public string Path, Name, Hid, Text, Owner; public DateTime Time; }
+
+        // every note: id -> contents. Files 1.4.4 named after their notes ("회의록.html", the id on the first line) are
+        // written back as notes\<id>.html. Per note the newest copy wins; a file leaves notes\ only once its text is
+        // safe: deleted when it is the same text, otherwise into the trash (nothing is ever dropped silently).
+        // state: state.json (which ids are notes); unread: ids whose file is there but must not be written over
+        // this time (it could not be read) - the page keeps those notes read-only.
+        public static Dictionary<string, string> Load(string dir, string trashDir, string state, List<string> unread)
         {
             var notes = new Dictionary<string, string>(StringComparer.Ordinal);
             if (!Directory.Exists(dir)) return notes;
-            var named = new Dictionary<string, List<string>>(StringComparer.Ordinal);   // id -> 1.4.4 files carrying it
+            var listed = new HashSet<string>(StringComparer.Ordinal);
+            if (state != null) foreach (Match m in Regex.Matches(state, "\"id\"\\s*:\\s*\"([A-Za-z0-9_-]{1,64})\"")) listed.Add(m.Groups[1].Value);
+            var all = new List<Entry>();
             foreach (string f in Directory.GetFiles(dir, "*.html"))
             {
-                string hid, n = Path.GetFileNameWithoutExtension(f);
-                try { Strip(ReadShared(f), out hid); } catch (Exception ex) { Program.Log(ex); continue; }
-                if (hid != null && hid != n) { List<string> l; if (!named.TryGetValue(hid, out l)) named[hid] = l = new List<string>(); l.Add(f); }
+                string n = System.IO.Path.GetFileNameWithoutExtension(f), hid, text;
+                try { text = Strip(ReadShared(f), out hid); }
+                catch (Exception ex) { Program.Log(ex); if (SafeId(n) && unread != null) unread.Add(n); continue; }
+                all.Add(new Entry { Path = f, Name = n, Hid = hid, Text = text, Time = File.GetLastWriteTimeUtc(f) });
             }
-            foreach (var kv in named)
+            // whose file is it? No id line: the note its name says. Its own id line: the same. Another id: a 1.4.4
+            // file named after that note - unless an older version made it a note of its own (it restored a copy from
+            // the trash under a new id): its name is a note in state.json that no other file claims, and the note on
+            // its first line still has a file of its own.
+            foreach (var e in all)
             {
-                string id = kv.Key, own = Path.Combine(dir, id + ".html");
-                var files = kv.Value.OrderByDescending(File.GetLastWriteTimeUtc).ThenBy(f => Path.GetFileName(f).Length).ToList();
-                try
-                {
-                    string newest = files[0];
-                    if (!File.Exists(own) || File.GetLastWriteTimeUtc(newest) > File.GetLastWriteTimeUtc(own))
-                        Saver.WriteAtomic(own, Strip(ReadShared(newest)));
-                    for (int i = 0; i < files.Count; i++)
-                    {
-                        if (i == 0) { try { File.Delete(files[0]); } catch (Exception ex) { Program.Log(ex); } }
-                        else Retire(files[i], trashDir);
-                    }
-                }
-                catch (Exception ex) { Program.Log(ex); }
+                if (e.Hid == null || e.Hid == e.Name) { e.Owner = SafeId(e.Name) ? e.Name : null; continue; }
+                var me = e;
+                bool restored = SafeId(e.Name) && listed.Contains(e.Name)
+                    && !all.Any(x => x.Hid == me.Name)
+                    && all.Any(x => x != me && (x.Hid == me.Hid || (x.Name == me.Hid && x.Hid == null)));
+                e.Owner = restored ? e.Name : e.Hid;
             }
-            foreach (string f in Directory.GetFiles(dir, "*.html"))
+            var byPath = new Dictionary<string, Entry>(StringComparer.OrdinalIgnoreCase);
+            foreach (var e in all) byPath[e.Path] = e;
+            var groups = all.Where(e => e.Owner != null).GroupBy(e => e.Owner, StringComparer.Ordinal).ToList();
+            var homes = new HashSet<string>(groups.Select(g => Canon(dir, g.Key)), StringComparer.OrdinalIgnoreCase);
+            // a note whose <id>.html holds another note's 1.4.4 file goes second, once that note is safe in its own file
+            var safe = new HashSet<string>(StringComparer.Ordinal);
+            var later = new List<IGrouping<string, Entry>>();
+            foreach (var g in groups)
             {
-                string id = Path.GetFileNameWithoutExtension(f);
-                if (!SafeId(id)) continue;
-                try
-                {
-                    string hid, text = Strip(ReadShared(f), out hid);
-                    if (hid != null && hid != id) continue;          // a named 1.4.4 file still held by Windows: its copy was made
-                    if (hid != null) Saver.WriteAtomic(f, text);     // its own id line from 1.4.4: older versions get the plain note
-                    notes[id] = text;
+                Entry at;
+                if (byPath.TryGetValue(Canon(dir, g.Key), out at) && at.Owner != g.Key) later.Add(g);
+                else Settle(g.Key, g.ToList(), dir, trashDir, notes, safe, homes, unread);
+            }
+            foreach (var g in later)
+            {
+                Entry at = byPath[Canon(dir, g.Key)];
+                if (at.Owner != null && !safe.Contains(at.Owner))
+                {   // that note's text is only in this file: boot this one from memory, write nothing over it
+                    notes[g.Key] = g.OrderByDescending(e => e.Time).First().Text;
+                    if (unread != null) unread.Add(g.Key);
+                    continue;
                 }
-                catch (Exception ex) { Program.Log(ex); }
+                Settle(g.Key, g.ToList(), dir, trashDir, notes, safe, homes, unread);
             }
             return notes;
         }
 
-        // a second copy of a note: into the trash, where the app lists it and can restore it as a note of its own
-        // ("<id>-copy_<time>": not taken for a deletion of <id>)
-        static void Retire(string path, string trashDir)
+        static string Canon(string dir, string id) { return System.IO.Path.Combine(dir, id + ".html"); }
+
+        // one note's files: the newest text becomes notes\<id>.html; the others leave once that is written
+        static void Settle(string id, List<Entry> cands, string dir, string trashDir, Dictionary<string, string> notes,
+            HashSet<string> safe, HashSet<string> homes, List<string> unread)
+        {
+            string own = Canon(dir, id);
+            Func<Entry, bool> isOwn = e => string.Equals(e.Path, own, StringComparison.OrdinalIgnoreCase);
+            var win = cands.OrderByDescending(e => e.Time).ThenBy(e => isOwn(e) ? 0 : 1).First();
+            notes[id] = win.Text;                                    // boots with the newest text whatever happens next
+            if (unread != null && unread.Contains(id)) return;      // its <id>.html could not be read: nothing goes over it
+            if (cands.Count == 1 && isOwn(win) && win.Hid == null) { safe.Add(id); return; }   // the usual case: nothing to do
+            var mine = cands.FirstOrDefault(isOwn);
+            try
+            {
+                if (win == mine) { if (win.Hid != null) try { Saver.WriteAtomic(own, win.Text); } catch (Exception ex) { Program.Log(ex); } }   // its own id line: older versions get the plain note
+                else
+                {
+                    // <id>.html itself is an older, different text: into the trash before it is written over
+                    if (mine != null && mine.Text != win.Text && !RetireText(id, mine.Text, "", mine.Time, trashDir)) { if (unread != null) unread.Add(id); return; }
+                    Saver.WriteAtomic(own, win.Text);
+                }
+                safe.Add(id);
+            }
+            catch (Exception ex) { Program.Log(ex); return; }        // nothing written: every file stays for the next start
+            foreach (var e in cands)
+            {
+                if (isOwn(e) || homes.Contains(e.Path)) continue;    // another note's <id>.html: written over there
+                try
+                {
+                    if (e.Text == win.Text) File.Delete(e.Path);
+                    else if (RetireText(id, e.Text, e.Name, e.Time, trashDir)) File.Delete(e.Path);
+                }
+                catch (Exception ex) { Program.Log(ex); }
+            }
+        }
+
+        // another copy of a note: into the trash, as a plain note (older versions restore it as it is), where the app
+        // lists it and can restore it as a note of its own ("<id>-copy_<time>": not taken for a deletion of <id>)
+        static bool RetireText(string id, string text, string title, DateTime timeUtc, string trashDir)
         {
             try
             {
-                string id; Strip(ReadShared(path), out id);
                 Directory.CreateDirectory(trashDir);
-                string stamp = File.GetLastWriteTime(path).ToString("yyyyMMdd_HHmmss"), target = Path.Combine(trashDir, (id ?? "note") + "-copy_" + stamp + ".html");
-                for (int k = 2; File.Exists(target); k++) target = Path.Combine(trashDir, (id ?? "note") + "-copy" + k + "_" + stamp + ".html");
-                File.Move(path, target);
-                string title = Path.GetFileNameWithoutExtension(path);
-                File.WriteAllText(Path.ChangeExtension(target, ".json"), "{\"title\":\"" + title.Replace("\\", "\\\\").Replace("\"", "\\\"") + "\"}", Utf8);
+                string stamp = timeUtc.ToLocalTime().ToString("yyyyMMdd_HHmmss"), target = System.IO.Path.Combine(trashDir, id + "-copy_" + stamp + ".html");
+                for (int k = 2; File.Exists(target); k++) target = System.IO.Path.Combine(trashDir, id + "-copy" + k + "_" + stamp + ".html");
+                Saver.WriteAtomic(target, text);
+                try { File.SetLastWriteTimeUtc(target, timeUtc); } catch { }
+                File.WriteAllText(System.IO.Path.ChangeExtension(target, ".json"), "{\"title\":\"" + (title ?? "").Replace("\\", "\\\\").Replace("\"", "\\\"") + "\"}", Utf8);
+                return true;
             }
-            catch (Exception ex) { Program.Log(ex); }
+            catch (Exception ex) { Program.Log(ex); return false; }
+        }
+
+        // trash items written by 1.4.4 (and copies retired by an early 1.4.5) still start with an id line: plain
+        // notes, so an older version that restores one gets just the note
+        public static void StripTrash(string trashDir)
+        {
+            if (!Directory.Exists(trashDir)) return;
+            foreach (string f in Directory.GetFiles(trashDir, "*.html"))
+            {
+                try
+                {
+                    var buf = new char[Head.Length];
+                    using (var fs = new FileStream(f, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete))
+                    using (var r = new StreamReader(fs, Encoding.UTF8))
+                        if (r.ReadBlock(buf, 0, buf.Length) < buf.Length || new string(buf) != Head) continue;
+                    string id, text = Strip(ReadShared(f), out id);
+                    if (id == null) continue;
+                    DateTime t = File.GetLastWriteTimeUtc(f);
+                    Saver.WriteAtomic(f, text);
+                    try { File.SetLastWriteTimeUtc(f, t); } catch { }
+                }
+                catch (Exception ex) { Program.Log(ex); }
+            }
         }
     }
 
     // The 메모 folder: a readable copy of every note, named after it in the app ("회의록.html", the title, else the
     // first line), a whole HTML page that opens in any browser. One way only: the app rewrites these from
     // notes\<id>.html, so an older version (which never looks here) can't be confused by them, and a mistake
-    // here can never touch a note. Each copy's first line names its note (<!--ssn:id-->).
+    // here can never touch a note. Each copy's first line names its note (<!--ssn:id-->). The app only ever
+    // renames, rewrites or deletes a copy it wrote itself and nobody changed since (memo-index.txt next to the
+    // folder: name, size, time): a copy you edited, or saved again under another name, is yours and stays.
     sealed class NoteMirror
     {
         static readonly Encoding Utf8 = new UTF8Encoding(false);
@@ -2055,13 +2145,14 @@ namespace SuperSpeedNote
             "ul.checklist{list-style:none;padding-left:4px}ul.checklist li::before{content:\"\\2610  \"}ul.checklist li[data-checked=true]::before{content:\"\\2611  \"}" +
             "blockquote{border-left:3px solid #3b6cf6;margin:8px 0;padding:4px 14px;background:#f1f5ff}pre{background:#0d1a36;color:#dbe6ff;padding:12px;border-radius:8px}img{max-width:100%}";
         readonly object gate = new object();
-        readonly string dir, notesDir;
+        readonly string dir, notesDir, indexPath;
         readonly Dictionary<string, string> byId = new Dictionary<string, string>(StringComparer.Ordinal);   // id -> file name
         readonly Dictionary<string, string> want = new Dictionary<string, string>(StringComparer.Ordinal);   // id -> name in the app
         readonly Dictionary<string, List<string>> stale = new Dictionary<string, List<string>>(StringComparer.Ordinal);
-        bool scanned;
+        Dictionary<string, string> written;     // file name -> "id\tsize\ttime" of the copies this app wrote (null: no index yet)
+        bool scanned, indexDirty;
 
-        public NoteMirror(string dir, string notesDir) { this.dir = dir; this.notesDir = notesDir; }
+        public NoteMirror(string dir, string notesDir) { this.dir = dir; this.notesDir = notesDir; indexPath = Path.Combine(Path.GetDirectoryName(dir), "memo-index.txt"); }
 
         static bool Same(string a, string b) { return a != null && b != null && string.Equals(a, b, StringComparison.OrdinalIgnoreCase); }
 
@@ -2081,18 +2172,60 @@ namespace SuperSpeedNote
             catch (Exception ex) { Program.Log(ex); return null; }
         }
 
+        static string Stamp(string id, string path) { var fi = new FileInfo(path); return id + "\t" + fi.Length + "\t" + fi.LastWriteTimeUtc.Ticks; }
+        // a copy this app wrote, unchanged since
+        bool Mine(string id, string file)
+        {
+            string p = Path.Combine(dir, file), had;
+            if (!File.Exists(p)) return false;
+            if (written == null) return IdOf(p) == id;               // no index yet (it was deleted): as before, by the first line
+            return written.TryGetValue(file, out had) && had == Stamp(id, p);
+        }
+        void Wrote(string id, string file) { if (written == null) written = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase); written[file] = Stamp(id, Path.Combine(dir, file)); indexDirty = true; }
+        void Forget(string file) { if (written != null && written.Remove(file)) indexDirty = true; }
+
         void Scan()
         {
             if (scanned) return;
             scanned = true;
+            try
+            {
+                if (File.Exists(indexPath))
+                {
+                    written = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                    foreach (string line in File.ReadAllLines(indexPath, Encoding.UTF8))
+                    {
+                        int t = line.IndexOf('\t');
+                        if (t > 0) written[line.Substring(0, t)] = line.Substring(t + 1);
+                    }
+                }
+            }
+            catch (Exception ex) { Program.Log(ex); written = null; }
             if (!Directory.Exists(dir)) return;
+            var adopted = new List<KeyValuePair<string, string>>();
             foreach (string f in Directory.GetFiles(dir, "*.html"))
             {
-                string id = IdOf(f);
-                if (id == null) continue;
-                string had;
-                if (byId.TryGetValue(id, out had)) AddStale(id, Path.GetFileName(f));   // two copies of one note: one goes
-                else byId[id] = Path.GetFileName(f);
+                string id = IdOf(f), file = Path.GetFileName(f);
+                if (id == null || !Mine(id, file)) continue;          // the user's file (or a copy they changed): never touched
+                if (written == null) adopted.Add(new KeyValuePair<string, string>(id, file));
+                if (byId.ContainsKey(id)) AddStale(id, file);          // two copies of one note: one goes
+                else byId[id] = file;
+            }
+            foreach (var kv in adopted) Wrote(kv.Key, kv.Value);       // the index starts with them
+            if (written != null) foreach (var k in written.Keys.ToList()) if (!File.Exists(Path.Combine(dir, k))) Forget(k);
+        }
+
+        public void SaveIndex()
+        {
+            lock (gate)
+            {
+                if (!indexDirty || written == null) return;
+                try
+                {
+                    Saver.WriteAtomic(indexPath, string.Join("\r\n", written.Select(kv => kv.Key + "\t" + kv.Value)));
+                    indexDirty = false;
+                }
+                catch (Exception ex) { Program.Log(ex); }
             }
         }
 
@@ -2117,7 +2250,11 @@ namespace SuperSpeedNote
         }
         void Delete(string id, string file)
         {
-            try { string p = Path.Combine(dir, file); if (File.Exists(p) && IdOf(p) == id) File.Delete(p); }
+            try
+            {
+                if (Mine(id, file)) File.Delete(Path.Combine(dir, file));
+                Forget(file);
+            }
             catch (Exception ex) { Program.Log(ex); AddStale(id, file); }
         }
         // copies Windows would not let go earlier: try again while they are still that note's
@@ -2150,6 +2287,7 @@ namespace SuperSpeedNote
                     Scan();
                     Sweep();
                     string cur; byId.TryGetValue(id, out cur);
+                    if (cur != null && !Mine(id, cur)) { byId.Remove(id); cur = null; }   // changed by someone since: theirs now
                     if (remove)
                     {
                         if (cur != null) Delete(id, cur);
@@ -2164,16 +2302,17 @@ namespace SuperSpeedNote
                     if (content == null)
                     {
                         string src = Path.Combine(notesDir, id + ".html");
-                        bool fresh = curPath != null && File.Exists(curPath) && File.Exists(src) && File.GetLastWriteTimeUtc(curPath) >= File.GetLastWriteTimeUtc(src);
+                        bool fresh = curPath != null && File.Exists(src) && File.GetLastWriteTimeUtc(curPath) >= File.GetLastWriteTimeUtc(src);
                         if (fresh && string.Equals(cur, target, StringComparison.Ordinal)) return;   // up to date, right name
-                        if (fresh && !Same(cur, target)) { File.Move(curPath, tPath); byId[id] = target; return; }   // renamed
+                        if (fresh && !Same(cur, target)) { File.Move(curPath, tPath); Forget(cur); Wrote(id, target); byId[id] = target; return; }   // renamed
                         if (!File.Exists(src)) return;
                         content = NoteFiles.Strip(NoteFiles.ReadShared(src));
                     }
                     Directory.CreateDirectory(dir);
-                    if (curPath != null && Same(cur, target) && !string.Equals(cur, target, StringComparison.Ordinal) && File.Exists(curPath))
-                        File.Move(curPath, tPath);                                     // only the case changed
+                    if (curPath != null && Same(cur, target) && !string.Equals(cur, target, StringComparison.Ordinal))
+                    { File.Move(curPath, tPath); Forget(cur); }                    // only the case changed
                     Saver.WriteAtomic(tPath, Page(id, wanted, content));
+                    Wrote(id, target);
                     byId[id] = target;
                     if (cur != null && !Same(cur, target)) Delete(id, cur);
                 }
@@ -2181,17 +2320,28 @@ namespace SuperSpeedNote
             }
         }
 
-        // start-up: every note's name; copies are made or refreshed, and copies of notes no longer in the app go
-        // (only files that carry a note's first line - anything else in the folder is the user's and stays)
-        public void Sync(Dictionary<string, string> names)
+        // start-up: every note's name; copies are made or refreshed, and (prune) the app's copies of notes no longer
+        // in it go. Stops early when a note is waiting to be saved (yieldNow): returns the names still to do.
+        public Dictionary<string, string> Sync(Dictionary<string, string> names, bool prune, Func<bool> yieldNow)
         {
-            lock (gate)
+            if (prune)
+                lock (gate)
+                {
+                    try
+                    {
+                        Scan();
+                        foreach (var id in byId.Keys.ToList())
+                            if (!names.ContainsKey(id)) { Delete(id, byId[id]); byId.Remove(id); want.Remove(id); }
+                    }
+                    catch (Exception ex) { Program.Log(ex); }
+                }
+            var list = names.ToList();
+            for (int i = 0; i < list.Count; i++)
             {
-                Scan();
-                foreach (var id in byId.Keys.ToList())
-                    if (!names.ContainsKey(id)) { Delete(id, byId[id]); byId.Remove(id); want.Remove(id); }
+                if (yieldNow()) return list.Skip(i).ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.Ordinal);
+                Apply(list[i].Key, list[i].Value, null, false);
             }
-            foreach (var kv in names) Apply(kv.Key, kv.Value, null, false);
+            return null;
         }
     }
 
@@ -2211,7 +2361,8 @@ namespace SuperSpeedNote
         public NoteMirror Mirror;
         sealed class MirrorOp { public string Name, Content; public bool Remove; }
         readonly Dictionary<string, MirrorOp> mirror = new Dictionary<string, MirrorOp>(StringComparer.Ordinal);
-        Dictionary<string, string> mirrorAll;     // start-up: every note's name
+        Dictionary<string, string> mirrorAll;     // start-up: every note's name (still to do)
+        bool mirrorPrune;                         // ...and the copies of notes not among them go first
 
         public Saver()
         {
@@ -2243,7 +2394,8 @@ namespace SuperSpeedNote
         public void MirrorWrite(string id, string content) { lock (gate) { var op = Op(id); op.Content = content; op.Remove = false; } signal.Set(); }
         public void MirrorName(string id, string name) { lock (gate) Op(id).Name = name; signal.Set(); }
         public void MirrorRemove(string id) { lock (gate) { var op = Op(id); op.Remove = true; op.Content = null; } signal.Set(); }
-        public void MirrorSync(Dictionary<string, string> names) { lock (gate) mirrorAll = names; signal.Set(); }
+        public void MirrorSync(Dictionary<string, string> names) { lock (gate) { mirrorAll = names; mirrorPrune = true; } signal.Set(); }
+        bool NotesWaiting() { lock (gate) return pending.Count > 0; }
 
         public void Flush(int timeoutMs)
         {
@@ -2270,6 +2422,7 @@ namespace SuperSpeedNote
                     KeyValuePair<string, string>[] work;
                     KeyValuePair<string, MirrorOp>[] copies;
                     Dictionary<string, string> moves, infos, all;
+                    bool prune;
                     lock (gate)
                     {
                         if (pending.Count == 0 && mirror.Count == 0 && mirrorAll == null) { busy = false; Monitor.PulseAll(gate); break; }
@@ -2277,6 +2430,8 @@ namespace SuperSpeedNote
                         work = pending.ToArray();
                         copies = mirror.ToArray();
                         all = mirrorAll;
+                        prune = mirrorPrune;
+                        mirrorPrune = false;
                         moves = new Dictionary<string, string>(trashTo, StringComparer.OrdinalIgnoreCase);
                         infos = new Dictionary<string, string>(trashInfo, StringComparer.OrdinalIgnoreCase);
                         pending.Clear();
@@ -2302,10 +2457,21 @@ namespace SuperSpeedNote
                     }
                     lock (gate) { if (pending.Count == 0) { busy = false; Monitor.PulseAll(gate); } }   // the notes are safe: Flush may go on
                     if (Mirror == null) continue;
-                    // notes leaving first (their names become free); a copy that had to take "name (2)" gets another try
-                    foreach (var kv in copies.OrderBy(kv => kv.Value.Remove ? 0 : 1)) Mirror.Apply(kv.Key, kv.Value.Name, kv.Value.Content, kv.Value.Remove);
-                    if (all != null) Mirror.Sync(all);
-                    else foreach (var kv in copies) if (!kv.Value.Remove && kv.Value.Name != null) Mirror.Apply(kv.Key, null, null, false);
+                    // the copies are best effort: nothing in them may stop the notes being saved
+                    try
+                    {
+                        // notes leaving first (their names become free); a copy that had to take "name (2)" gets another try
+                        foreach (var kv in copies.OrderBy(kv => kv.Value.Remove ? 0 : 1)) Mirror.Apply(kv.Key, kv.Value.Name, kv.Value.Content, kv.Value.Remove);
+                        if (all != null)
+                        {
+                            // every note at start-up: a note typed meanwhile is saved first, then the copies go on
+                            var rest = Mirror.Sync(all, prune, NotesWaiting);
+                            if (rest != null) lock (gate) { if (mirrorAll == null) mirrorAll = rest; }
+                        }
+                        else foreach (var kv in copies) if (!kv.Value.Remove && kv.Value.Name != null) Mirror.Apply(kv.Key, null, null, false);
+                        Mirror.SaveIndex();
+                    }
+                    catch (Exception ex) { Program.Log(ex); }
                 }
             }
         }
@@ -2339,13 +2505,16 @@ namespace SuperSpeedNote
     // Dragging a note out of the app (onto the desktop, into a folder): the page gives the drag a "DownloadURL" that
     // points here, and when the note is dropped Windows fetches the file from this tiny server. It listens on the
     // loopback address only, every address carries a random key, and it only hands out the notes the page put
-    // here for a drag (the last 20).
+    // here for a drag (the last few). A request gets a few seconds and a handful at a time, so nothing local can
+    // tie it up.
     static class DragServer
     {
+        sealed class Item { public string Mime; public Func<byte[]> Make; public byte[] Bytes; }
         static System.Net.Sockets.TcpListener listener;
         static string prefix;
+        static int active;
         static readonly object gate = new object();
-        static readonly Dictionary<string, KeyValuePair<string, byte[]>> files = new Dictionary<string, KeyValuePair<string, byte[]>>(StringComparer.Ordinal);
+        static readonly Dictionary<string, Item> files = new Dictionary<string, Item>(StringComparer.Ordinal);
         static readonly Queue<string> order = new Queue<string>();
         public static string Base { get; private set; }
 
@@ -2369,15 +2538,18 @@ namespace SuperSpeedNote
             }
         }
 
-        public static void Put(string key, string mime, byte[] data)
+        // make: builds the file when it is fetched (once)
+        public static void Put(string key, string mime, Func<byte[]> make)
         {
             lock (gate)
             {
                 if (!files.ContainsKey(key)) order.Enqueue(key);
-                files[key] = new KeyValuePair<string, byte[]>(mime, data);
-                while (order.Count > 20) files.Remove(order.Dequeue());
+                files[key] = new Item { Mime = mime, Make = make };
+                while (order.Count > 4) files.Remove(order.Dequeue());
             }
         }
+
+        public static void Clear() { lock (gate) { files.Clear(); order.Clear(); } }
 
         static void Serve()
         {
@@ -2385,17 +2557,20 @@ namespace SuperSpeedNote
             {
                 System.Net.Sockets.TcpClient c;
                 try { c = listener.AcceptTcpClient(); } catch (Exception ex) { Program.Log(ex); return; }
-                ThreadPool.QueueUserWorkItem(_ => Handle(c));
+                if (Interlocked.Increment(ref active) > 6) { Interlocked.Decrement(ref active); try { c.Close(); } catch { } continue; }
+                var client = c;
+                new Thread(() => { try { Handle(client); } finally { Interlocked.Decrement(ref active); } }) { IsBackground = true, Name = "ssn-drag-req" }.Start();
             }
         }
 
         static void Handle(System.Net.Sockets.TcpClient c)
         {
             using (c)
+            using (var deadline = new System.Threading.Timer(_ => { try { c.Close(); } catch { } }, null, 3000, Timeout.Infinite))
             {
                 try
                 {
-                    c.ReceiveTimeout = 5000; c.SendTimeout = 10000;
+                    c.ReceiveTimeout = 3000; c.SendTimeout = 10000;
                     var s = c.GetStream();
                     var buf = new byte[8192];
                     int n = 0;
@@ -2406,16 +2581,23 @@ namespace SuperSpeedNote
                         n += k;
                         if (Encoding.ASCII.GetString(buf, 0, n).Contains("\r\n\r\n")) break;
                     }
+                    deadline.Change(30000, Timeout.Infinite);           // the request is in: time to send the file
                     string[] req = Encoding.ASCII.GetString(buf, 0, n).Split('\r')[0].Split(' ');
-                    KeyValuePair<string, byte[]> f = default(KeyValuePair<string, byte[]>);
-                    bool ok = false, head = req.Length >= 2 && req[0] == "HEAD";
+                    Item f = null;
+                    bool head = req.Length >= 2 && req[0] == "HEAD";
                     if (req.Length >= 2 && (req[0] == "GET" || head) && req[1].StartsWith(prefix, StringComparison.Ordinal))
-                        lock (gate) ok = files.TryGetValue(Uri.UnescapeDataString(req[1].Substring(prefix.Length)), out f);
-                    byte[] top = Encoding.ASCII.GetBytes(ok
-                        ? "HTTP/1.1 200 OK\r\nContent-Type: " + f.Key + "\r\nContent-Length: " + f.Value.Length + "\r\nCache-Control: no-store\r\nConnection: close\r\n\r\n"
+                        lock (gate) files.TryGetValue(Uri.UnescapeDataString(req[1].Substring(prefix.Length)), out f);
+                    byte[] data = null;
+                    if (f != null)
+                    {
+                        data = f.Bytes;
+                        if (data == null) { data = f.Make(); lock (gate) f.Bytes = data; }
+                    }
+                    byte[] top = Encoding.ASCII.GetBytes(data != null
+                        ? "HTTP/1.1 200 OK\r\nContent-Type: " + f.Mime + "\r\nContent-Length: " + data.Length + "\r\nCache-Control: no-store\r\nConnection: close\r\n\r\n"
                         : "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
                     s.Write(top, 0, top.Length);
-                    if (ok && !head) s.Write(f.Value, 0, f.Value.Length);
+                    if (data != null && !head) s.Write(data, 0, data.Length);
                 }
                 catch (Exception ex) { Program.Log(ex); }
             }
