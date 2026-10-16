@@ -144,7 +144,7 @@ dist\SuperSpeedNote.exe
 
 ## 데이터 위치
 
-- 메모: `%APPDATA%\SuperSpeedNote\` (`state.json`, `notes\*.html`, `images\`, `backups\`, `trash\`)
+- 메모: `%APPDATA%\SuperSpeedNote\` (`state.json`, `notes\*.html`, `메모\`(읽기용 사본), `images\`, `backups\`, `trash\`)
 - 메모 파일: 앱이 쓰는 원본은 예전 그대로 `notes\<id>.html`이라 **이전 버전으로 되돌려도 그대로 열립니다**. 메모 이름으로 된 읽기용 사본은 `메모\` 폴더에 항상 최신으로 있습니다(`메모\회의록.html`, 제목, 없으면 첫 줄 · 같은 이름은 `(2)` · 파일 이름에 못 쓰는 글자 `\ / : * ? " < > |`는 모양이 같은 전각 문자 `＼ ／ ： ＊ ？ ＂ ＜ ＞ ｜`로). 사본은 브라우저로 바로 열리는 HTML이고, 앱이 다시 쓰기 때문에 사본을 고쳐도 메모에는 반영되지 않습니다. 1.4.4에서 이름으로 바뀌었던 파일은 처음 켤 때 원래 형식으로 되돌립니다
 - **업데이트해도 메모는 그대로입니다.** 메모는 exe와 다른 폴더에 있고, 새 버전이 처음 실행될 때 `backups\before-<버전>`에 전체 사본을 먼저 만듭니다. `build.ps1`/`install.ps1`은 실행 중인 앱에 저장 후 종료를 요청한 뒤 exe를 바꿉니다.
 - 메모 목록(`state.json`)은 저장할 때마다 직전 사본(`state.json.bak`)을 남기고, 손상되면 자동으로 복구합니다.
