@@ -115,12 +115,69 @@ body[data-view=editor] #editorView{display:flex}
   border:1px solid var(--card-line);box-shadow:var(--sh-1);transition:transform .16s cubic-bezier(.2,.8,.2,1),box-shadow .16s;
   content-visibility:auto;contain-intrinsic-size:auto 146px}   /* off-screen cards cost nothing to lay out / paint */
 .card:hover{transform:translateY(-2px);box-shadow:var(--sh-2)}
-.card.sel{box-shadow:0 0 0 2px var(--accent),var(--sh-2)}
-.card.msel{box-shadow:0 0 0 2px var(--accent),var(--sh-2)}
-.card.msel::after{content:'';position:absolute;inset:0;background:rgba(59,108,246,.08);pointer-events:none}
+/* ---------- board selection ----------
+   cursor card (.sel)  : a crisp 2px accent edge on the card's own perimeter (1px border + 1px inset), a 2px white
+                         keyline just outside it, a faint accent wash lit from the top edge, and the Ctrl+N chip filled
+                         with the accent. While the board has the keys, a soft accent bloom joins it.
+                         The blue line always has white on both sides (card | blue | white | band), so it reads on the
+                         navy band, the mid-blue rows and the pale area alike, and the card never looks bigger.
+   picked cards (.msel): the same 2px edge, flat (nothing outside the card), a light accent tint and the check dot.
+                         Picked = "inside the card"; cursor = "the keyline and bloom around it".
+   hover               : unchanged (lift + deeper shadow, no ring), so it stays clearly weaker than either.
+   Only border-color / box-shadow / background change: no layout shift, no filters, no animations. */
+.grid .card{
+  --sel-edge:#3b6cf6;
+  --sel-key:#fff;
+  --sel-glow:rgba(96,146,255,.55);
+  --sel-wash:rgba(59,108,246,.09);
+  --sel-chip:#3b6cf6;
+  --pick-tint:rgba(59,108,246,.08);
+  --sel-card:radial-gradient(200px 130px at 100% 0,color-mix(in srgb,var(--c,transparent) 12%,transparent),transparent 70%),var(--card);
+  transition:transform .16s cubic-bezier(.2,.8,.2,1),box-shadow .16s,border-color .16s;
+}
+[data-theme=dark] .grid .card{
+  --sel-edge:#6f9bff;
+  --sel-key:rgba(111,155,255,.2);
+  --sel-glow:rgba(80,130,255,.36);
+  --sel-wash:rgba(111,155,255,.12);
+  --sel-chip:#4a7dff;
+  --pick-tint:rgba(91,140,255,.12);
+}
+
+/* picked cards */
+#board .card.msel{
+  border-color:var(--sel-edge);
+  background:linear-gradient(var(--pick-tint),var(--pick-tint)),var(--sel-card);
+  box-shadow:var(--sh-1),inset 0 0 0 1px var(--sel-edge);
+}
+#board .card.msel:hover{box-shadow:var(--sh-2),inset 0 0 0 1px var(--sel-edge)}
+#board .card.msel::after{content:none}
+
+/* cursor card (also when it is one of the picked cards, and when focus is outside the board) */
+#board .card.sel{
+  border-color:var(--sel-edge);
+  background:linear-gradient(180deg,var(--sel-wash),transparent 60px),var(--sel-card);
+  box-shadow:0 0 0 2px var(--sel-key),var(--sh-2),inset 0 0 0 1px var(--sel-edge);
+}
+#board .card.sel.msel{
+  background:linear-gradient(180deg,var(--sel-wash),transparent 60px),linear-gradient(var(--pick-tint),var(--pick-tint)),var(--sel-card);
+}
+#board:focus-within .card.sel{
+  box-shadow:0 0 0 2px var(--sel-key),0 0 24px 2px var(--sel-glow),var(--sh-2),inset 0 0 0 1px var(--sel-edge);
+}
+#board .card.sel .c-idx{background:var(--sel-chip);border-color:transparent;color:#fff}
+
+/* drag-and-drop insertion marks still win over the selection */
+#board .grid .card.drop-l:is(.sel,.msel){box-shadow:-5px 0 0 -1px var(--accent),var(--sh-1)}
+#board .grid .card.drop-r:is(.sel,.msel){box-shadow:5px 0 0 -1px var(--accent),var(--sh-1)}
+
+/* Windows high contrast drops box-shadows: keep the selection visible with a system-colour outline */
+@media (forced-colors:active){
+  #board .card.sel{outline:3px solid Highlight;outline-offset:2px}
+  #board .card.msel{outline:2px solid Highlight;outline-offset:-2px}
+}
 .card.msel .c-dot{background:var(--accent) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E") center/80% no-repeat;width:14px;height:14px;box-shadow:none}
 .sel-pill{background:#fff;color:#1d3a8a;border-color:transparent}
-#board:focus-within .card.sel{box-shadow:0 0 0 2px var(--accent),0 0 0 6px rgba(59,108,246,.16),var(--sh-2)}
 .c-head{display:flex;align-items:center;gap:9px;min-width:0}
 .c-dot{width:8px;height:8px;border-radius:50%;background:var(--c);box-shadow:0 0 0 3px color-mix(in srgb,var(--c) 18%,transparent);flex:none}
 /* note colours: the light-theme dots are too dark on navy, so dark surfaces get their own (beats the inline --c) */
