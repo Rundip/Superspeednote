@@ -240,6 +240,7 @@ namespace SuperSpeedNote
             StartPosition = FormStartPosition.Manual;
             BackColor = bg;
             DoubleBuffered = true;
+            SetStyle(ControlStyles.ResizeRedraw, true);   // the splash is drawn for the whole window: repaint all of it when it grows (start maximized)
             MinimumSize = new Size(460, 340);
             appIcon = LoadIcon(0);
             Icon = appIcon;
@@ -384,9 +385,28 @@ namespace SuperSpeedNote
             using (var f = new Font("Segoe UI Black", 15f * scale, FontStyle.Italic, GraphicsUnit.Pixel))
             using (var b = new SolidBrush(Color.FromArgb(200, 255, 255, 255)))
             {
-                e.Graphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAlias;
-                var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
-                e.Graphics.DrawString("SUPER SPEED NOTE", f, b, rc, sf);
+                // centred on the letters themselves (an italic leans, and a text box carries padding)
+                try
+                {
+                    using (var path = new GraphicsPath())
+                    {
+                        path.AddString("SUPER SPEED NOTE", f.FontFamily, (int)f.Style, f.Size, Point.Empty, StringFormat.GenericTypographic);
+                        RectangleF gb = path.GetBounds();
+                        using (var mx = new Matrix())
+                        {
+                            mx.Translate(rc.Left + (rc.Width - gb.Width) / 2f - gb.Left, rc.Top + (rc.Height - gb.Height) / 2f - gb.Top);
+                            path.Transform(mx);
+                        }
+                        e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                        e.Graphics.FillPath(b, path);
+                    }
+                }
+                catch                                           // a font without that style: plain centred text
+                {
+                    e.Graphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAlias;
+                    var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
+                    e.Graphics.DrawString("SUPER SPEED NOTE", f, b, rc, sf);
+                }
             }
         }
 
@@ -1933,6 +1953,7 @@ namespace SuperSpeedNote
             AutoScaleMode = AutoScaleMode.None;
             TopMost = true;
             DoubleBuffered = true;
+            SetStyle(ControlStyles.ResizeRedraw, true);   // its placeholder text stays centred when the size changes
             Text = "Super Speed Note · 찾아 붙여넣기";
         }
 
@@ -1995,6 +2016,7 @@ namespace SuperSpeedNote
             MinimumSize = new Size(260, 180);
             TopMost = true;
             DoubleBuffered = true;
+            SetStyle(ControlStyles.ResizeRedraw, true);   // its placeholder text stays centred when the size changes
             Text = "Super Speed Note · 빠른 메모";
         }
 
