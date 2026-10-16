@@ -1150,15 +1150,17 @@ function flushNote() {
 }
 function saveStateSoon() { stateDirty = true; clearTimeout(stateT); stateT = setTimeout(flushState, 300); }
 function flushState() { clearTimeout(stateT); stateT = 0; if (!stateDirty) return; stateDirty = false; sendNames(); host.send('saveState', JSON.stringify(S)); }
-// each note's file is named like the note in the app (title, else first line): tell the shell when a name changes
+// the readable copies in the 메모 folder are named like the notes in the app (title, else first line): tell the
+// shell when a name changes; at start-up every name (copies of notes no longer here go)
 const sentNames = new Map();
-function sendNames() {
+function sendNames(all) {
   const out = [];
   for (const n of S.notes) {
     const nm = (titleOf(n) || '제목 없음').replace(/[\t\r\n]+/g, ' ').trim() || '제목 없음';
-    if (sentNames.get(n.id) !== nm) { sentNames.set(n.id, nm); out.push(n.id + '\t' + nm); }
+    if (all || sentNames.get(n.id) !== nm) { sentNames.set(n.id, nm); out.push(n.id + '\t' + nm); }
   }
-  if (out.length) host.send('noteNames', out.join('\n'));
+  if (all) host.send('noteNamesAll', out.join('\n'));
+  else if (out.length) host.send('noteNames', out.join('\n'));
 }
 function flushAll() {
   // hidden, standby, quit: the open note's caret is kept too (normalized first, so its path fits the saved html)
@@ -1367,21 +1369,40 @@ grid.addEventListener('contextmenu', e => {
   setSel(c.dataset.id, false); noteMenu(c.dataset.id, e.clientX, e.clientY);
 });
 let dragId = null, dropAt = null, dragTold = 0;   // dropAt: { id, after } - exactly where the line is shown
+// Dragging a note out of the app (the desktop, a folder, a mail): the drag carries the note as a file named after
+// it (DownloadURL: Windows fetches it from the app's own loopback server when it is dropped) and as plain text
+// for programs that take text. Settings › 데이터 picks HTML or text.
+let noteDrag = 0, dragSeq = 0;
+function dragNoteOut(e, id) {
+  const n = noteById(id);
+  if (!n) return;
+  if (id === cur) flushNote();
+  noteDrag = now();
+  const kind = st.dragFormat === 'txt' ? 'txt' : 'html', { name, content } = exportContent(id, kind);
+  const text = (n.title ? n.title + '\n\n' : '') + noteText(id);
+  e.dataTransfer.setData('text/plain', text);
+  if (HOST && boot.dragBase) {
+    const key = id + '-' + (++dragSeq);
+    host.send('dragFile', key, kind, content);
+    e.dataTransfer.setData('DownloadURL', `${kind === 'txt' ? 'text/plain' : 'text/html'}:${name}:${boot.dragBase}${encodeURIComponent(key)}`);
+  }
+}
 grid.addEventListener('dragstart', e => {
   const c = e.target.closest('.card[data-id]');
-  if (!c || query.trim()) {
-    e.preventDefault();
-    if (c && now() - dragTold > 3000) { dragTold = now(); toast('검색 중에는 순서를 바꿀 수 없어요 · Esc로 검색 지우기'); }
-    return;
-  }
-  dragId = c.dataset.id;
-  e.dataTransfer.effectAllowed = 'move';
-  e.dataTransfer.setData('text/x-ssn', dragId);
+  if (!c) { e.preventDefault(); return; }
+  dragId = query.trim() ? null : c.dataset.id;     // while searching the order can't change, but the note still drags out
+  e.dataTransfer.effectAllowed = 'copyMove';
+  e.dataTransfer.setData('text/x-ssn', c.dataset.id);
+  dragNoteOut(e, c.dataset.id);
   c.classList.add('dragging');
 });
-grid.addEventListener('dragend', () => { dragId = null; dropAt = null; $$('.card', grid).forEach(c => c.classList.remove('dragging', 'drop-l', 'drop-r')); boardSearch.focus({ preventScroll: true }); });
+grid.addEventListener('dragend', () => { dragId = null; dropAt = null; noteDrag = 0; $$('.card', grid).forEach(c => c.classList.remove('dragging', 'drop-l', 'drop-r')); boardSearch.focus({ preventScroll: true }); });
 grid.addEventListener('dragover', e => {
-  if (!dragId) return;
+  if (!dragId) {                                   // searching: no reordering - over another card, say why (the note still drags out)
+    const c = noteDrag && query.trim() && e.target.closest('.card[data-id]');
+    if (c && !c.classList.contains('dragging') && now() - dragTold > 3000) { dragTold = now(); toast('검색 중에는 순서를 바꿀 수 없어요 · Esc로 검색 지우기'); }
+    return;
+  }
   e.preventDefault();
   let c = e.target.closest('.card[data-id]');
   // in the gap between cards: the card beside it, else the one above
@@ -1603,14 +1624,30 @@ const EXPORT_LIST_CSS = '@counter-style ko-ga{system:alphabetic;symbols:"가" "�
   '@counter-style ko-num-wrap{system:extends decimal;prefix:"(";suffix:") "}@counter-style ko-ga-wrap{system:extends ko-ga;prefix:"(";suffix:") "}' +
   'ol ol{list-style-type:ko-ga}ol ol ol{list-style-type:ko-num-paren}ol ol ol ol{list-style-type:ko-ga-paren}ol ol ol ol ol{list-style-type:ko-num-wrap}ol ol ol ol ol ol{list-style-type:ko-ga-wrap}' +
   'li.nob{display:block}ul.checklist li.nob::before{content:none}';
+// a Windows file name that reads as the note's name (the same rule as the readable copies in the 메모 folder):
+// refused characters become their full-width twins, at most 80 characters, never a device name
+function fileBaseOf(name) {
+  let s = String(name || '').normalize('NFC').replace(/[\x00-\x1f\x7f]+/g, ' ').replace(/[\\/:*?"<>|]/g, c => '＼／：＊？＂＜＞｜'['\\/:*?"<>|'.indexOf(c)]);
+  s = s.replace(/\s+/g, ' ').trim();
+  if (s.length > 80) s = s.slice(0, /[\ud800-\udbff]/.test(s[79]) ? 79 : 80);
+  s = s.replace(/[. ]+$/, '');
+  if (!s) s = '제목 없음';
+  if (/^(CON|PRN|AUX|NUL|COM[0-9¹²³]|LPT[0-9¹²³]) *(\..*)?$/i.test(s)) s = '_' + s;
+  return s;
+}
+function exportContent(id, kind) {
+  const n = noteById(id);
+  const name = fileBaseOf(titleOf(n) || '메모') + '.' + kind;
+  const content = kind === 'txt'
+    ? (n.title ? n.title + '\n\n' : '') + noteText(id)
+    : `<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>${esc(titleOf(n) || '메모')}</title><style>${EXPORT_CSS + EXPORT_LIST_CSS}</style></head><body><h1 class="title">${esc(n.title || '')}</h1><div>${bodies[id] || ''}</div></body></html>`;
+  return { name, content };
+}
 function exportNote(id, kind) {
   const n = noteById(id);
   if (!n) return;
   if (id === cur) flushNote();
-  const name = (titleOf(n) || '메모').replace(/[\\/:*?"<>|]/g, '_').slice(0, 80) + '.' + kind;
-  const content = kind === 'txt'
-    ? (n.title ? n.title + '\n\n' : '') + noteText(id)
-    : `<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>${esc(titleOf(n) || '메모')}</title><style>${EXPORT_CSS + EXPORT_LIST_CSS}</style></head><body><h1 class="title">${esc(n.title || '')}</h1><div>${bodies[id] || ''}</div></body></html>`;
+  const { name, content } = exportContent(id, kind);
   if (HOST) { host.send('export', name, kind === 'txt' ? content.replace(/\r?\n/g, '\r\n') : content); return; }
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([content], { type: kind === 'txt' ? 'text/plain' : 'text/html' }));
@@ -1736,7 +1773,7 @@ function renderSidebarSoon() { clearTimeout(sbT); sbT = setTimeout(() => renderS
 let sbSig = '';
 const staleRows = new Set();                      // notes edited since their sidebar row was drawn
 function sbItemHTML(n) {
-  return `<div class="sb-item${n.id === cur ? ' on' : ''}${sbMulti.has(n.id) ? ' msel' : ''}" data-id="${n.id}" data-c="${n.color}" style="--c:${NOTE_COLORS[n.color]}"><div class="sb-row"><div class="t${titleOf(n) ? '' : ' ph'}">${esc(titleOf(n) || '제목 없음')}</div>` +
+  return `<div class="sb-item${n.id === cur ? ' on' : ''}${sbMulti.has(n.id) ? ' msel' : ''}" data-id="${n.id}" data-c="${n.color}" draggable="true" style="--c:${NOTE_COLORS[n.color]}"><div class="sb-row"><div class="t${titleOf(n) ? '' : ' ph'}">${esc(titleOf(n) || '제목 없음')}</div>` +
     `${n.hotkey ? `<span class="sb-hk">${esc(n.hotkey.label)}</span>` : ''}</div><div class="p">${esc(previewAfterTitle(n).slice(0, 80)) || '&nbsp;'}</div></div>`;
 }
 // like the board: full build only when the list itself changed, otherwise just the open note's row
@@ -1830,6 +1867,13 @@ sbList.addEventListener('keydown', e => {
 // while the list has the keys, its label says which ones
 sbList.addEventListener('focus', () => markSb());
 sbList.addEventListener('blur', () => markSb());
+sbList.addEventListener('dragstart', e => {
+  const it = e.target.closest('.sb-item');
+  if (!it) { e.preventDefault(); return; }
+  e.dataTransfer.effectAllowed = 'copy';
+  dragNoteOut(e, it.dataset.id);
+});
+sbList.addEventListener('dragend', () => { noteDrag = 0; });
 sbList.addEventListener('contextmenu', e => {
   e.preventDefault();
   const it = e.target.closest('.sb-item');
@@ -3772,7 +3816,9 @@ function insertImageFile(file) {
   };
   rd.readAsDataURL(file);
 }
+editor.addEventListener('dragover', e => { if (noteDrag) { e.preventDefault(); e.dataTransfer.dropEffect = 'none'; } });
 editor.addEventListener('drop', e => {
+  if (noteDrag) { e.preventDefault(); return; }
   const files = Array.from((e.dataTransfer && e.dataTransfer.files) || []).filter(f => /^image\/(png|jpeg|gif|webp|bmp)$/.test(f.type));
   if (!files.length) return;
   e.preventDefault();
@@ -3781,6 +3827,77 @@ editor.addEventListener('drop', e => {
   files.forEach(insertImageFile);
 });
 document.addEventListener('dragover', e => { if (e.dataTransfer && Array.from(e.dataTransfer.types).includes('Files')) e.preventDefault(); });
+// Text and HTML files dropped anywhere become notes named after the files (pictures dropped in a note go in it)
+const TEXT_FILE = /\.(txt|text|md|markdown|log|csv|html?|xhtml)$/i;
+document.addEventListener('drop', e => {
+  const files = Array.from((e.dataTransfer && e.dataTransfer.files) || []).filter(f => TEXT_FILE.test(f.name) || /^text\/(plain|html|markdown|csv)$/.test(f.type));
+  if (!files.length) return;
+  e.preventDefault(); e.stopPropagation();
+  importFiles(files);
+}, true);
+// bytes -> text: a BOM says it, else UTF-8 if it is valid, else what an HTML file declares, else Korean Windows (CP949)
+function decodeText(buf, html) {
+  const b = new Uint8Array(buf);
+  if (b[0] === 0xEF && b[1] === 0xBB && b[2] === 0xBF) return new TextDecoder('utf-8').decode(b.subarray(3));
+  if (b[0] === 0xFF && b[1] === 0xFE) return new TextDecoder('utf-16le').decode(b.subarray(2));
+  if (b[0] === 0xFE && b[1] === 0xFF) return new TextDecoder('utf-16be').decode(b.subarray(2));
+  try { return new TextDecoder('utf-8', { fatal: true }).decode(b); } catch (err) { /* not UTF-8 */ }
+  if (html) {
+    const m = /<meta[^>]+charset\s*=\s*["']?([\w-]+)/i.exec(new TextDecoder('latin1').decode(b.subarray(0, 2048)));
+    if (m) try { return new TextDecoder(m[1]).decode(b); } catch (err) { /* unknown label */ }
+  }
+  return new TextDecoder('euc-kr').decode(b);
+}
+function textToNoteHtml(text) {
+  const lines = text.replace(/\r\n?/g, '\n').replace(/\n$/, '').split('\n');
+  return lines.map(l => `<div>${l ? esc(l) : '<br>'}</div>`).join('') || '<div><br></div>';
+}
+// an HTML file -> { title, html }: our own export's title line becomes the title; pictures inside are saved
+// like pasted ones
+function htmlToNote(text, fallback) {
+  const doc = new DOMParser().parseFromString(text, 'text/html');
+  let title = fallback;
+  const h = doc.body && doc.body.firstElementChild;
+  if (h && h.matches('h1.title')) { if (h.textContent.trim()) title = h.textContent.trim(); h.remove(); }
+  const only = doc.body && doc.body.children.length === 1 && doc.body.firstElementChild.nodeName === 'DIV' ? doc.body.firstElementChild : doc.body;
+  const frag0 = sanitize(only ? only.innerHTML : text), box = document.createElement('div');
+  box.appendChild(frag0);
+  if (HOST) for (const img of box.querySelectorAll('img[src^="data:image/"]')) {
+    const m = /^data:image\/(png|jpeg|gif|webp);base64,(.*)$/i.exec(img.getAttribute('src'));
+    if (!m) continue;
+    const name = uid() + '.' + (m[1].toLowerCase() === 'jpeg' ? 'jpg' : m[1].toLowerCase());
+    host.send('saveImg', name, m[2]);
+    img.setAttribute('src', IMG_URL + name);
+  }
+  return { title, html: box.innerHTML.trim() || '<div><br></div>' };
+}
+async function importFiles(files) {
+  const room = MAX_NOTES - S.notes.length;
+  if (room <= 0) { toast(`메모는 ${MAX_NOTES}개까지예요 · 안 쓰는 메모를 지운 뒤 넣어 주세요`); return; }
+  const added = [], skipped = [];
+  for (const f of files.slice(0, room)) {
+    if (f.size > 5 * 1048576) { skipped.push(f.name); continue; }
+    let text;
+    try { text = decodeText(await f.arrayBuffer(), /\.x?html?$/i.test(f.name) || f.type === 'text/html'); } catch (err) { skipped.push(f.name); continue; }
+    const base = f.name.replace(/\.[^.]+$/, '').trim() || f.name;
+    const { title, html } = /\.x?html?$/i.test(f.name) || f.type === 'text/html' ? htmlToNote(text, base) : { title: base, html: textToNoteHtml(text) };
+    const n = { id: uid(), title, color: COLOR_KEYS[S.notes.length % COLOR_KEYS.length], pinned: false, hotkey: null, created: now(), updated: now() };
+    const fr = frag(html);
+    n.preview = previewOf(fr); n.line1 = firstLineOf(fr);
+    bodies[n.id] = html;
+    S.notes.push(n);
+    host.send('saveNote', n.id, html);
+    added.push(n);
+  }
+  if (!added.length) { if (skipped.length) toast(`넣지 못했어요 · ${skipped.join(', ')} (5MB까지 텍스트·HTML 파일)`); return; }
+  saveStateSoon();
+  if (view === 'board') { multi.clear(); if (added.length > 1) added.forEach(n => multi.add(n.id)); selId = added[added.length - 1].id; }
+  rerender();
+  if (view === 'board') { const c = grid.querySelector(`.card[data-id="${selId}"]`); if (c) c.scrollIntoView({ block: 'nearest' }); }
+  const more = files.length > room ? ` · ${MAX_NOTES}개가 넘어 ${files.length - room}개는 넣지 않았어요` : skipped.length ? ` · ${skipped.length}개는 넣지 못했어요` : '';
+  if (added.length === 1) toast(`${josa(`‘${added[0].title}’ 메모`, '을', '를')} 추가했어요${more}`, '열기', () => openNote(added[0].id));
+  else toast(`메모 ${added.length}개를 추가했어요${more}`);
+}
 document.addEventListener('drop', e => { if (!e.defaultPrevented && e.dataTransfer && Array.from(e.dataTransfer.types).includes('Files')) e.preventDefault(); });
 async function pasteFromClipboard(plain) {
   try {
@@ -5217,6 +5334,7 @@ function openSettings(tab, keep) {               // keep: back from the key reco
       : row('Windows 시작 시', '<span class="wrap"><b>단축키 대기</b> 꺼져 있어도 단축키로 열림 · 메모리 거의 안 씀 · 첫 호출 약 1초<br><b>트레이 상주</b> 언제나 바로 열림 · 메모리 더 사용 · <b>창 열기</b> 로그인하면 앱 창이 바로 열려요<br><b>끔</b> 자동으로 켜지지 않아요 · 앱을 끄면 메모 단축키도 함께 꺼져요<br>exe 파일을 옮기거나 이름을 바꿔도 Windows 시작 때 계속 켜져요</span>', `<div class="seg" id="setStart"><button data-v="standby">단축키 대기 (권장)</button><button data-v="tray">트레이 상주</button><button data-v="open">창 열기</button><button data-v="off">끔</button></div>`).replace('<div class="row">', '<div class="row col">')}
     <h4 class="kh">데이터</h4>
     ${row('데이터 폴더 · 백업', `메모 · 이미지 · 백업이 있는 곳 · 매일 자동 백업(최근 14일)<br>${esc(boot.dataDir || '')}${startMode() === 'package' ? '<br>Store 버전은 앱을 제거하면 이 폴더도 함께 지워져요 · 보관하려면 폴더를 열어 복사해 두세요' : ''}`, `<div class="row-btns"><button class="btn" id="setOpen"${HOST ? '' : ' disabled'}>폴더 열기</button><button class="btn" id="setBackup">지금 백업</button></div>`)}
+    ${row('끌어서 꺼내기', '메모를 바탕화면·폴더로 끌어다 놓으면 메모 이름으로 된 파일이 돼요 · 텍스트·HTML 파일을 앱에 끌어 넣으면 메모가 돼요', `<div class="seg" id="setDrag"><button data-v="html">HTML (서식 그대로)</button><button data-v="txt">텍스트 (.txt)</button></div>`)}
     ${row('휴지통', '삭제한 메모는 휴지통을 비우기 전까지 보관해요 · 빈 메모는 바로 없어져요', `<button class="btn" id="setTrash">휴지통 열기</button>`)}`;
   }
   openModal(`<div class="dlg wide set"><div class="dlg-head">${ic('i-gear')}<h3>설정</h3><span style="flex:1"></span><div class="seg" id="setTabs"><button data-v="general"${tab === 'general' ? ' class="on"' : ''}>일반</button><button data-v="keys"${tab === 'keys' ? ' class="on"' : ''}>단축키</button></div></div><div class="dlg-body" id="setBody">${body}</div>` +
@@ -5263,6 +5381,12 @@ function openSettings(tab, keep) {               // keep: back from the key reco
     for (const x of cp.children) x.classList.toggle('on', x === b);
     $('#setCornerL').textContent = CORNERS[st.quickCorner];
   };
+  const segD = $('#setDrag');
+  if (segD) {
+    const paintD = () => { for (const b of segD.children) b.classList.toggle('on', b.dataset.v === (st.dragFormat === 'txt' ? 'txt' : 'html')); };
+    paintD();
+    segD.onclick = e => { const b = e.target.closest('button'); if (b) { st.dragFormat = b.dataset.v; saveStateSoon(); paintD(); } };
+  }
   const segT = $('#setTheme');
   const paintSeg = () => { for (const b of segT.children) b.classList.toggle('on', b.dataset.v === st.theme); };
   paintSeg();
@@ -5514,7 +5638,7 @@ else { renderBoard(); boardSearch.focus({ preventScroll: true }); }
 host.send('ready');
 warmSearch();
 host.send('closeToTray', st.closeToTray ? '1' : '0');
-sendNames();                                       // files from before are renamed to their notes' names once
+sendNames(true);
 host.send('quickCorner', st.quickCorner || 'br');
 host.send('theme', st.theme);
 if (st.onTop) host.send('top', '1');
