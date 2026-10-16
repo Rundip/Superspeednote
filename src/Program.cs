@@ -33,7 +33,7 @@ namespace SuperSpeedNote
 {
     static class Program
     {
-        public const string Version = "1.4.3";
+        public const string Version = "1.4.4";
         public const string WebView2Version = "1.0.4258.31";
         public static string DataDir, LocalDir;
         public static bool Portable;                  // a "data" folder next to the exe holds the notes (test / USB copies)
@@ -289,7 +289,7 @@ namespace SuperSpeedNote
         NotifyIcon tray;
         Icon appIcon, trayIcon;
         Color bg = Color.FromArgb(0x08, 0x15, 0x36);
-        readonly Saver saver = new Saver();
+        readonly Saver saver = new Saver { Notes = NoteStore };
         System.Windows.Forms.Timer backupTimer;
 
         // global hotkeys: registration id -> note id ("@app" = show/hide the app)
@@ -305,6 +305,8 @@ namespace SuperSpeedNote
         string retNote;
 
         static string NotesDir { get { return Path.Combine(Program.DataDir, "notes"); } }
+        static NoteFiles noteFiles;
+        static NoteFiles NoteStore { get { return noteFiles ?? (noteFiles = new NoteFiles(NotesDir)); } }   // notes\<memo name>.html
         static string TrashDir { get { return Path.Combine(Program.DataDir, "trash"); } }
         static string ImagesDir { get { return Path.Combine(Program.DataDir, "images"); } }
         static string StatePath { get { return Path.Combine(Program.DataDir, "state.json"); } }
@@ -1283,13 +1285,8 @@ namespace SuperSpeedNote
             sb.Append(",notes:{");
             try
             {
-                if (Directory.Exists(NotesDir))
-                    foreach (string f in Directory.GetFiles(NotesDir, "*.html"))
-                    {
-                        string id = Path.GetFileNameWithoutExtension(f);
-                        if (!SafeId(id)) continue;
-                        sb.Append(Json(id)).Append(':').Append(Json(File.ReadAllText(f, Encoding.UTF8))).Append(',');
-                    }
+                foreach (var kv in NoteStore.Load())
+                    sb.Append(Json(kv.Key)).Append(':').Append(Json(kv.Value)).Append(',');
             }
             catch (Exception ex) { Program.Log(ex); }
             sb.Append("},autostart:").Append(Json(GetStartupMode()));
@@ -1368,14 +1365,20 @@ namespace SuperSpeedNote
                     if (pendingPalette != null) { if (pendingPalette != "pop" || popWanted) Post("palette", pendingPalette); pendingPalette = null; }
                     if (pendingQuick) { pendingQuick = false; if (quickOpen) Post("quick", "open"); }
                     break;
-                case "saveNote": { string id = Cut(ref a); if (SafeId(id)) saver.Write(Path.Combine(NotesDir, id + ".html"), a); break; }
+                case "saveNote": { string id = Cut(ref a); if (SafeId(id)) saver.WriteNote(id, a); break; }
+                case "noteNames":                                // "id\tname" lines: each note's file takes the name it has in the app
+                    foreach (string line in a.Split('\n'))
+                    {
+                        int t = line.IndexOf('\t');
+                        if (t > 0 && SafeId(line.Substring(0, t))) saver.NameNote(line.Substring(0, t), line.Substring(t + 1));
+                    }
+                    break;
                 case "delNote":                                  // id, "trash" | "purge", note info (title, colour, place...)
                     {
                         string id = Cut(ref a), mode = Cut(ref a);
                         if (!SafeId(id)) break;
-                        string file = Path.Combine(NotesDir, id + ".html");
-                        if (mode == "purge") saver.Purge(file);  // nothing was written in it: gone for good
-                        else saver.Trash(file, Path.Combine(TrashDir, id + "_" + DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".html"), a);
+                        if (mode == "purge") saver.PurgeNote(id);  // nothing was written in it: gone for good
+                        else saver.TrashNote(id, Path.Combine(TrashDir, id + "_" + DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".html"), a);
                         break;
                     }
                 case "unTrash": UnTrash(a); break;               // "되돌리기" right after deleting: no copy left in the trash
@@ -1744,15 +1747,14 @@ namespace SuperSpeedNote
         {
             if (!SafeTrashName(name) || !SafeId(id)) return;
             saver.Flush(2000);
-            string src = Path.Combine(TrashDir, name + ".html"), mf = Path.Combine(TrashDir, name + ".json"), dst = Path.Combine(NotesDir, id + ".html");
+            string src = Path.Combine(TrashDir, name + ".html"), mf = Path.Combine(TrashDir, name + ".json");
             try
             {
-                if (!File.Exists(src) || File.Exists(dst)) { Post("trashRestored", name + SEP + SEP + SEP); return; }
-                Directory.CreateDirectory(NotesDir);
-                File.Move(src, dst);
                 string meta = File.Exists(mf) ? File.ReadAllText(mf, Encoding.UTF8) : "";
+                string text = NoteStore.Restore(src, id);      // into notes\ with its id line; its name follows from the app
+                if (text == null) { Post("trashRestored", name + SEP + SEP + SEP); return; }
                 if (File.Exists(mf)) File.Delete(mf);
-                Post("trashRestored", name + SEP + id + SEP + meta + SEP + File.ReadAllText(dst, Encoding.UTF8));
+                Post("trashRestored", name + SEP + id + SEP + meta + SEP + text);
             }
             catch (Exception ex) { Program.Log(ex); Post("trashRestored", name + SEP + SEP + SEP); }
         }
@@ -1889,18 +1891,220 @@ namespace SuperSpeedNote
         }
     }
 
+    // Notes are saved under the name they have in the app ("회의록.html": the title, else the first line).
+    // The id the app knows a note by is the file's first line (<!--ssn:id-->), so renaming, copying or restoring
+    // the folder from a backup never loses track of a note. Files from before this (n0001.html, no first line)
+    // are read by their name and renamed the first time the app sends the notes' names.
+    sealed class NoteFiles
+    {
+        const string Head = "<!--ssn:", Tail = "-->";
+        static readonly Encoding Utf8 = new UTF8Encoding(false);
+        readonly object gate = new object();
+        readonly string dir;
+        readonly Dictionary<string, string> byId = new Dictionary<string, string>(StringComparer.Ordinal);   // id -> file name
+        readonly Dictionary<string, string> want = new Dictionary<string, string>(StringComparer.Ordinal);   // id -> name in the app
+
+        public NoteFiles(string dir) { this.dir = dir; }
+
+        public static bool SafeId(string id) { return id != null && id.Length > 0 && id.Length <= 64 && Regex.IsMatch(id, "^[A-Za-z0-9_-]+$"); }
+        static string Header(string id) { return Head + id + Tail + "\n"; }
+
+        // the id in a file's first line, and the note without that line
+        public static string Strip(string text, out string id)
+        {
+            id = null;
+            if (text == null || !text.StartsWith(Head, StringComparison.Ordinal)) return text;
+            int e = text.IndexOf(Tail, Head.Length, StringComparison.Ordinal);
+            if (e < 0 || e - Head.Length > 64) return text;
+            string got = text.Substring(Head.Length, e - Head.Length);
+            if (!SafeId(got)) return text;
+            id = got;
+            int from = e + Tail.Length;
+            if (from < text.Length && text[from] == '\r') from++;
+            if (from < text.Length && text[from] == '\n') from++;
+            return text.Substring(from);
+        }
+        public static string Strip(string text) { string id; return Strip(text, out id); }
+
+        // a Windows file name that reads as the note's name: the characters Windows refuses become their
+        // full-width twins (： ／ ？ ...), at most 80 characters, never a device name like CON
+        public static string FileBase(string name)
+        {
+            string s = Regex.Replace(name ?? "", "[\\x00-\\x1f\\x7f]+", " ");
+            var sb = new StringBuilder(s.Length);
+            foreach (char c in s)
+            {
+                switch (c)
+                {
+                    case '\\': sb.Append('＼'); break;
+                    case '/': sb.Append('／'); break;
+                    case ':': sb.Append('：'); break;
+                    case '*': sb.Append('＊'); break;
+                    case '?': sb.Append('？'); break;
+                    case '"': sb.Append('＂'); break;
+                    case '<': sb.Append('＜'); break;
+                    case '>': sb.Append('＞'); break;
+                    case '|': sb.Append('｜'); break;
+                    default: sb.Append(c); break;
+                }
+            }
+            s = Regex.Replace(sb.ToString(), "\\s+", " ").Trim();
+            if (s.Length > 80) s = s.Substring(0, char.IsHighSurrogate(s[79]) ? 79 : 80);
+            s = s.TrimEnd('.', ' ');
+            if (s.Length == 0) s = "제목 없음";
+            if (Regex.IsMatch(s, "^(CON|PRN|AUX|NUL|COM[0-9¹²³]|LPT[0-9¹²³])(\\..*)?$", RegexOptions.IgnoreCase)) s = "_" + s;
+            return s;
+        }
+
+        static bool Same(string a, string b) { return a != null && b != null && string.Equals(a, b, StringComparison.OrdinalIgnoreCase); }
+
+        // the file name this note should have: its name, or "name (2)" when another note or file has it already
+        string Unique(string id, string name)
+        {
+            string own, b = FileBase(name);
+            byId.TryGetValue(id, out own);
+            for (int k = 1; ; k++)
+            {
+                string f = (k == 1 ? b : b + " (" + k + ")") + ".html";
+                if (Same(f, own)) return f;
+                bool taken = byId.Any(kv => kv.Key != id && Same(kv.Value, f)) || File.Exists(Path.Combine(dir, f));
+                if (!taken || k > 999) return f;
+            }
+        }
+
+        // every note in the folder: id -> contents (without the id line)
+        public Dictionary<string, string> Load()
+        {
+            var notes = new Dictionary<string, string>(StringComparer.Ordinal);
+            var when = new Dictionary<string, DateTime>(StringComparer.Ordinal);
+            lock (gate)
+            {
+                byId.Clear();
+                if (!Directory.Exists(dir)) return notes;
+                foreach (string f in Directory.GetFiles(dir, "*.html"))
+                {
+                    string id, text;
+                    try { text = Strip(File.ReadAllText(f, Encoding.UTF8), out id); }
+                    catch (Exception ex) { Program.Log(ex); continue; }
+                    if (id == null) { string n = Path.GetFileNameWithoutExtension(f); if (SafeId(n)) id = n; }   // from before: named by id
+                    if (id == null) continue;                                                                  // not one of ours
+                    DateTime t = File.GetLastWriteTimeUtc(f);
+                    if (notes.ContainsKey(id) && when[id] >= t) continue;    // two files for one note (a copy): the newer counts
+                    notes[id] = text; when[id] = t; byId[id] = Path.GetFileName(f);
+                }
+            }
+            return notes;
+        }
+
+        public void SetName(string id, string name)
+        {
+            if (!SafeId(id) || string.IsNullOrWhiteSpace(name)) return;
+            lock (gate) want[id] = name;
+        }
+
+        // carry out what the app asked for one note: write, rename, trash or delete
+        public void Apply(string id, string content, bool trash, bool purge, string trashTo, string info)
+        {
+            lock (gate)
+            {
+                string cur, curPath = null;
+                if (byId.TryGetValue(id, out cur)) curPath = Path.Combine(dir, cur);
+                if (purge)
+                {
+                    if (curPath != null && File.Exists(curPath)) File.Delete(curPath);
+                    byId.Remove(id); want.Remove(id);
+                    return;
+                }
+                string name, target;
+                if (want.TryGetValue(id, out name)) target = Unique(id, name);
+                else target = cur ?? id + ".html";                  // no name yet: its id for now
+                string tPath = Path.Combine(dir, target);
+                bool have = curPath != null && File.Exists(curPath);
+                if (have && !string.Equals(cur, target, StringComparison.Ordinal))
+                {
+                    if (Same(cur, target)) File.Move(curPath, tPath);   // only the case changed
+                    else if (content == null)                            // renamed: move it (a file from before gets its id line)
+                    {
+                        string hid, text = Strip(File.ReadAllText(curPath, Encoding.UTF8), out hid);
+                        if (hid == id) File.Move(curPath, tPath);
+                        else
+                        {
+                            Saver.WriteAtomic(tPath, Header(id) + text);
+                            byId[id] = target;
+                            try { File.Delete(curPath); } catch (Exception ex) { Program.Log(ex); }
+                        }
+                    }
+                }
+                if (content != null)
+                {
+                    Saver.WriteAtomic(tPath, Header(id) + content);
+                    byId[id] = target;
+                    // the old name goes once the new one is written; if Windows holds it (a virus scan, a preview),
+                    // it stays as an older copy - on the next start the newer file counts
+                    if (have && !Same(cur, target))
+                        try { if (File.Exists(curPath)) File.Delete(curPath); } catch (Exception ex) { Program.Log(ex); }
+                }
+                if (File.Exists(tPath)) byId[id] = target;
+                if (trash)
+                {
+                    if (File.Exists(tPath)) Saver.MoveToTrash(tPath, trashTo, info ?? "");
+                    byId.Remove(id); want.Remove(id);
+                }
+            }
+        }
+
+        // back from the trash under the id the app chose (its id line follows); returns the note, or null
+        public string Restore(string src, string id)
+        {
+            lock (gate)
+            {
+                if (!File.Exists(src) || !SafeId(id) || byId.ContainsKey(id)) return null;
+                string text = Strip(File.ReadAllText(src, Encoding.UTF8));
+                string name, target = want.TryGetValue(id, out name) ? Unique(id, name) : Unique(id, id);
+                Saver.WriteAtomic(Path.Combine(dir, target), Header(id) + text);
+                File.Delete(src);
+                byId[id] = target;
+                return text;
+            }
+        }
+    }
+
     // Background writer: coalesces rapid saves per file, writes atomically (tmp + replace).
     sealed class Saver
     {
-        const string TrashMark = "\0trash\0", PurgeMark = "\0purge\0";
         readonly object gate = new object();
         readonly Dictionary<string, string> pending = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        readonly Dictionary<string, string> trashTo = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        readonly Dictionary<string, string> trashInfo = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         readonly AutoResetEvent signal = new AutoResetEvent(false);
         static readonly Encoding Utf8 = new UTF8Encoding(false);
         bool busy;
         public Action<string> OnError;
+        public NoteFiles Notes;                   // notes go through here: saved under their names (see NoteFiles)
+        sealed class NoteOp { public string Content, TrashTo, Info; public bool Trash, Purge; }
+        readonly Dictionary<string, NoteOp> noteOps = new Dictionary<string, NoteOp>(StringComparer.Ordinal);
+
+        NoteOp OpFor(string id) { NoteOp op; if (!noteOps.TryGetValue(id, out op)) noteOps[id] = op = new NoteOp(); return op; }
+        public void WriteNote(string id, string content)
+        {
+            lock (gate) { var op = OpFor(id); op.Content = content; op.Trash = op.Purge = false; }
+            signal.Set();
+        }
+        // its name in the app changed (or is sent at start-up): the file follows
+        public void NameNote(string id, string name)
+        {
+            Notes.SetName(id, name);
+            lock (gate) OpFor(id);
+            signal.Set();
+        }
+        public void TrashNote(string id, string target, string info)
+        {
+            lock (gate) { var op = OpFor(id); op.Trash = true; op.Purge = false; op.TrashTo = target; op.Info = info ?? ""; }
+            signal.Set();
+        }
+        public void PurgeNote(string id)
+        {
+            lock (gate) { var op = OpFor(id); op.Purge = true; op.Trash = false; op.Content = null; }
+            signal.Set();
+        }
 
         public Saver()
         {
@@ -1910,21 +2114,7 @@ namespace SuperSpeedNote
 
         public void Write(string path, string content)
         {
-            lock (gate) { pending[path] = content; trashTo.Remove(path); trashInfo.Remove(path); }
-            signal.Set();
-        }
-
-        // move to the trash; info (the note's title, colour, place...) is kept next to it for restoring
-        public void Trash(string path, string target, string info)
-        {
-            lock (gate) { pending[path] = TrashMark; trashTo[path] = target; trashInfo[path] = info ?? ""; }
-            signal.Set();
-        }
-
-        // delete for good (an empty note: nothing worth keeping)
-        public void Purge(string path)
-        {
-            lock (gate) { pending[path] = PurgeMark; trashTo.Remove(path); trashInfo.Remove(path); }
+            lock (gate) pending[path] = content;
             signal.Set();
         }
 
@@ -1934,7 +2124,7 @@ namespace SuperSpeedNote
             int until = Environment.TickCount + timeoutMs;
             lock (gate)
             {
-                while (pending.Count > 0 || busy)
+                while (pending.Count > 0 || noteOps.Count > 0 || busy)
                 {
                     int left = until - Environment.TickCount;
                     if (left <= 0) break;
@@ -1951,26 +2141,29 @@ namespace SuperSpeedNote
                 while (true)
                 {
                     KeyValuePair<string, string>[] work;
-                    Dictionary<string, string> moves, infos;
+                    KeyValuePair<string, NoteOp>[] notes;
                     lock (gate)
                     {
-                        if (pending.Count == 0) { busy = false; Monitor.PulseAll(gate); break; }
+                        if (pending.Count == 0 && noteOps.Count == 0) { busy = false; Monitor.PulseAll(gate); break; }
                         busy = true;
                         work = pending.ToArray();
-                        moves = new Dictionary<string, string>(trashTo, StringComparer.OrdinalIgnoreCase);
-                        infos = new Dictionary<string, string>(trashInfo, StringComparer.OrdinalIgnoreCase);
+                        notes = noteOps.ToArray();
                         pending.Clear();
-                        trashTo.Clear();
-                        trashInfo.Clear();
+                        noteOps.Clear();
+                    }
+                    foreach (var kv in notes)
+                    {
+                        try { NoteOp op = kv.Value; Notes.Apply(kv.Key, op.Content, op.Trash, op.Purge, op.TrashTo, op.Info); }
+                        catch (Exception ex)
+                        {
+                            Program.Log(ex);
+                            Action<string> cb = OnError;
+                            if (cb != null) cb(ex.Message);
+                        }
                     }
                     foreach (var kv in work)
                     {
-                        try
-                        {
-                            if (kv.Value == TrashMark) MoveToTrash(kv.Key, moves[kv.Key], infos.ContainsKey(kv.Key) ? infos[kv.Key] : "");
-                            else if (kv.Value == PurgeMark) { if (File.Exists(kv.Key)) File.Delete(kv.Key); }
-                            else WriteAtomic(kv.Key, kv.Value);
-                        }
+                        try { WriteAtomic(kv.Key, kv.Value); }
                         catch (Exception ex)
                         {
                             Program.Log(ex);
@@ -1982,7 +2175,7 @@ namespace SuperSpeedNote
             }
         }
 
-        static void WriteAtomic(string path, string content)
+        public static void WriteAtomic(string path, string content)
         {
             Directory.CreateDirectory(Path.GetDirectoryName(path));
             string tmp = path + ".tmp";
@@ -1999,7 +2192,7 @@ namespace SuperSpeedNote
             }
         }
 
-        static void MoveToTrash(string path, string target, string info)
+        public static void MoveToTrash(string path, string target, string info)
         {
             if (!File.Exists(path)) return;
             Directory.CreateDirectory(Path.GetDirectoryName(target));

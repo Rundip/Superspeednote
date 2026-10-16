@@ -1092,7 +1092,17 @@ function flushNote() {
   renderSidebarSoon();
 }
 function saveStateSoon() { stateDirty = true; clearTimeout(stateT); stateT = setTimeout(flushState, 300); }
-function flushState() { clearTimeout(stateT); stateT = 0; if (!stateDirty) return; stateDirty = false; host.send('saveState', JSON.stringify(S)); }
+function flushState() { clearTimeout(stateT); stateT = 0; if (!stateDirty) return; stateDirty = false; sendNames(); host.send('saveState', JSON.stringify(S)); }
+// each note's file is named like the note in the app (title, else first line): tell the shell when a name changes
+const sentNames = new Map();
+function sendNames() {
+  const out = [];
+  for (const n of S.notes) {
+    const nm = (titleOf(n) || '제목 없음').replace(/[\t\r\n]+/g, ' ').trim() || '제목 없음';
+    if (sentNames.get(n.id) !== nm) { sentNames.set(n.id, nm); out.push(n.id + '\t' + nm); }
+  }
+  if (out.length) host.send('noteNames', out.join('\n'));
+}
 function flushAll() {
   // hidden, standby, quit: the open note's caret is kept too (normalized first, so its path fits the saved html)
   if (cur && view === 'editor') { if (!composing) editor.normalize(); keepAt(); }
@@ -1472,7 +1482,7 @@ function deleteNotes(ids) {
   for (const x of items) {                        // empty: gone for good; else to the trash with its title, colour, place
     const id = x.meta.id;
     x.empty = !x.meta.title && emptyHtml(x.html);
-    delete bodies[id]; H.delete(id); textCache.delete(id); memo.delete(id);
+    delete bodies[id]; H.delete(id); textCache.delete(id); memo.delete(id); sentNames.delete(id);
     host.send('delNote', id, x.empty ? 'purge' : 'trash', x.empty ? '' : JSON.stringify(Object.assign({}, x.meta, { pos: x.i })));
   }
   multi.clear(); sbMulti.clear(); sbAnchor = null; selAnchor = null;
@@ -4449,7 +4459,7 @@ function noteEmpty(id) {
 function dropNote(id) {                           // silent: nothing was written in it
   if (cur === id) { clearTimeout(saveT); dirty = false; cur = null; }
   S.notes = S.notes.filter(n => n.id !== id);
-  delete bodies[id]; H.delete(id); textCache.delete(id); memo.delete(id);
+  delete bodies[id]; H.delete(id); textCache.delete(id); memo.delete(id); sentNames.delete(id);
   host.send('delNote', id, 'purge');
   stateDirty = true; flushState();
 }
@@ -5447,6 +5457,7 @@ else { renderBoard(); boardSearch.focus({ preventScroll: true }); }
 host.send('ready');
 warmSearch();
 host.send('closeToTray', st.closeToTray ? '1' : '0');
+sendNames();                                       // files from before are renamed to their notes' names once
 host.send('quickCorner', st.quickCorner || 'br');
 host.send('theme', st.theme);
 if (st.onTop) host.send('top', '1');
