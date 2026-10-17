@@ -289,7 +289,9 @@ namespace SuperSpeedNote
         NotifyIcon tray;
         Icon appIcon, trayIcon;
         Color bg = Color.FromArgb(0x08, 0x15, 0x36);
-        readonly Saver saver = new Saver { Mirror = new NoteMirror(MirrorDir, NotesDir) };
+        // the notes live in notes\<id>.html only (fixed names, whatever the note is called); the readable copies in
+        // the 메모 folder are no longer written - one place, nothing to keep in step
+        readonly Saver saver = new Saver();
         System.Windows.Forms.Timer backupTimer;
 
         // global hotkeys: registration id -> note id ("@app" = show/hide the app)
@@ -307,6 +309,10 @@ namespace SuperSpeedNote
         static string NotesDir { get { return Path.Combine(Program.DataDir, "notes"); } }
         static string MirrorDir { get { return Path.Combine(Program.DataDir, "메모"); } }   // readable copies named after the notes
         static string TrashDir { get { return Path.Combine(Program.DataDir, "trash"); } }
+        // what the newest version knew about every note (name, colour, pin, place) - older versions never write it,
+        // so a note an older version's list lost comes back with its name instead of as '제목 없음'
+        int jsErrors;
+        static string MetaPath { get { return Path.Combine(Program.DataDir, "notes-meta.json"); } }
         static string ImagesDir { get { return Path.Combine(Program.DataDir, "images"); } }
         static string StatePath { get { return Path.Combine(Program.DataDir, "state.json"); } }
 
@@ -1272,6 +1278,22 @@ namespace SuperSpeedNote
             }
         }
 
+        // A note about to lose most of its text (typed into while shown blank, a slip): the version on disk is kept in
+        // backups\overwritten first (the newest 50), so no single write can take a note's text away for good.
+        static void KeepBeforeShrink(string file, string next)
+        {
+            try
+            {
+                var fi = new FileInfo(file);
+                if (!fi.Exists || fi.Length < 600 || (long)Encoding.UTF8.GetByteCount(next ?? "") * 3 > fi.Length) return;
+                string dir = Path.Combine(Program.DataDir, "backups", "overwritten");
+                Directory.CreateDirectory(dir);
+                File.Copy(file, Path.Combine(dir, Path.GetFileNameWithoutExtension(file) + "_" + DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".html"), true);
+                foreach (var f in new DirectoryInfo(dir).GetFiles("*.html").OrderByDescending(f => f.CreationTimeUtc).Skip(50)) f.Delete();
+            }
+            catch (Exception ex) { Program.Log(ex); }
+        }
+
         // Everything the page needs at start (state + every note), served as /boot.js.
         static string BuildBootScript()
         {
@@ -1299,6 +1321,23 @@ namespace SuperSpeedNote
             }
             catch (Exception ex) { Program.Log(ex); }
             sb.Append("},unread:[").Append(string.Join(",", unread.Distinct().Select(Json))).Append("]");
+            string meta = null;
+            try { if (File.Exists(MetaPath)) meta = File.ReadAllText(MetaPath, Encoding.UTF8); } catch { }
+            sb.Append(",meta:").Append(meta == null ? "null" : Json(meta));
+            // notes with a copy in the trash: listed by an older list but deleted since - not to come back blank
+            var trashed = new HashSet<string>(StringComparer.Ordinal);
+            try
+            {
+                if (Directory.Exists(TrashDir))
+                    foreach (string f in Directory.GetFiles(TrashDir, "*.html"))
+                    {
+                        string n = Path.GetFileNameWithoutExtension(f);
+                        int u = n.IndexOf('_');
+                        if (u > 0 && SafeId(n.Substring(0, u))) trashed.Add(n.Substring(0, u));
+                    }
+            }
+            catch (Exception ex) { Program.Log(ex); }
+            sb.Append(",trashed:[").Append(string.Join(",", trashed.Select(Json))).Append("]");
             sb.Append(",autostart:").Append(Json(GetStartupMode()));
             sb.Append(",dataDir:").Append(Json(Program.DataDir)).Append("};");
             return sb.ToString();
@@ -1379,8 +1418,23 @@ namespace SuperSpeedNote
                     {
                         string id = Cut(ref a);
                         if (!SafeId(id)) break;
+                        KeepBeforeShrink(Path.Combine(NotesDir, id + ".html"), a);
                         saver.Write(Path.Combine(NotesDir, id + ".html"), a);
                         saver.MirrorWrite(id, a);
+                        break;
+                    }
+                case "saveMeta": saver.Write(MetaPath, a); break;
+                case "jsError":                                  // an error in the page: written to error.log (the first 50 a run)
+                    if (jsErrors++ < 50) Program.Log(new Exception("page: " + a));
+                    break;
+                case "readNote":                                 // a note shown blank: its file read again before it can be typed in
+                    {
+                        if (!SafeId(a)) break;
+                        string file = Path.Combine(NotesDir, a + ".html"), text = null;
+                        saver.Flush(2000);
+                        try { if (File.Exists(file)) text = NoteFiles.Strip(NoteFiles.ReadShared(file)); }
+                        catch (Exception ex) { Program.Log(ex); Post("noteBody", a + SEP + "\u0001"); break; }   // there but unreadable
+                        Post("noteBody", text == null ? a : a + SEP + text);
                         break;
                     }
                 case "noteNames":                                // "id\tname" lines: the readable copies follow the names in the app

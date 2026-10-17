@@ -212,11 +212,16 @@ body[data-view=editor] #editorView{display:flex}
 .card.new:hover .plus{transform:scale(1.08)}
 .card.dragging{opacity:.35}
 /* where a dragged note will land: a bar in the gap between cards (board) or rows (list), with round ends */
-#dropMark{position:fixed;display:none;pointer-events:none;z-index:60;border-radius:3px;background:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 22%,transparent),0 0 18px color-mix(in srgb,var(--accent) 55%,transparent)}
-#dropMark.v,#dropMark.h{display:block}
-#dropMark::before,#dropMark::after{content:'';position:absolute;width:10px;height:10px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 2px var(--paper)}
-#dropMark.v::before{left:-3px;top:-6px}#dropMark.v::after{left:-3px;bottom:-6px}
-#dropMark.h::before{top:-3px;left:-6px}#dropMark.h::after{top:-3px;right:-6px}
+#dropMark{position:fixed;left:0;top:0;opacity:0;pointer-events:none;z-index:60;border-radius:999px;--dm:var(--accent);
+  background:linear-gradient(var(--dm-dir,180deg),color-mix(in srgb,var(--dm) 0%,transparent),var(--dm) 22%,var(--dm) 78%,color-mix(in srgb,var(--dm) 0%,transparent));
+  box-shadow:0 0 12px color-mix(in srgb,var(--dm) 38%,transparent);transform:scale(.6);
+  transition:opacity .14s ease,transform .18s cubic-bezier(.2,.9,.3,1.2),left .1s ease-out,top .1s ease-out,width .1s ease-out,height .1s ease-out}
+#dropMark.v,#dropMark.h{opacity:1;transform:none}
+#dropMark.h{--dm-dir:90deg}
+#dropMark.snap{transition:opacity .14s ease,transform .18s cubic-bezier(.2,.9,.3,1.2)}   /* first shown: appears where it is, doesn't fly in */
+#dropMark.h::before{content:'';position:absolute;left:-3px;top:50%;width:7px;height:7px;margin-top:-3.5px;border-radius:50%;background:var(--dm);box-shadow:0 0 0 2px color-mix(in srgb,var(--dm) 25%,transparent)}
+#dropMark.v{--dm:#fff;box-shadow:0 0 0 1px color-mix(in srgb,var(--accent) 75%,transparent),0 0 14px 2px color-mix(in srgb,var(--accent) 55%,transparent)}   /* on the board's blue band: a lit white line */
+#dropMark.h{--dm:#8fb4ff}   /* the list is on the navy sidebar: a lighter blue reads there */
 .empty{grid-column:1/-1;padding:48px;text-align:center;color:rgba(225,234,255,.85)}
 .empty.zero{order:-1;padding:6px 2px 2px;text-align:left}   /* no notes at all: a heading above the new-note card */
 .empty b{display:block;font-size:15px;font-weight:700}
@@ -330,6 +335,9 @@ body.sb-off #sidebar{display:none}
 #editor ol ol ol ol ol ol ol{list-style-type:ko-circle}
 #editor ol ol ol ol ol ol ol ol{list-style-type:ko-ga-circle}
 #editor ol li::marker{font-variant-numeric:tabular-nums}
+#editor ol[data-type=number]{list-style-type:decimal}
+#editor ol[data-type=hangul]{list-style-type:ko-ga}
+#editor ol[data-type=alpha]{list-style-type:lower-alpha}
 /* a line whose bullet was taken off (Backspace at its start): stays in place, no marker, not counted */
 #editor li.nob{display:block}
 #editor ul.checklist>li.nob::before{display:none}
@@ -949,6 +957,20 @@ const unread = new Set(boot.unread || []);
 // in the list but no file came with them (one that couldn't be read, a write that never landed): never deleted
 // for good as 'empty' - into the trash like any other note
 const missing = new Set();
+// notes being read again from disk (opened blank though they shouldn't be): read-only until the answer comes
+const rechecking = new Set();
+function onNoteBody(arg) {
+  const k = arg.indexOf(SEP), id = k < 0 ? arg : arg.slice(0, k), h = k < 0 ? null : arg.slice(k + 1);
+  if (!rechecking.delete(id)) return;
+  if (h === '\u0001') { unread.add(id); if (cur === id) toast('이 메모 파일을 읽지 못해서 지금은 고칠 수 없어요 · 앱을 다시 시작해 보세요'); return; }
+  if (h != null && !emptyHtml(h)) {                // its text was there after all: shown now, nothing was lost
+    bodies[id] = h; missing.delete(id); textCache.delete(id); H.delete(id);
+    const n = noteById(id);
+    if (n) n.preview = previewOf(frag(h));
+    if (cur === id && view === 'editor') { editor.innerHTML = h; setBig(h.length); histInit(id, null); stats(); renderSidebarSoon(); }
+  } else if (h != null) missing.delete(id);       // the file is there and really empty
+  if (cur === id) editor.contentEditable = unread.has(id) ? 'false' : 'true';
+}
 if (!S || !Array.isArray(S.notes)) S = { v: 1, notes: [], settings: {} };
 S.settings = Object.assign({
   theme: 'light', closeToTray: true, onTop: false, fontSize: 15, font: 'ui', sidebar: true,
@@ -958,13 +980,41 @@ S.settings = Object.assign({
 const st = S.settings;
 // v1.2: the first default (Ctrl+Alt+Space) is taken by other apps (e.g. Claude desktop) -> F for "find"
 if (!st.findHotkeyMine && st.findHotkey && st.findHotkey.label === 'Ctrl+Alt+Space') st.findHotkey = { mods: 3, vk: 70, code: 'KeyF', label: 'Ctrl+Alt+F' };
-{ // reconcile index with note files (adopt orphans after a crash, keep titles of missing bodies)
+// Reconcile the list with the note files, whichever version wrote them last: no note file is ever left out of the
+// list, and a note the list lost (an older version wrote its own list over this one, a crash) comes back with its
+// name, colour, pin and place - from notes-meta.json (kept by this version only), else the list's previous copy.
+// A note still listed whose file went to the trash since was deleted (by another version): it isn't brought back
+// as a blank note - it is in the trash.
+let adopted = 0;
+{
   S.notes = S.notes.filter(n => n && n.id);
   const known = new Set(S.notes.map(n => n.id));
-  for (const id of Object.keys(bodies)) {
-    if (known.has(id) || S.notes.length >= MAX_NOTES) continue;
-    S.notes.push({ id, title: '', color: 'navy', pinned: false, hotkey: null, created: now(), updated: now(), preview: previewOf(frag(bodies[id])) });
+  let arch = {};
+  try { const a = JSON.parse(boot.meta || 'null'); if (a && a.notes && typeof a.notes === 'object') arch = a.notes; } catch (e) { /* none */ }
+  const bak = {};
+  try { const b = JSON.parse(boot.stateBak || 'null'); if (b && Array.isArray(b.notes)) b.notes.forEach((n, i) => { if (n && n.id) bak[n.id] = Object.assign({ pos: i }, n); }); } catch (e) { /* none */ }
+  const trashed = new Set(boot.trashed || []);
+  S.notes = S.notes.filter(n => n.id in bodies || !trashed.has(n.id) || unread.has(n.id));
+  // an older version found such a note first and listed it as a fresh '제목 없음' note (it has no names to go by):
+  // a note's 'created' never changes, so a different one than this version knew means exactly that - it gets its
+  // name, colour and pin back
+  for (const n of S.notes) {
+    const m = arch[n.id];
+    if (!m || n.title || !m.title || !m.created || n.created === m.created) continue;
+    n.title = m.title; n.color = m.color || n.color; n.pinned = !!m.pinned; n.created = m.created || n.created;
+    adopted++;
   }
+  const keys = new Set(S.notes.map(n => n.hotkey && n.hotkey.label).filter(Boolean));
+  const back = [];
+  for (const id of Object.keys(bodies)) {
+    if (known.has(id)) continue;
+    const m = arch[id] || bak[id] || {}, hk = m.hotkey && m.hotkey.label && !keys.has(m.hotkey.label) ? m.hotkey : null;
+    if (hk) keys.add(hk.label);
+    back.push({ pos: typeof m.pos === 'number' ? m.pos : 1e9, n: { id, title: m.title || '', color: m.color || 'navy', pinned: !!m.pinned, hotkey: hk,
+      created: m.created || now(), updated: m.updated || now(), preview: previewOf(frag(bodies[id])) } });
+  }
+  back.sort((a, b) => a.pos - b.pos);
+  for (const x of back) { if (S.notes.length >= MAX_NOTES) break; S.notes.splice(Math.min(x.pos, S.notes.length), 0, x.n); adopted++; }
   for (const n of S.notes) {
     if (!(n.id in bodies)) { bodies[n.id] = ''; missing.add(n.id); }
     if (!NOTE_COLORS[n.color]) n.color = 'navy';
@@ -1176,7 +1226,36 @@ function flushNote() {
   renderSidebarSoon();
 }
 function saveStateSoon() { stateDirty = true; clearTimeout(stateT); stateT = setTimeout(flushState, 300); }
-function flushState() { clearTimeout(stateT); stateT = 0; if (!stateDirty) return; stateDirty = false; sendNames(); host.send('saveState', JSON.stringify(S)); }
+// The list goes out first and always: a note that can't be written as it is goes as its plain fields, and nothing
+// else (the meta file) runs before it. Any failure is reported to the app's error.log.
+const NOTE_KEYS = ['id', 'title', 'color', 'pinned', 'hotkey', 'created', 'updated', 'preview', 'line1', 'at'];
+function plainNote(n) { const o = {}; for (const k of NOTE_KEYS) if (n[k] !== undefined) { try { o[k] = JSON.parse(JSON.stringify(n[k])); } catch (e) { /* skip */ } } return o; }
+function flushState() {
+  clearTimeout(stateT); stateT = 0;
+  if (!stateDirty) return;
+  stateDirty = false;
+  let json;
+  try { S.notes = S.notes.filter(n => n && n.id); json = JSON.stringify(S); }
+  catch (e) {
+    reportError('saveState', e);
+    try { json = JSON.stringify({ v: S.v || 1, notes: S.notes.filter(n => n && n.id).map(plainNote), settings: JSON.parse(JSON.stringify(S.settings || {})), lastOpen: S.lastOpen || null }); }
+    catch (e2) { reportError('saveState fallback', e2); stateDirty = true; return; }
+  }
+  host.send('saveState', json);
+  try { saveMeta(); } catch (e) { reportError('saveMeta', e); }
+}
+function reportError(where, e) { try { host.send('jsError', where + ': ' + (e && (e.stack || e.message) || e)); } catch (x) { /* nothing more to do */ } }
+window.addEventListener('error', e => reportError('error', e.error || e.message));
+window.addEventListener('unhandledrejection', e => reportError('promise', e.reason));
+// notes-meta.json: every note's name, colour, pin, hotkey and place, written only by this version and later - an
+// older version writing its own list never touches it, so whatever that list loses can be found again (above)
+let metaSig = '';
+function saveMeta() {
+  const notes = {};
+  S.notes.forEach((n, i) => { notes[n.id] = { title: n.title || '', color: n.color, pinned: !!n.pinned, hotkey: n.hotkey || null, created: n.created, updated: n.updated, pos: i }; });
+  const s = JSON.stringify({ v: 1, notes });
+  if (s !== metaSig) { metaSig = s; host.send('saveMeta', s); }
+}
 // the readable copies in the 메모 folder are named like the notes in the app (title, else first line): tell the
 // shell when a name changes; at start-up every name (copies of notes no longer here go)
 const sentNames = new Map();
@@ -1413,16 +1492,19 @@ const dropMark = document.createElement('div');
 dropMark.id = 'dropMark';
 document.body.appendChild(dropMark);
 function showDropMark(el, after, vertical) {
-  const r = el.getBoundingClientRect(), m = dropMark.style;
+  const r = el.getBoundingClientRect(), m = dropMark.style, kind = vertical ? 'v' : 'h';
+  const fresh = !dropMark.classList.contains(kind);   // just appearing (or switching board <-> list): no gliding in
+  if (fresh) { dropMark.className = 'snap'; void dropMark.offsetWidth; }
   if (vertical) {
     const gap = parseFloat(getComputedStyle(grid).columnGap) || 16;
     Object.assign(m, { left: ((after ? r.right + gap / 2 : r.left - gap / 2) - 2) + 'px', top: (r.top + 8) + 'px', width: '4px', height: Math.max(0, r.height - 16) + 'px' });
   } else {                                        // midway between this row and the one before / after it
     const nb = after ? el.nextElementSibling : el.previousElementSibling, q = nb && nb.getBoundingClientRect();
     const y = after ? (q ? (r.bottom + q.top) / 2 : r.bottom + 3) : (q ? (q.bottom + r.top) / 2 : r.top - 3);
-    Object.assign(m, { left: (r.left + 10) + 'px', top: (y - 2) + 'px', width: Math.max(0, r.width - 20) + 'px', height: '4px' });
+    Object.assign(m, { left: (r.left + 14) + 'px', top: (y - 1.5) + 'px', width: Math.max(0, r.width - 26) + 'px', height: '3px' });
   }
-  dropMark.className = vertical ? 'v' : 'h';
+  dropMark.className = kind + (fresh ? ' snap' : '');
+  if (fresh) requestAnimationFrame(() => dropMark.classList.remove('snap'));
 }
 function hideDropMark() { dropMark.className = ''; }
 // pinned notes keep their name order: dragging one shows it can't go elsewhere (it still drags out of the app)
@@ -1700,6 +1782,7 @@ const EXPORT_LIST_CSS = '@counter-style ko-ga{system:alphabetic;symbols:"가" "�
   '@counter-style ko-num-paren{system:extends decimal;suffix:") "}@counter-style ko-ga-paren{system:extends ko-ga;suffix:") "}' +
   '@counter-style ko-num-wrap{system:extends decimal;prefix:"(";suffix:") "}@counter-style ko-ga-wrap{system:extends ko-ga;prefix:"(";suffix:") "}' +
   'ol ol{list-style-type:ko-ga}ol ol ol{list-style-type:ko-num-paren}ol ol ol ol{list-style-type:ko-ga-paren}ol ol ol ol ol{list-style-type:ko-num-wrap}ol ol ol ol ol ol{list-style-type:ko-ga-wrap}' +
+  'ol[data-type=number]{list-style-type:decimal}ol[data-type=hangul]{list-style-type:ko-ga}ol[data-type=alpha]{list-style-type:lower-alpha}' +
   'li.nob{display:block}ul.checklist li.nob::before{content:none}';
 // a Windows file name that reads as the note's name (the same rule as the readable copies in the 메모 folder):
 // refused characters become their full-width twins, at most 80 characters, never a device name
@@ -1751,10 +1834,14 @@ function openNote(id, o = {}) {
     clearNav(); clearObj();
     if (o.browse) getSelection().removeAllRanges();   // shown from the list: no caret in it (a table cell would take the keys)
     cur = id; selId = id;
-    editor.contentEditable = unread.has(id) ? 'false' : 'true';
+    const blank = !bodies[id] || emptyHtml(bodies[id]);
+    const doubt = HOST && !unread.has(id) && blank && (missing.has(id) || !!(n.preview || '').trim());   // no file came, or the list remembers text
+    editor.contentEditable = unread.has(id) || doubt ? 'false' : 'true';
     if (unread.has(id)) setTimeout(() => toast('이 메모 파일을 읽지 못해서 지금은 고칠 수 없어요 · 앱을 다시 시작해 보세요'), 0);
+    if (doubt) { rechecking.add(id); host.send('readNote', id); }
     editor.innerHTML = bodies[id] || '<div><br></div>';
     if (!editor.firstChild) editor.innerHTML = '<div><br></div>';
+    relist();
     setBig((bodies[id] || '').length);
     histInit(id, isBig ? bodies[id] : null);   // big notes: reuse the string instead of serializing again
     titleIn.value = n.title || '';
@@ -2209,7 +2296,9 @@ function histCommit(keepNodes) {
 // and not typed in again after the undo
 function finishIme() {
   if (!composing) return;
+  const at = selSave();
   editor.blur(); editor.focus({ preventScroll: true });
+  if (at) selRestore(at);                         // the caret stays after the finished syllable
   composing = false;
 }
 function undo() {
@@ -2235,6 +2324,7 @@ function applySnap(h, sel) {
   editor.innerHTML = h;
   setBig(h.length);
   if (!editor.firstChild) editor.innerHTML = '<div><br></div>';
+  relist();
   editor.focus({ preventScroll: true });
   if (sel) selRestore(sel); else placeCaret(editor.lastChild, true);
   // the "type here" hint goes (or comes back) with the undone text at once, not with the delayed character count
@@ -2261,6 +2351,7 @@ function edit(fn) {
   if (hs) hs.st[hs.i].u = selSave();
   try { fn(); } finally {
     caretBeforeBr();
+    relist();
     histCommit();
     if (editor.classList.contains('is-empty')) stats(); else statsSoon();
     markDirty(); posOvSoon();
@@ -2291,6 +2382,7 @@ editor.addEventListener('input', e => {
     const li = closestSel('ul.checklist > li');
     if (li && li.dataset.checked === 'true' && !li.textContent) li.dataset.checked = 'false';
   }
+  if (!/^insert(Text|CompositionText|ReplacementText)$/.test(e.inputType)) relist();   // Enter, deleting, a drop: numbers again
   markDirty();
   histSoon();
   statsSoon();
@@ -2336,6 +2428,7 @@ editor.addEventListener('keydown', e => {
     if (done) { e.preventDefault(); return; }
   }
   if (mod || e.altKey) return;
+  if (e.shiftKey && (e.key === 'ArrowDown' || e.key === 'ArrowUp') && lineSelect(e.key === 'ArrowDown')) { e.preventDefault(); return; }
   const td = closestSel('td');
   if (td && (e.key === 'Enter' || e.key === 'Tab') && onTableKey(e, td)) return;
   if (e.key === 'Tab') {
@@ -2540,6 +2633,29 @@ function listBackspace() {
   });
   return true;
 }
+// Shift+↑/↓ from the start (or end) of a line: Chrome keeps the caret's x from line to line, so a selection made
+// line by line ran a few characters into a less indented line (a sub-item -> the item below it: 2 Hangul / 3 Latin
+// letters). Crossing into another line it now lands on that line's start (or end), like a word processor.
+function lineEdge(node, off) {                    // 'start' / 'end' of its visual line, or null in the middle
+  const blk = blockOf(node);
+  if (!blk || blk.nodeName === 'TD') return null;
+  const t = textOffset(blk, node, off), len = blk.textContent.length;
+  if (t === 0) return 'start';
+  if (t >= len) return 'end';
+  const at = k => { const [n, o] = textPos(blk, k), r = document.createRange(); r.setStart(n, o); r.setEnd(...textPos(blk, k + 1)); return r.getBoundingClientRect(); };
+  const before = at(t - 1), after = at(t);
+  return after.top > before.top + 2 ? 'start' : null;    // the character after it starts the next visual line
+}
+function lineSelect(down) {
+  const s = getSelection();
+  if (!s.rangeCount || !s.focusNode || !editor.contains(s.focusNode)) return false;
+  const edge = lineEdge(s.focusNode, s.focusOffset);
+  if (!edge) return false;
+  const b0 = blockOf(s.focusNode);
+  s.modify('extend', down ? 'forward' : 'backward', 'line');
+  if (blockOf(s.focusNode) !== b0) s.modify('extend', edge === 'start' ? 'backward' : 'forward', 'lineboundary');
+  return true;
+}
 // one level out; from the top level the line leaves the list as a normal line
 function liftItem(li) {
   const list = li.parentElement, holder = list.parentElement;
@@ -2559,7 +2675,6 @@ function liftItem(li) {
   } else {                                        // top level: a normal line between the two halves
     if (tail) {
       list.after(tail);
-      if (list.nodeName === 'OL') tail.start = (list.start || 1) + $$(':scope > li:not(.nob)', list).length - (li.classList.contains('nob') ? 0 : 1);
     }
     const d = document.createElement('div');
     while (li.firstChild) d.appendChild(li.firstChild);
@@ -2570,32 +2685,104 @@ function liftItem(li) {
   }
   if (!list.querySelector('li')) list.remove();
   placeCaret(moved, false);
+  return moved;
+}
+// one level in: the line joins the sub-list right above it (or starts one), its own sub-items go along one level
+// deeper. Done here rather than by the browser's indent, which wraps a line it doesn't take for a list item (a list
+// split by earlier edits) in a quote box.
+function sinkItem(li) {
+  const L = li.parentElement, prev = li.previousElementSibling;
+  const kids = li.nextElementSibling && isList(li.nextElementSibling) ? li.nextElementSibling : null;
+  let T = null;
+  if (prev && isList(prev)) T = prev;                                            // Chrome's shape: a list after its item
+  else if (prev && prev.nodeName === 'LI' && isList(prev.lastElementChild)) T = prev.lastElementChild;   // pasted shape
+  if (!T) {
+    T = document.createElement(L.nodeName === 'OL' ? 'OL' : 'UL');
+    if (L.classList.contains('checklist')) T.className = 'checklist';
+    li.before(T);
+  }
+  T.appendChild(li);
+  if (kids) li.after(kids);
+  const nx = T.nextElementSibling;                // the rest of a sub-list that was split off: one list again
+  if (nx && nx !== kids && isList(nx) && nx.nodeName === T.nodeName) { while (nx.firstChild) T.appendChild(nx.firstChild); nx.remove(); }
+  if (T.classList.contains('checklist')) { if (!li.dataset.checked) li.dataset.checked = 'false'; } else delete li.dataset.checked;
 }
 // Tab / Shift+Tab on a list line: indent / outdent the line, keeping checklists checklists
 function listIndent(out) {
-  const one = out && closestSel('li'), r = selRange();
-  if (one && r && one.contains(r.endContainer) && !isList(one.parentElement.parentElement) && one.parentElement.parentElement.nodeName !== 'LI') {
-    edit(() => liftItem(one));                    // top level: a proper line, and the numbers below carry on
+  const li = closestSel('li'), r = selRange();
+  if (li && r && li.contains(r.startContainer) && li.contains(r.endContainer) && !li.closest('td')) {   // one line: done by hand,
+    const k = [textOffset(li, r.startContainer, r.startOffset), textOffset(li, r.endContainer, r.endOffset)];   // caret kept
+    edit(() => {
+      const moved = out ? liftItem(li) : (sinkItem(li), li);
+      if (moved) setSelOffsets(moved, k[0], k[1]);
+    });
     updateToolbar();
     return;
   }
+  // several lines: each list line in the selection moves one level (top to bottom in, bottom to top out); the
+  // selection then covers the same lines again
+  if (!r) return;
+  const lis = $$('li', editor).filter(x => r.intersectsNode(x) && !x.closest('td'));
+  if (!lis.length) return;
   edit(() => {
-    exec(out ? 'outdent' : 'indent');
-    const li = closestSel('li'), L = li && li.parentElement;
-    if (!L) return;
-    const outer = L.parentElement && L.parentElement.closest('ul,ol');
-    if (L.nodeName === 'UL' && outer && outer.classList.contains('checklist')) L.classList.add('checklist');
-    if (!L.classList.contains('checklist')) delete li.dataset.checked;
+    const moved = [];
+    if (out) for (let i = lis.length - 1; i >= 0; i--) moved.unshift(liftItem(lis[i]) || lis[i]);
+    else for (const x of lis) { sinkItem(x); moved.push(x); }
+    const a = moved[0], z = moved[moved.length - 1];
+    if (a && z && a.isConnected && z.isConnected) {
+      const nr = document.createRange(); nr.selectNodeContents(a); const e2 = document.createRange(); e2.selectNodeContents(z);
+      nr.setEnd(e2.endContainer, e2.endOffset);
+      const sel = getSelection(); sel.removeAllRanges(); sel.addRange(nr);
+    }
   });
   updateToolbar();
 }
-// what number a numbered line shows (1. 가. 1) 가) (1) (가) ① ㉮ by depth) - for copying as text
+// Numbers of numbered lists, in one pass from the top of the note (the way word processors do it). A line keeps
+// no number of its own: only its depth (list nesting) and its list's kind (data-type: number / hangul / alpha, or
+// none = the depth's default 1. 가. 1) ...). For each list line, top to bottom, counters[depth] goes up by one and
+// every deeper counter starts again; a normal line between lists ends the run (all counters start again). A list
+// split in two by edits carries on its numbers (its start), and a list made without a kind takes the kind of the
+// list before it at the same depth - so deleting or adding a line in the middle never jumps back to '1.'.
+const LIST_KINDS = new Set(['number', 'hangul', 'alpha']);
+function relist() {
+  if (!editor.querySelector('ol')) return;
+  const counters = new Array(10).fill(0), kinds = new Array(10).fill(null);
+  const run = (L, d) => {
+    d = Math.min(d, 9);
+    let kind = 'bullet';
+    if (L.nodeName === 'OL') {
+      kind = LIST_KINDS.has(L.dataset.type) ? L.dataset.type : '';
+      if (!kind && kinds[d] && kinds[d] !== 'bullet') { kind = kinds[d]; L.dataset.type = kind; }   // inherited
+    }
+    if (kinds[d] !== null && kinds[d] !== kind) counters[d] = 0;      // another kind at this depth counts again
+    kinds[d] = kind;
+    if (L.nodeName === 'OL') {
+      const first = counters[d] + 1;
+      if (first > 1) { if (L.getAttribute('start') !== String(first)) L.setAttribute('start', first); }
+      else if (L.hasAttribute('start')) L.removeAttribute('start');
+    }
+    for (const c of L.children) {
+      if (c.nodeName === 'LI') {
+        if (!c.classList.contains('nob')) { counters[d]++; for (let k = d + 1; k < 10; k++) counters[k] = 0; }
+        for (const sub of c.children) if (isList(sub)) run(sub, d + 1);   // pasted shape: a list inside its item
+      } else if (isList(c)) run(c, d + 1);                               // Chrome's shape: a list after its item
+    }
+  };
+  for (const b of editor.children) {
+    if (isList(b)) run(b, 0);
+    else { counters.fill(0); kinds.fill(null); }                       // a normal line: the list run ends
+  }
+}
+// what number a numbered line shows (1. 가. 1) 가) (1) (가) ① ㉮ by depth, or its list's own kind) - for copying as text
 function olLabel(li) {
   const ol = li.parentElement;
   let n = ol.start || 1, depth = 0;
   for (let s = li.previousElementSibling; s; s = s.previousElementSibling) if (s.nodeName === 'LI' && !s.classList.contains('nob')) n++;
   for (let p = ol; p && p !== editor; p = p.parentElement) if (p.nodeName === 'OL') depth++;
   const ko = i => { let t = ''; for (i--; i >= 0; i = Math.floor(i / 14) - 1) t = '가나다라마바사아자차카타파하'[i % 14] + t; return t; };
+  if (ol.dataset.type === 'number') return n + '. ';
+  if (ol.dataset.type === 'hangul') return ko(n) + '. ';
+  if (ol.dataset.type === 'alpha') { let t = ''; for (let i = n - 1; i >= 0; i = Math.floor(i / 26) - 1) t = String.fromCharCode(97 + i % 26) + t; return t + '. '; }
   switch ((depth - 1) % 8) {
     case 1: return ko(n) + '. ';
     case 2: return n + ') ';
@@ -2637,7 +2824,11 @@ function liftList() {
   if (k) setSelOffsets(li, k[0], k[1]);
 }
 function toggleList(kind) {
+  // A Korean syllable still being typed is finished first, and a first line typed as bare text gets its line box:
+  // the list made around a syllable the IME was still composing came apart (the box gone, the letters doubled)
+  finishIme();
   ensureEditorFocus();
+  if (needsRoot()) ensureRoot();
   const keep = caretKeep();                       // making a list keeps the caret where you were typing
   edit(() => {
     listInner(kind);
@@ -2689,18 +2880,38 @@ function mdShortcut() {
   const r = selRange();
   if (!r || !r.collapsed) return false;
   const blk = blockOf(r.startContainer);
+  if (blk && blk.nodeName === 'LI' && blk.parentElement.nodeName === 'OL' && !blk.closest('td')) {   // "가. " typed in a numbered line
+    const pre0 = document.createRange(); pre0.setStart(blk, 0); pre0.setEnd(r.startContainer, r.startOffset);
+    const m0 = /^(\d{1,3}|[가나다라마바사아자차카타파하]|[a-zA-Z])[.)]$/.exec(pre0.toString());
+    if (!m0) return false;
+    const k0 = /\d/.test(m0[1]) ? 'number' : /[a-zA-Z]/.test(m0[1]) ? 'alpha' : 'hangul';
+    exec('insertText', ' '); histCommit();
+    edit(() => {
+      const r2 = selRange(), p2 = document.createRange(); p2.setStart(blk, 0); p2.setEnd(r2.startContainer, r2.startOffset);
+      const s0 = getSelection(); s0.removeAllRanges(); s0.addRange(p2);
+      exec('delete');
+      blk.parentElement.dataset.type = k0;
+    });
+    return true;
+  }
   if (!blk || /^(LI|TD|PRE)$/.test(blk.nodeName)) return false;
   const pre = document.createRange();
   pre.setStart(blk, 0); pre.setEnd(r.startContainer, r.startOffset);
-  const map = { '#': 'h1', '##': 'h2', '###': 'h3', '-': 'ul', '*': 'ul', '1.': 'ol', '[]': 'chk', '[ ]': 'chk', '>': 'blockquote', '```': 'pre' };
-  const kind = map[pre.toString()];
+  const map = { '#': 'h1', '##': 'h2', '###': 'h3', '-': 'ul', '*': 'ul', '[]': 'chk', '[ ]': 'chk', '>': 'blockquote', '```': 'pre' };
+  const typed = pre.toString(), m = /^(\d{1,3}|[가나다라마바사아자차카타파하]|[a-zA-Z])[.)]$/.exec(typed);
+  const numKind = m ? (/\d/.test(m[1]) ? 'number' : /[a-zA-Z]/.test(m[1]) ? 'alpha' : 'hangul') : null;
+  const kind = numKind ? 'ol' : map[typed];
   if (!kind) return false;
   exec('insertText', ' '); histCommit();          // Ctrl+Z brings back what you typed ("# "), not an empty line
   edit(() => {
     const r2 = selRange(), pre2 = document.createRange(); pre2.setStart(blk, 0); pre2.setEnd(r2.startContainer, r2.startOffset);
     const s = getSelection(); s.removeAllRanges(); s.addRange(pre2);
     exec('delete');
-    if (kind === 'ul' || kind === 'ol') { exec(kind === 'ul' ? 'insertUnorderedList' : 'insertOrderedList'); liftList(); }
+    if (kind === 'ul' || kind === 'ol') {
+      exec(kind === 'ul' ? 'insertUnorderedList' : 'insertOrderedList'); liftList();
+      const li = closestSel('li');
+      if (numKind && li && li.parentElement.nodeName === 'OL') li.parentElement.dataset.type = numKind;   // the pass gives the number
+    }
     else if (kind === 'chk') { exec('insertUnorderedList'); const li = closestSel('li'); if (li) li.parentElement.classList.add('checklist'); liftList(); }
     else exec('formatBlock', kind);
   });
@@ -2715,11 +2926,77 @@ function textPos(root, k) {                       // [text node, offset] k chara
   while ((n = w.nextNode())) { if (k <= pos + n.nodeValue.length) return [n, k - pos]; pos += n.nodeValue.length; last = n; }
   return last ? [last, last.nodeValue.length] : [root, 0];
 }
+// A quote holds its lines as <div>s: Enter starts a new <div> line inside it with the caret at its very start. (A <br>
+// line break put the caret after a <br>, where Windows' Korean IME types the first consonant twice: "ㄱ가".) An
+// older quote whose lines are split by <br> is turned into <div> lines first. Enter on an empty last line leaves.
+function quoteLines(box) {
+  const kids = [...box.childNodes];
+  if (!kids.some(n => n.nodeType === 3 || (n.nodeType === 1 && !BLOCK_TAGS.test(n.nodeName)))) return;
+  const lines = [];
+  let cur = [];
+  for (const n of kids) {
+    if (n.nodeName === 'BR') { lines.push(cur); cur = []; }
+    else if (n.nodeType === 1 && BLOCK_TAGS.test(n.nodeName)) { if (cur.length) lines.push(cur); lines.push(n); cur = []; }
+    else cur.push(n);
+  }
+  if (cur.length || !lines.length) lines.push(cur);
+  else if (Array.isArray(lines[lines.length - 1]) && !lines[lines.length - 1].length && kids[kids.length - 1].nodeName === 'BR' && lines.length > 1) lines.pop();   // the closing <br> only shows the line before it
+  box.textContent = '';
+  for (const l of lines) {
+    if (!Array.isArray(l)) { box.appendChild(l); continue; }
+    const d = document.createElement('div');
+    l.forEach(n => d.appendChild(n));
+    if (!d.textContent && !d.querySelector('img,br')) d.appendChild(document.createElement('br'));
+    box.appendChild(d);
+  }
+}
+function quoteEnter(box) {
+  edit(() => {
+    const r = selRange(), mk = document.createElement('span');
+    r.insertNode(mk);
+    quoteLines(box);
+    let line = mk;
+    while (line && line.parentNode !== box) line = line.parentNode;
+    const empty = n => !n.textContent.replace(/​/g, '').trim() && !n.querySelector('img,table,hr');
+    if (!line || !/^(DIV|P)$/.test(line.nodeName)) {   // somewhere unexpected: a plain line break as before
+      const c = document.createRange(); c.setStartBefore(mk); c.collapse(true); mk.remove();
+      const sel = getSelection(); sel.removeAllRanges(); sel.addRange(c);
+      exec('insertLineBreak');
+      return;
+    }
+    if (empty(box)) {                              // an empty quote: Enter makes it a normal line
+      mk.remove();
+      const d = document.createElement('div'); d.innerHTML = '<br>';
+      box.replaceWith(d); placeCaret(d, false);
+      return;
+    }
+    if (empty(line) && line === box.lastElementChild) {   // empty last line: out of the quote
+      mk.remove(); line.remove();
+      const d = document.createElement('div'); d.innerHTML = '<br>';
+      box.after(d); placeCaret(d, false);
+      return;
+    }
+    const rest = document.createRange(); rest.setStartAfter(mk); rest.setEnd(line, line.childNodes.length);
+    const tail = rest.extractContents();
+    mk.remove();
+    const nl = document.createElement(line.nodeName === 'P' ? 'P' : 'DIV');
+    nl.appendChild(tail);
+    for (const x of [line, nl]) if (!x.textContent && !x.querySelector('img')) x.innerHTML = '<br>';
+    line.after(nl);
+    placeCaret(nl, false);                        // the very start of the new line (in front of its <br>)
+  });
+}
 function boxEnter() {
   const r = selRange();
   if (!r || !r.collapsed) return false;
   const box = closestSel('pre') || closestSel('blockquote');
   if (!box || box.closest('td')) return false;
+  if (box.nodeName === 'BLOCKQUOTE') {            // a list inside a quote: its own Enter
+    const li = closestSel('li');
+    if (li && box.contains(li)) return false;
+    quoteEnter(box);
+    return true;
+  }
   const before = document.createRange(); before.setStart(box, 0); before.setEnd(r.startContainer, r.startOffset);
   const after = document.createRange(); after.setStart(r.startContainer, r.startOffset); after.setEnd(box, box.childNodes.length);
   const tb = before.toString();
@@ -2800,6 +3077,7 @@ toolbar.addEventListener('mousedown', e => { if (!e.target.closest('#findbar')) 
 toolbar.addEventListener('click', e => {
   const b = e.target.closest('button');
   if (!b || b.closest('#findbar')) return;
+  finishIme();                                    // the button keeps the focus, so a syllable may still be open
   if (b.dataset.cmd) fmt(b.dataset.cmd);
   else if (b.dataset.list) toggleList(b.dataset.list);
   else if (b.dataset.pop) toolPop(b.dataset.pop, b);
@@ -3831,21 +4109,46 @@ function gridToClipboard(cd, rows) {
 }
 function wholeTable(t) { return { t, r0: 0, r1: t.rows.length - 1, c0: 0, c1: Math.max(0, tableCols(t) - 1) }; }
 let copyT = 0;
-// Copying text in a note: exactly what is selected - a line from a list comes without its bullet (pasted, it is
-// just that text, not another list item), lines from a list become plain lines, no empty line from a triple-click
+// Copying text in a note: exactly what is selected, no empty line from a triple-click. Lines from a list go out as
+// the text you see - indented by their level, their bullet / number / box as characters ("1. ", "가. ", "• ", "☐ ")
+// - so Word, 한글 or Notion show them as they are with nothing to fix after pasting. The numbers are the note's own
+// (a part copied from the middle keeps "다."). A line copied from its middle, or one line alone (pasted into
+// another line), comes without its bullet.
 function selClip() {
   const r = selRange();
   if (!r || r.collapsed || !editor.contains(r.commonAncestorContainer)) return null;
+  // the list lines the copy holds (in the order cloneContents gives them), and what each shows in front of it
+  const live = $$('li', editor).filter(li => r.intersectsNode(li) && !li.contains(r.commonAncestorContainer));
+  const marks = live.map(li => {
+    const st = document.createRange(); st.setStart(li, 0);
+    if (r.compareBoundaryPoints(Range.START_TO_START, st) > 0) return '';      // starts in the middle of this line
+    let depth = 0;
+    for (let q = li.parentElement; q && q !== editor && q.nodeName !== 'TD'; q = q.parentElement) if (isList(q)) depth++;
+    const L = li.parentElement;
+    const mark = li.classList.contains('nob') ? '' : L.classList.contains('checklist') ? (li.dataset.checked === 'true' ? '☑ ' : '☐ ')
+      : L.nodeName === 'OL' ? olLabel(li) : '• ';
+    return ('    '.repeat(Math.max(0, depth - 1)) + mark).replace(/ /g, ' ');   // non-breaking: the spaces survive pasting
+  });
   const box = document.createElement('div');
   box.appendChild(r.cloneContents());
-  box.querySelectorAll('li').forEach(li => { const d = document.createElement('div'); while (li.firstChild) d.appendChild(li.firstChild); li.replaceWith(d); });
+  const copies = box.querySelectorAll('li'), markNodes = [];
+  copies.forEach((li, i) => {
+    const d = document.createElement('div');
+    const m = copies.length === live.length ? marks[i] : '';
+    if (m && (li.textContent.trim() || li.querySelector('img,hr,table'))) { const t = document.createTextNode(m); d.appendChild(t); markNodes.push(t); }
+    while (li.firstChild) d.appendChild(li.firstChild);
+    li.replaceWith(d);
+  });
   box.querySelectorAll('ul,ol').forEach(unwrap);
   const blank = n => n && (n.nodeType === 3 ? !n.nodeValue.trim() : n.nodeType === 1 && !n.textContent.trim() && !n.querySelector('img,hr,table') && !/^(IMG|HR|TABLE)$/.test(n.nodeName));
   while (box.childNodes.length > 1 && blank(box.lastChild)) box.lastChild.remove();     // the next line's start, caught by a triple-click
   while (box.childNodes.length > 1 && blank(box.firstChild)) box.firstChild.remove();
-  // one line (or part of one): its contents only, so the paste goes into the line it lands in
-  if (box.childNodes.length === 1 && box.firstChild.nodeType === 1 && /^(DIV|P)$/.test(box.firstChild.nodeName)) unwrap(box.firstChild);
-  return { html: box.innerHTML, text: toPlain(box).replace(/\n+$/, '') };
+  // one line (or part of one): its contents only, without a bullet, so the paste goes into the line it lands in
+  if (box.childNodes.length === 1 && box.firstChild.nodeType === 1 && /^(DIV|P)$/.test(box.firstChild.nodeName)) {
+    markNodes.forEach(t => { if (t.parentNode === box.firstChild) t.remove(); });
+    unwrap(box.firstChild);
+  }
+  return { html: box.innerHTML, text: toPlain(box).replace(/ /g, ' ').replace(/\n+$/, '') };
 }
 editor.addEventListener('copy', e => {
   const whole = objSel && objSel.nodeName === 'TABLE', rc = whole ? wholeTable(objSel) : selCellRect();
@@ -4641,7 +4944,7 @@ function searchLines(q, limit = 50) {
     const fresh = (N - r) / N * 30;               // newer notes first among equals
     // every word is in the note's name: its lines come up too (after lines with the words), in order
     const byTitle = !!n.title && terms.every((t, j) => termAt(tn, t, kinds[j]) >= 0);
-    let fromTitle = 0;
+    let fromTitle = 0, any = false;
     for (let i = 0; i < L.length; i++) {
       const x = L[i], l = x.l;
       let inLine = 0, inCtx = 0, ok = true, end = 0, ak = '';   // end: where the last word found in the line ends
@@ -4659,9 +4962,10 @@ function searchLines(q, limit = 50) {
       }
       if (!ok) continue;
       if (!inLine) {
-        if (byTitle && fromTitle < 20 && x.s.trim()) out.push({ n, i, x, sc: 400 + fresh - fromTitle++ * 3, part: usedPart(use[n.id + SEP + x.s], x), ak: '', end: 0 });
+        if (byTitle && fromTitle < 20 && x.s.trim()) { out.push({ n, i, x, sc: 400 + fresh - fromTitle++ * 3, part: usedPart(use[n.id + SEP + x.s], x), ak: '', end: 0 }); any = true; }
         continue;
       }
+      any = true;
       let sc = (inLine === terms.length ? 1000 : 0) + inCtx * 50 + fresh - Math.min(60, x.s.length / 6) - (x.hd ? 150 : 0) - (x.hd2 ? 120 : 0);
       if (l === ql && !x.hd2) sc += 300;          // a heading is where to look, not what to paste
       else { const p = l.indexOf(terms[0]); if (p === 0) sc += 80; else if (p > 0 && /[\s\t(\[:/,·-]/.test(l[p - 1])) sc += 40; }
@@ -4669,6 +4973,9 @@ function searchLines(q, limit = 50) {
       if (u) sc += Math.min(240, u[0] * 60) + (u[1] > weekAgo ? 60 : 0);   // what you paste often comes first
       out.push({ n, i, x, sc, part: usedPart(u, x), ak, end });
     }
+    // found by its name but no line of text to show (only pictures, or empty): the name itself is the result -
+    // Enter pastes the name, Ctrl+Enter opens the note
+    if (byTitle && !any) { const t = titleOf(n); out.push({ n, i: -1, x: { s: t, l: t.toLowerCase() }, sc: 450 + fresh, part: -1, ak: '', end: 0 }); }
   }
   out.sort((a, b) => b.sc - a.sc);
   const top = out.slice(0, limit);
@@ -4839,6 +5146,7 @@ function openPalette(mode) {
     const quick = palMode === 'quick', pop = palMode === 'pop';
     if (how === 'open') {
       if (quick) return;                          // the memo window stays a memo
+      if (it.i < 0) { closeModal(); openNote(it.n.id); if (pop) host.send('show'); return; }   // found by its name only
       const t = terms.map(w => hitText(it.x.s, w)).find(Boolean) || it.x.s.split('\t').find(Boolean).slice(0, 40);
       const L = linesOf(it.n.id), tl = t.toLowerCase();
       let nth = 0;                                // land on this very line: count the same word above it
@@ -5868,6 +6176,7 @@ if (HOST) window.chrome.webview.addEventListener('message', e => {
     case 'hotkeyStatus': onHotkeyStatus(arg); break;
     case 'flush': if (freshIds.has(cur)) leaveNote(); flushAll(); host.send('flushed'); break;   // quit / standby: an untouched new note goes too
     case 'toast': toast(arg); break;
+    case 'noteBody': onNoteBody(arg); break;
     case 'backupDone': {
       const b = $('#setBackup');
       if (b) { b.disabled = false; b.textContent = '지금 백업'; }
@@ -5938,7 +6247,6 @@ host.send('ready');
 if (BOOT_FAILED) bootFailed();
 warmSearch();
 host.send('closeToTray', st.closeToTray ? '1' : '0');
-sendNames(true);
 host.send('quickCorner', st.quickCorner || 'br');
 host.send('theme', st.theme);
 if (st.onTop) host.send('top', '1');
@@ -5954,6 +6262,8 @@ if (HOST && !st.startupChosen) {
   }
 }
 if (recovered) { stateDirty = true; flushState(); setTimeout(() => toast('메모 목록 파일이 손상돼 직전 사본으로 복구했어요'), 600); }
+else if (adopted) { stateDirty = true; flushState(); }   // notes the list had lost: written back into it at once
+else saveMeta();
 setInterval(() => {                                // "3분 전" labels
   if (view !== 'board' || document.hidden) return;
   const byId = new Map(S.notes.map(n => [n.id, n]));
