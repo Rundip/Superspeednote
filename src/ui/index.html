@@ -4121,7 +4121,10 @@ function selClip() {
   const live = $$('li', editor).filter(li => r.intersectsNode(li) && !li.contains(r.commonAncestorContainer));
   const marks = live.map(li => {
     const st = document.createRange(); st.setStart(li, 0);
-    if (r.compareBoundaryPoints(Range.START_TO_START, st) > 0) return '';      // starts in the middle of this line
+    if (r.compareBoundaryPoints(Range.START_TO_START, st) > 0) {               // starts inside this line: only from its very start
+      st.setEnd(r.startContainer, r.startOffset);
+      if (st.toString() || st.cloneContents().querySelector('img')) return '';
+    }
     let depth = 0;
     for (let q = li.parentElement; q && q !== editor && q.nodeName !== 'TD'; q = q.parentElement) if (isList(q)) depth++;
     const L = li.parentElement;
