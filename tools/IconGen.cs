@@ -1,6 +1,5 @@
 // Generates assets/app.ico for Super Speed Note.
-// Navy -> white vertical gradient tile, "SUPER" (white, on navy) over "SPEED" (navy, on white).
-// Small sizes use a split-colour "S" monogram so the icon still reads at 16-48 px.
+// Navy -> white vertical gradient tile with an "S" (white fading into ink) - at every size, the Store logos too.
 // Build: csc /reference:System.Drawing.dll tools\IconGen.cs   Run: IconGen.exe out.ico [pngDir]
 using System;
 using System.Collections.Generic;
@@ -24,7 +23,7 @@ static class IconGen
     {
         if (args.Length == 2 && args[0] == "--store") return StoreAssets(args[1]);
         if (args.Length == 2 && args[0] == "--boxart")      // 1:1 logo for the Store listing page (1080 x 1080):
-        {                                                   // exactly the app's own icon, on a transparent background
+        {                                                   // the app's "S" icon (as in Explorer / the taskbar), big
             using (Bitmap icon = Render(1080)) icon.Save(args[1], ImageFormat.Png);
             Console.WriteLine("box art -> " + args[1]);
             return 0;
@@ -103,24 +102,15 @@ static class IconGen
         return 0;
     }
 
-    // wide tile: the icon on the navy gradient, with the name
+    // wide tile: the icon in the middle of the navy gradient (Windows writes the app's name on the tile itself)
     static Bitmap Wide(int w, int h)
     {
         var bmp = new Bitmap(w, h, PixelFormat.Format32bppArgb);
         using (Graphics g = Graphics.FromImage(bmp))
         {
-            g.SmoothingMode = SmoothingMode.AntiAlias;
-            g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
             using (var br = new LinearGradientBrush(new Rectangle(0, 0, w, h), NavyDeep, Navy, 90f)) g.FillRectangle(br, 0, 0, w, h);
             int s = (int)(h * 0.62f);
-            using (Bitmap icon = Render(s)) g.DrawImage(icon, (int)(w * 0.08f), (h - s) / 2, s, s);
-            using (var f = new Font("Segoe UI Semibold", h * 0.13f, FontStyle.Regular, GraphicsUnit.Pixel))
-            using (var b = new SolidBrush(White))
-            {
-                var r = new RectangleF(w * 0.08f + s + w * 0.06f, 0, w, h);
-                var sf = new StringFormat { LineAlignment = StringAlignment.Center };
-                g.DrawString("Super Speed\nNote", f, b, r, sf);
-            }
+            using (Bitmap icon = Render(s)) g.DrawImage(icon, (w - s) / 2, (h - s) / 2, s, s);
         }
         return bmp;
     }
@@ -154,8 +144,7 @@ static class IconGen
                 }
                 g.SetClip(tilePath);
 
-                if (small) DrawMonogram(g, tile);
-                else DrawWordmark(g, tile);
+                DrawMonogram(g, tile);
 
                 g.ResetClip();
                 // hairline edge so the white half never melts into light taskbars
@@ -166,60 +155,27 @@ static class IconGen
         return bmp;
     }
 
-    static void DrawWordmark(Graphics g, RectangleF t)
-    {
-        float left = t.Left + t.Width * 0.25f, right = t.Right - t.Width * 0.09f;
-        var top = new RectangleF(left, t.Top + t.Height * 0.16f, right - left, t.Height * 0.25f);
-        var bot = new RectangleF(left, t.Top + t.Height * 0.59f, right - left, t.Height * 0.25f);
-
-        using (GraphicsPath p1 = TextPath("SUPER", top))
-        using (GraphicsPath p2 = TextPath("SPEED", bot))
-        {
-            using (var sh = new SolidBrush(Color.FromArgb(80, 0, 6, 26)))
-            using (var shPath = (GraphicsPath)p1.Clone())
-            {
-                var mx = new Matrix(); mx.Translate(t.Width * 0.008f, t.Height * 0.014f); shPath.Transform(mx);
-                g.FillPath(sh, shPath);
-            }
-            using (var b1 = new SolidBrush(White)) g.FillPath(b1, p1);
-            using (var b2 = new SolidBrush(Ink)) g.FillPath(b2, p2);
-            Streaks(g, t, p1.GetBounds(), Color.White);
-            Streaks(g, t, p2.GetBounds(), Ink);
-        }
-    }
-
-    // three motion lines trailing to the left of a word
-    static void Streaks(Graphics g, RectangleF t, RectangleF word, Color c)
-    {
-        float th = Math.Max(1.5f, t.Height * 0.022f);
-        float[] lens = { 0.13f, 0.17f, 0.10f };
-        float[] ys = { 0.30f, 0.52f, 0.74f };
-        for (int i = 0; i < 3; i++)
-        {
-            float len = t.Width * lens[i];
-            float y = word.Top + word.Height * ys[i] - th / 2;
-            // follow the italic slant: lower lines start further left
-            float endX = word.Left + word.Width * 0.02f - t.Width * 0.035f + (word.Height * (0.5f - ys[i])) * 0.25f;
-            var r = new RectangleF(endX - len, y, len, th);
-            using (var lb = new LinearGradientBrush(new PointF(r.Left - 1, 0), new PointF(r.Right + 1, 0), Color.FromArgb(0, c), Color.FromArgb(230, c)))
-            using (GraphicsPath rp = RoundRect(r, th / 2))
-                g.FillPath(lb, rp);
-        }
-    }
-
+    // The "S": white at the top fading into ink at the bottom (against the navy -> white tile), with a soft shadow
+    // so it stands off the tile where the two meet
     static void DrawMonogram(Graphics g, RectangleF t)
     {
         var box = new RectangleF(t.Left + t.Width * 0.17f, t.Top + t.Height * 0.12f, t.Width * 0.66f, t.Height * 0.76f);
         using (GraphicsPath p = TextPath("S", box))
         {
-            float split = t.Top + t.Height * 0.52f;
-            Region old = g.Clip;
-            g.SetClip(new RectangleF(t.Left, t.Top, t.Width, split - t.Top), CombineMode.Intersect);
-            using (var b = new SolidBrush(White)) g.FillPath(b, p);
-            g.Clip = old;
-            g.SetClip(new RectangleF(t.Left, split, t.Width, t.Bottom - split), CombineMode.Intersect);
-            using (var b = new SolidBrush(Ink)) g.FillPath(b, p);
-            g.Clip = old;
+            using (var sh = (GraphicsPath)p.Clone())
+            {
+                var mx = new Matrix(); mx.Translate(t.Width * 0.012f, t.Height * 0.02f); sh.Transform(mx);
+                using (var shb = new SolidBrush(Color.FromArgb(70, 0, 6, 26))) g.FillPath(shb, sh);
+            }
+            RectangleF b = p.GetBounds();
+            using (var br = new LinearGradientBrush(new PointF(0, b.Top - 1), new PointF(0, b.Bottom + 1), White, Ink))
+            {
+                var cb = new ColorBlend();
+                cb.Colors = new[] { White, White, Ink, Ink };
+                cb.Positions = new[] { 0f, 0.36f, 0.64f, 1f };
+                br.InterpolationColors = cb;
+                g.FillPath(br, p);
+            }
         }
     }
 
