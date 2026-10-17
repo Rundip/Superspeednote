@@ -2020,10 +2020,21 @@ titleIn.addEventListener('input', () => {
   $('#tbMid').textContent = titleOf(n);
   saveStateSoon(); renderSidebarSoon();
 });
+// Enter / Tab / ↓ in the title: on to the very start of the note (into the first cell / list line if it begins
+// with one). Pressed while a Korean syllable is still being typed, it goes once the syllable is done.
+function bodyStart() {
+  let n = editor.firstChild;
+  while (n && n.nodeType === 1 && /^(TABLE|TBODY|THEAD|TR|UL|OL)$/.test(n.nodeName)) n = n.firstElementChild;
+  return n || editor.firstChild || editor;
+}
+function toBody() { editor.focus(); scroller.scrollTop = 0; placeCaret(bodyStart(), false); }
+let titleGo = false;
 titleIn.addEventListener('keydown', e => {
-  if (e.isComposing) return;
-  if (e.key === 'Enter' || e.key === 'ArrowDown') { e.preventDefault(); editor.focus(); placeCaret(editor.firstChild || editor, false); }
+  const go = e.code === 'Enter' || e.code === 'NumpadEnter' || e.key === 'Enter' || ((e.code === 'Tab' || e.key === 'Tab') && !e.shiftKey && !e.ctrlKey && !e.altKey);
+  if (e.isComposing) { if (go) { e.preventDefault(); titleGo = true; } return; }
+  if (go || e.key === 'ArrowDown') { e.preventDefault(); toBody(); }
 });
+titleIn.addEventListener('compositionend', () => { if (titleGo) { titleGo = false; setTimeout(toBody, 0); } });
 const narrow = matchMedia('(max-width:820px)');  // a half-screen window: the list opens as a drawer over the note
 $('#hSide').onclick = () => {
   if (narrow.matches) { app.classList.toggle('sb-peek'); return; }
