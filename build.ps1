@@ -29,7 +29,7 @@ if (-not (Test-Path $coreDll)) {
     Remove-Item $nupkg
 }
 
-# 2) App icon (navy -> white gradient, "Super Speed" logo) - redrawn whenever tools\IconGen.cs changes
+# 2) App icon (navy -> white gradient tile with an "S") - redrawn whenever tools\IconGen.cs changes
 $ico = Join-Path $assets 'app.ico'
 $genSrc = Join-Path $root 'tools\IconGen.cs'
 $genStamp = Join-Path $obj 'icongen.sha256'
@@ -48,7 +48,9 @@ if ($Icon -or -not (Test-Path $ico) -or $genOld -ne (IconStamp)) {
 
 # 3) A running copy locks the exe: ask it to save and exit first. Notes live in %APPDATA%, never in dist\,
 #    so rebuilding never touches them. (v1.0 builds don't know the quit message: hiding them saves, then stop.)
-$running = Get-Process SuperSpeedNote -ErrorAction SilentlyContinue
+#    The exe may be named SuperSpeedNote_<version>.exe (or renamed): any SuperSpeedNote* process but the start-up helper.
+function AppProcs { Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.ProcessName -like 'SuperSpeedNote*' -and $_.ProcessName -ne 'SuperSpeedNoteStartup' } }
+$running = AppProcs
 if ($running) {
     Write-Host 'Asking the running app to save and exit ...'
     Add-Type -Namespace SSN -Name W -MemberDefinition @'
@@ -57,7 +59,7 @@ if ($running) {
 '@
     [SSN.W]::PostMessage([IntPtr]0xFFFF, [SSN.W]::RegisterWindowMessage('SuperSpeedNote.Quit'), [IntPtr]::Zero, [IntPtr]::Zero) | Out-Null
     $running | ForEach-Object { $_.WaitForExit(5000) | Out-Null }
-    $still = Get-Process SuperSpeedNote -ErrorAction SilentlyContinue
+    $still = AppProcs
     if ($still) {
         $still | ForEach-Object { $_.CloseMainWindow() | Out-Null }
         Start-Sleep -Seconds 2
@@ -65,9 +67,13 @@ if ($running) {
     }
 }
 
-# 4) App
-Write-Host 'Compiling SuperSpeedNote.exe ...'
-$out = Join-Path $dist 'SuperSpeedNote.exe'
+# 4) App, named with its version: dist\SuperSpeedNote_<version>.exe (the version comes from src\Program.cs)
+$m = Select-String -Path (Join-Path $root 'src\Program.cs') -Pattern 'const string Version = "(\d+\.\d+\.\d+)"'
+if (-not $m) { throw 'Version not found in src\Program.cs' }
+$appVersion = $m.Matches[0].Groups[1].Value
+$out = Join-Path $dist "SuperSpeedNote_$appVersion.exe"
+Write-Host "Compiling $(Split-Path $out -Leaf) ..."
+
 $cscArgs = @(
     '/nologo', '/codepage:65001', '/target:winexe', '/platform:x64', '/optimize+', '/debug-',
     "/out:$out",
@@ -86,4 +92,7 @@ $cscArgs = @(
 if ($LASTEXITCODE) { throw 'Compile failed' }
 
 $size = [math]::Round((Get-Item $out).Length / 1KB)
+# the unversioned name of older builds would only be mistaken for the current one
+$old = Join-Path $dist 'SuperSpeedNote.exe'
+if (Test-Path $old) { Remove-Item $old -Force -ErrorAction SilentlyContinue }
 Write-Host "OK -> $out ($size KB, single file)"

@@ -7,7 +7,7 @@
 ## 실행
 
 ```
-dist\SuperSpeedNote.exe
+dist\SuperSpeedNote_<버전>.exe      (예: SuperSpeedNote_1.4.7.exe · 빌드하면 버전이 이름 끝에 붙음)
 ```
 
 - **설치가 필요 없는 단일 실행 파일**(약 1.4MB)입니다. Windows 10/11에 기본으로 들어 있는 .NET Framework 4.8과 Edge WebView2 런타임만 사용합니다.
