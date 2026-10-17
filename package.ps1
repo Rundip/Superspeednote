@@ -62,6 +62,9 @@ $gen = Join-Path $obj 'IconGen.exe'
 if ($LASTEXITCODE) { throw 'IconGen compile failed' }
 & $gen --store (Join-Path $layout 'Assets')
 if ($LASTEXITCODE) { throw 'store logos failed' }
+# the listing's 1:1 logo is the app's own icon (the same drawing as the exe's), redrawn here with Windows' fonts
+& $gen --boxart (Join-Path $root 'store\logos\store-logo-1080.png')
+if ($LASTEXITCODE) { throw 'store box art failed' }
 
 $xml = (Get-Content (Join-Path $root 'store\AppxManifest.template.xml') -Raw -Encoding UTF8).
     Replace('{{NAME}}', $cfg.IdentityName).Replace('{{PUBLISHER}}', [Security.SecurityElement]::Escape($cfg.Publisher)).

@@ -23,15 +23,9 @@ static class IconGen
     static int Main(string[] args)
     {
         if (args.Length == 2 && args[0] == "--store") return StoreAssets(args[1]);
-        if (args.Length == 2 && args[0] == "--boxart")      // 1:1 logo for the Store listing page (1080 x 1080)
-        {
-            using (var bmp = new Bitmap(1080, 1080, PixelFormat.Format32bppArgb))
-            using (Graphics g = Graphics.FromImage(bmp))
-            {
-                using (var br = new LinearGradientBrush(new Rectangle(0, 0, 1080, 1080), NavyDeep, Navy, 90f)) g.FillRectangle(br, 0, 0, 1080, 1080);
-                using (Bitmap icon = Render(760)) g.DrawImage(icon, 160, 160, 760, 760);
-                bmp.Save(args[1], ImageFormat.Png);
-            }
+        if (args.Length == 2 && args[0] == "--boxart")      // 1:1 logo for the Store listing page (1080 x 1080):
+        {                                                   // exactly the app's own icon, on a transparent background
+            using (Bitmap icon = Render(1080)) icon.Save(args[1], ImageFormat.Png);
             Console.WriteLine("box art -> " + args[1]);
             return 0;
         }

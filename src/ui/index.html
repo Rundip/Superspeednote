@@ -168,8 +168,6 @@ body[data-view=editor] #editorView{display:flex}
 #board .card.sel .c-idx{background:var(--sel-chip);border-color:transparent;color:#fff}
 
 /* drag-and-drop insertion marks still win over the selection */
-#board .grid .card.drop-l:is(.sel,.msel){box-shadow:-5px 0 0 -1px var(--accent),var(--sh-1)}
-#board .grid .card.drop-r:is(.sel,.msel){box-shadow:5px 0 0 -1px var(--accent),var(--sh-1)}
 
 /* Windows high contrast drops box-shadows: keep the selection visible with a system-colour outline */
 @media (forced-colors:active){
@@ -213,8 +211,12 @@ body[data-view=editor] #editorView{display:flex}
 .card.new:hover{border-color:var(--accent);box-shadow:var(--sh-1)}
 .card.new:hover .plus{transform:scale(1.08)}
 .card.dragging{opacity:.35}
-.card.drop-l{box-shadow:-5px 0 0 -1px var(--accent),var(--sh-1)}
-.card.drop-r{box-shadow:5px 0 0 -1px var(--accent),var(--sh-1)}
+/* where a dragged note will land: a bar in the gap between cards (board) or rows (list), with round ends */
+#dropMark{position:fixed;display:none;pointer-events:none;z-index:60;border-radius:3px;background:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 22%,transparent),0 0 18px color-mix(in srgb,var(--accent) 55%,transparent)}
+#dropMark.v,#dropMark.h{display:block}
+#dropMark::before,#dropMark::after{content:'';position:absolute;width:10px;height:10px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 2px var(--paper)}
+#dropMark.v::before{left:-3px;top:-6px}#dropMark.v::after{left:-3px;bottom:-6px}
+#dropMark.h::before{top:-3px;left:-6px}#dropMark.h::after{top:-3px;right:-6px}
 .empty{grid-column:1/-1;padding:48px;text-align:center;color:rgba(225,234,255,.85)}
 .empty.zero{order:-1;padding:6px 2px 2px;text-align:left}   /* no notes at all: a heading above the new-note card */
 .empty b{display:block;font-size:15px;font-weight:700}
@@ -985,7 +987,21 @@ const pop = $('#pop'), modal = $('#modal'), findIn = $('#findIn');
 
 // ---------------------------------------------------------------- helpers
 function noteById(id) { return S.notes.find(n => n.id === id); }
-function ordered() { return S.notes.slice().sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0)); }
+// Pinned notes first, in name order (Korean rules: symbols, numbers by value, Hangul ㄱ-ㅎ, Hanja, then A-Z);
+// the rest in the order you put them in
+const nameOrder = new Intl.Collator('ko', { numeric: true, sensitivity: 'base' });
+let pinKey = '', pinIds = [];                    // the name sort runs again only when a pinned note or its name changed
+function ordered() {
+  const pin = S.notes.filter(n => n.pinned);
+  if (!pin.length) return S.notes.slice();
+  const names = pin.map(n => titleOf(n).trim()), key = pin.map((n, i) => n.id + '\x1f' + names[i]).join('\x1e');
+  if (key !== pinKey) {
+    pinKey = key;
+    pinIds = pin.map((n, i) => [n.id, names[i]]).sort((a, b) => nameOrder.compare(a[1], b[1])).map(x => x[0]);
+  }
+  const byId = new Map(pin.map(n => [n.id, n]));
+  return pinIds.map(id => byId.get(id)).concat(S.notes.filter(n => !n.pinned));
+}
 function frag(html) { const t = document.createElement('template'); t.innerHTML = html || ''; return t.content; }
 function previewOf(root, max = 120) {
   let out = '';
@@ -1383,14 +1399,40 @@ let dragId = null, dropAt = null, dragTold = 0;   // dropAt: { id, after } - exa
 // Dragging a note out of the app (the desktop, a folder in Explorer): the drag carries the note as a file named
 // after it (DownloadURL: Windows fetches it from the app's own loopback server when it is dropped) and as plain
 // text for programs that take text (Notepad, a mail body). Settings › 데이터 picks HTML or text.
-let noteDrag = 0, dragSeq = 0;
+let noteDrag = 0, dragSeq = 0, dragSrc = null, sbDrag = null, sbDrop = null, pinTold = 0;
 const isNoteDrag = e => !!e.dataTransfer && Array.from(e.dataTransfer.types).includes('text/x-ssn');
-function dragDone() { noteDrag = 0; dragId = null; dropAt = null; $$('.card', grid).forEach(c => c.classList.remove('dragging', 'drop-l', 'drop-r')); }
+function dragDone() {
+  noteDrag = 0; dragId = null; dropAt = null; dragSrc = null; sbDrag = null; sbDrop = null; hideDropMark();
+  $$('.card', grid).forEach(c => c.classList.remove('dragging', 'drop-l', 'drop-r'));
+}
+// where a dragged note will land: a bar in the gap before / after the card (vertical) or list row (horizontal)
+const dropMark = document.createElement('div');
+dropMark.id = 'dropMark';
+document.body.appendChild(dropMark);
+function showDropMark(el, after, vertical) {
+  const r = el.getBoundingClientRect(), m = dropMark.style;
+  if (vertical) {
+    const gap = parseFloat(getComputedStyle(grid).columnGap) || 16;
+    Object.assign(m, { left: ((after ? r.right + gap / 2 : r.left - gap / 2) - 2) + 'px', top: (r.top + 8) + 'px', width: '4px', height: Math.max(0, r.height - 16) + 'px' });
+  } else {                                        // midway between this row and the one before / after it
+    const nb = after ? el.nextElementSibling : el.previousElementSibling, q = nb && nb.getBoundingClientRect();
+    const y = after ? (q ? (r.bottom + q.top) / 2 : r.bottom + 3) : (q ? (q.bottom + r.top) / 2 : r.top - 3);
+    Object.assign(m, { left: (r.left + 10) + 'px', top: (y - 2) + 'px', width: Math.max(0, r.width - 20) + 'px', height: '4px' });
+  }
+  dropMark.className = vertical ? 'v' : 'h';
+}
+function hideDropMark() { dropMark.className = ''; }
+// pinned notes keep their name order: dragging one shows it can't go elsewhere (it still drags out of the app)
+function pinnedTold(over) {
+  const n = noteById(dragSrc);
+  if (!n || !n.pinned || !over || over.dataset.id === dragSrc || now() - pinTold < 3000) return;
+  pinTold = now(); toast('고정한 메모는 이름 순서로 정렬돼요 · 고정을 풀면 옮길 수 있어요');
+}
 function dragNoteOut(e, id) {
   const n = noteById(id);
   if (!n) return;
   if (id === cur) flushNote();
-  noteDrag = now();
+  noteDrag = now(); dragSrc = id;
   e.dataTransfer.setData('text/x-ssn', id);
   // dragend goes to the element the drag started on, even once a re-render (a reorder, a save) has taken it off
   // the page - where it no longer reaches the board's or the list's own listener
@@ -1407,7 +1449,8 @@ function dragNoteOut(e, id) {
 grid.addEventListener('dragstart', e => {
   const c = e.target.closest('.card[data-id]');
   if (!c) { e.preventDefault(); return; }
-  dragId = query.trim() ? null : c.dataset.id;     // while searching the order can't change, but the note still drags out
+  const pn = noteById(c.dataset.id);
+  dragId = query.trim() || (pn && pn.pinned) ? null : c.dataset.id;   // searching / pinned: the order can't change, but the note still drags out
   e.dataTransfer.effectAllowed = 'copyMove';
   dragNoteOut(e, c.dataset.id);
   c.classList.add('dragging');
@@ -1421,6 +1464,7 @@ grid.addEventListener('dragover', e => {
   if (!dragId) {                                   // searching: no reordering - over another card, say why (the note still drags out)
     const c = noteDrag && query.trim() && e.target.closest('.card[data-id]');
     if (c && !c.classList.contains('dragging') && now() - dragTold > 3000) { dragTold = now(); toast('검색 중에는 순서를 바꿀 수 없어요 · Esc로 검색 지우기'); }
+    else if (noteDrag && !query.trim()) pinnedTold(e.target.closest('.card[data-id]'));
     return;
   }
   e.preventDefault();
@@ -1432,11 +1476,13 @@ grid.addEventListener('dragover', e => {
   e.dataTransfer.dropEffect = across ? 'none' : 'move';
   $$('.drop-l,.drop-r', grid).forEach(x => x.classList.remove('drop-l', 'drop-r'));
   dropAt = null;
-  if (!to || across || to.id === dragId) return;
+  if (!to || across || to.id === dragId) { hideDropMark(); return; }
   const r = c.getBoundingClientRect();
   dropAt = { id: to.id, after: e.clientX >= r.left + r.width / 2 };
   c.classList.add(dropAt.after ? 'drop-r' : 'drop-l');
+  showDropMark(c, dropAt.after, true);
 });
+grid.addEventListener('dragleave', e => { if (!grid.contains(e.relatedTarget)) { dropAt = null; hideDropMark(); $$('.drop-l,.drop-r', grid).forEach(x => x.classList.remove('drop-l', 'drop-r')); } });
 grid.addEventListener('drop', e => {
   if (!dragId) return;
   e.preventDefault();
@@ -1899,10 +1945,40 @@ sbList.addEventListener('blur', () => markSb());
 sbList.addEventListener('dragstart', e => {
   const it = e.target.closest('.sb-item');
   if (!it) { e.preventDefault(); return; }
-  e.dataTransfer.effectAllowed = 'copy';
+  e.dataTransfer.effectAllowed = 'copyMove';
   dragNoteOut(e, it.dataset.id);
+  const n = noteById(it.dataset.id);
+  sbDrag = n && !n.pinned ? n.id : null;          // the list reorders like the board (pinned notes keep their name order)
 });
 sbList.addEventListener('dragend', dragDone);
+sbList.addEventListener('dragover', e => {
+  if (!noteDrag) return;
+  const it = e.target.closest('.sb-item');
+  if (!sbDrag) { pinnedTold(it); return; }
+  e.preventDefault();
+  const from = noteById(sbDrag), to = it && noteById(it.dataset.id);
+  const across = to && !!to.pinned !== !!from.pinned;   // pinned notes stay on top
+  e.dataTransfer.dropEffect = across ? 'none' : 'move';
+  sbDrop = null;
+  if (!to || across || to.id === sbDrag) { hideDropMark(); return; }
+  const r = it.getBoundingClientRect();
+  sbDrop = { id: to.id, after: e.clientY >= r.top + r.height / 2 };
+  showDropMark(it, sbDrop.after, false);
+});
+sbList.addEventListener('dragleave', e => { if (!sbList.contains(e.relatedTarget)) { sbDrop = null; hideDropMark(); } });
+sbList.addEventListener('drop', e => {
+  if (!sbDrag) return;
+  e.preventDefault();
+  const at = sbDrop, id = sbDrag;
+  dragDone();
+  if (!at) return;
+  const [m] = S.notes.splice(S.notes.findIndex(n => n.id === id), 1);
+  let to = S.notes.findIndex(n => n.id === at.id);
+  if (at.after) to++;
+  S.notes.splice(to, 0, m);
+  saveStateSoon();
+  renderSidebar(true); markSb();
+});
 sbList.addEventListener('contextmenu', e => {
   e.preventDefault();
   const it = e.target.closest('.sb-item');
@@ -2016,7 +2092,18 @@ function placeCaret(node, atEnd) {
   if (node.nodeType === 3) { r.setStart(node, atEnd ? node.nodeValue.length : 0); }
   else { r.selectNodeContents(node); r.collapse(!atEnd); }
   const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+  caretBeforeBr();
   scrollCaretIntoView();
+}
+// A caret after a line's closing <br> (an empty line is "<br>" alone) makes Windows' Korean IME type the first
+// consonant twice ("ㄱ가"): it goes in front of that <br>, which is the same place on screen
+function caretBeforeBr() {
+  const sel = getSelection(), r = sel.rangeCount ? sel.getRangeAt(0) : null;
+  if (!r || !r.collapsed || r.startContainer.nodeType !== 1 || !editor.contains(r.startContainer)) return;
+  const el = r.startContainer, k = r.startOffset, prev = el.childNodes[k - 1];
+  if (!prev || prev.nodeName !== 'BR' || k !== el.childNodes.length) return;
+  const c = document.createRange(); c.setStartBefore(prev); c.collapse(true);
+  sel.removeAllRanges(); sel.addRange(c);
 }
 function scrollCaretIntoView() {
   const r = selRange();
@@ -2156,6 +2243,7 @@ function edit(fn) {
   const hs = H.get(cur);
   if (hs) hs.st[hs.i].u = selSave();
   try { fn(); } finally {
+    caretBeforeBr();
     histCommit();
     if (editor.classList.contains('is-empty')) stats(); else statsSoon();
     markDirty(); posOvSoon();
@@ -3574,6 +3662,10 @@ editor.addEventListener('paste', e => {
 });
 function doPaste(text, html, files, plain) {
   text = text || '';
+  // Windows hands HTML over as a page with line breaks around the copied part: only the part itself (the line
+  // break before it came in as a space at the start)
+  const fr = html && /<!--StartFragment-->([\s\S]*)<!--EndFragment-->/.exec(html);
+  if (fr) html = fr[1];
   if (files.length && !text.trim()) { files.forEach(insertImageFile); return; }
   const g = plain ? null : (html && gridFromHtml(html)) || gridFromTSV(text);
   if (g && (g.length > 1 || g[0].length > 1)) { pasteGrid(g, text); return; }
@@ -3592,6 +3684,12 @@ function doPaste(text, html, files, plain) {
     else {
       const d = document.createElement('div');
       d.appendChild(sanitize(html));
+      // white space around the copied part (the source's layout) is not part of it
+      while (d.firstChild && d.firstChild.nodeType === 3 && !d.firstChild.nodeValue.trim()) d.firstChild.remove();
+      while (d.lastChild && d.lastChild.nodeType === 3 && !d.lastChild.nodeValue.trim()) d.lastChild.remove();
+      // one list item from elsewhere: just its text, not another bullet
+      const only = d.children.length === 1 && d.childNodes.length === 1 && /^(UL|OL)$/.test(d.firstChild.nodeName) && d.firstChild.children.length === 1 ? d.firstChild.firstElementChild : null;
+      if (only) { d.innerHTML = ''; while (only.firstChild) d.appendChild(only.firstChild); }
       if (d.innerHTML) exec('insertHTML', d.innerHTML); else exec('insertText', text);
     }
   });
@@ -3706,9 +3804,29 @@ function gridToClipboard(cd, rows) {
 }
 function wholeTable(t) { return { t, r0: 0, r1: t.rows.length - 1, c0: 0, c1: Math.max(0, tableCols(t) - 1) }; }
 let copyT = 0;
+// Copying text in a note: exactly what is selected - a line from a list comes without its bullet (pasted, it is
+// just that text, not another list item), lines from a list become plain lines, no empty line from a triple-click
+function selClip() {
+  const r = selRange();
+  if (!r || r.collapsed || !editor.contains(r.commonAncestorContainer)) return null;
+  const box = document.createElement('div');
+  box.appendChild(r.cloneContents());
+  box.querySelectorAll('li').forEach(li => { const d = document.createElement('div'); while (li.firstChild) d.appendChild(li.firstChild); li.replaceWith(d); });
+  box.querySelectorAll('ul,ol').forEach(unwrap);
+  const blank = n => n && (n.nodeType === 3 ? !n.nodeValue.trim() : n.nodeType === 1 && !n.textContent.trim() && !n.querySelector('img,hr,table') && !/^(IMG|HR|TABLE)$/.test(n.nodeName));
+  while (box.childNodes.length > 1 && blank(box.lastChild)) box.lastChild.remove();     // the next line's start, caught by a triple-click
+  while (box.childNodes.length > 1 && blank(box.firstChild)) box.firstChild.remove();
+  // one line (or part of one): its contents only, so the paste goes into the line it lands in
+  if (box.childNodes.length === 1 && box.firstChild.nodeType === 1 && /^(DIV|P)$/.test(box.firstChild.nodeName)) unwrap(box.firstChild);
+  return { html: box.innerHTML, text: toPlain(box).replace(/\n+$/, '') };
+}
 editor.addEventListener('copy', e => {
   const whole = objSel && objSel.nodeName === 'TABLE', rc = whole ? wholeTable(objSel) : selCellRect();
-  if (!rc) return;
+  if (!rc) {
+    const c = !objSel && selClip();
+    if (c) { e.preventDefault(); e.clipboardData.setData('text/plain', c.text); e.clipboardData.setData('text/html', c.html); }
+    return;
+  }
   e.preventDefault();
   gridToClipboard(e.clipboardData, rectRows(rc));
   const box = whole ? objbox : cellbox;           // the copied cells get a dashed frame for a moment
@@ -3718,7 +3836,11 @@ editor.addEventListener('copy', e => {
 editor.addEventListener('cut', e => {
   if (objSel && objSel.nodeName === 'TABLE') { e.preventDefault(); gridToClipboard(e.clipboardData, rectRows(wholeTable(objSel))); deleteObj(); return; }
   const rc = selCellRect();
-  if (!rc) return;
+  if (!rc) {
+    const c = !objSel && selClip();
+    if (c) { e.preventDefault(); e.clipboardData.setData('text/plain', c.text); e.clipboardData.setData('text/html', c.html); edit(() => exec('delete')); }
+    return;
+  }
   e.preventDefault();
   gridToClipboard(e.clipboardData, rectRows(rc));
   edit(() => { for (const c of rectCells(rc)) c.innerHTML = '<br>'; });
@@ -4490,6 +4612,9 @@ function searchLines(q, limit = 50) {
   for (let r = 0; r < N && out.length < 3000; r++) {
     const n = notes[r], L = linesOf(n.id), tn = { l: titleOf(n).toLowerCase() };
     const fresh = (N - r) / N * 30;               // newer notes first among equals
+    // every word is in the note's name: its lines come up too (after lines with the words), in order
+    const byTitle = !!n.title && terms.every((t, j) => termAt(tn, t, kinds[j]) >= 0);
+    let fromTitle = 0;
     for (let i = 0; i < L.length; i++) {
       const x = L[i], l = x.l;
       let inLine = 0, inCtx = 0, ok = true, end = 0, ak = '';   // end: where the last word found in the line ends
@@ -4505,7 +4630,11 @@ function searchLines(q, limit = 50) {
         if (termAt(tn, t, kinds[j]) >= 0) continue;                                // or the note's name
         ok = false; break;
       }
-      if (!ok || !inLine) continue;
+      if (!ok) continue;
+      if (!inLine) {
+        if (byTitle && fromTitle < 20 && x.s.trim()) out.push({ n, i, x, sc: 400 + fresh - fromTitle++ * 3, part: usedPart(use[n.id + SEP + x.s], x), ak: '', end: 0 });
+        continue;
+      }
       let sc = (inLine === terms.length ? 1000 : 0) + inCtx * 50 + fresh - Math.min(60, x.s.length / 6) - (x.hd ? 150 : 0) - (x.hd2 ? 120 : 0);
       if (l === ql && !x.hd2) sc += 300;          // a heading is where to look, not what to paste
       else { const p = l.indexOf(terms[0]); if (p === 0) sc += 80; else if (p > 0 && /[\s\t(\[:/,·-]/.test(l[p - 1])) sc += 40; }
@@ -4610,7 +4739,7 @@ function openPalette(mode) {
   const inp = $('#palIn'), list = $('#palList'), pv = $('#palPv');
   const tip = `<p>거래처 이름, 계좌, 전화번호처럼 <b>기억나는 단어</b>를 입력하면 모든 메모에서 그 줄을 찾아요.</p><p>띄어쓰기로 단어를 더 넣으면 좁혀져요. 메모 제목·표의 열 이름도 함께 찾아요. 예) <i>한빛 전화</i></p><p><b>ㄱㅊㅅ</b>처럼 초성만 넣어도 돼요.</p><p>다른 프로그램에서도 <b>${esc(kl0(st.findHotkey))}</b> 단축키로 바로 불러올 수 있어요.</p><p>표의 한 행은 <b>Tab</b>으로 칸 하나만 골라 붙여넣을 수 있어요.</p>`;
   let items = [], idx = 0, terms = [], q = '', fit = 40;   // fit: characters a result row shows (wide Hangul)
-  const where = it => [titleOf(it.n) || '제목 없음', !it.x.c && it.x.sec].filter(Boolean).map(esc).join(' › ');
+  const where = it => [mark(titleOf(it.n) || '제목 없음', terms), !it.x.c && it.x.sec && esc(it.x.sec)].filter(Boolean).join(' › ');
   const itemHTML = (it, i) => {
     const P = it.part >= 0 ? partsOf(it.x)[it.part] : null;
     return `<div class="qs-item${i === idx ? ' on' : ''}" data-i="${i}"><span class="c-dot" data-c="${it.n.color}" style="--c:${NOTE_COLORS[it.n.color]}"></span>` +
@@ -5805,7 +5934,7 @@ setInterval(() => {                                // "3분 전" labels
     if (n && t) { const v = relTime(n.updated); if (t.textContent !== v) t.textContent = v; }
   }
 }, 60000);
-window.__ssn = { S, bodies, openNote, showBoard, newNote, applyHotkeys, saveStateSoon, doPaste, tableOp, undo, redo, searchLines, openPalette, quickStart, quickEnd, deleteNotes, openTrash, toPlain, hist: () => ({ burst: !!burstSel, kind: grpKind, word: grpWord, at: grpAtKey, timer: !!histT, i: (H.get(cur) || {}).i, n: ((H.get(cur) || {}).st || []).length }) };   // debugging handle
+window.__ssn = { S, bodies, ordered, openNote, showBoard, newNote, applyHotkeys, saveStateSoon, doPaste, tableOp, undo, redo, searchLines, openPalette, quickStart, quickEnd, deleteNotes, openTrash, toPlain, hist: () => ({ burst: !!burstSel, kind: grpKind, word: grpWord, at: grpAtKey, timer: !!histT, i: (H.get(cur) || {}).i, n: ((H.get(cur) || {}).st || []).length }) };   // debugging handle
 })();
 </script>
 </body>
