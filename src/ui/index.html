@@ -1600,8 +1600,11 @@ function deleteNotes(ids) {
     if (done) return;
     done = true;
     if (boardUndo === undoDel) boardUndo = null;
-    const back = items.filter(x => !noteById(x.meta.id));   // already restored from the trash: never a second copy
-    if (!back.length) { toast('이미 복원된 메모예요'); return; }
+    // already restored from the trash: never a second copy. A note whose file wasn't read stays in the trash
+    // (its text is only there): restored from the trash, never re-saved from the empty copy here
+    const keep = items.filter(x => unread.has(x.meta.id) || missing.has(x.meta.id));
+    const back = items.filter(x => !noteById(x.meta.id) && !keep.includes(x));
+    if (!back.length) { toast(keep.length ? '읽지 못했던 메모는 휴지통에서 복원해 주세요' : '이미 복원된 메모예요'); return; }
     for (const x of back) {                       // ascending original positions -> each lands where it was
       if (S.notes.length >= MAX_NOTES) break;
       S.notes.splice(Math.min(x.i, S.notes.length), 0, x.meta);

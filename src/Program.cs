@@ -2556,7 +2556,9 @@ namespace SuperSpeedNote
             while (true)
             {
                 System.Net.Sockets.TcpClient c;
-                try { c = listener.AcceptTcpClient(); } catch (Exception ex) { Program.Log(ex); return; }
+                try { c = listener.AcceptTcpClient(); }
+                catch (ObjectDisposedException) { return; }
+                catch (Exception ex) { Program.Log(ex); Thread.Sleep(200); continue; }   // one failed accept doesn't stop the server
                 if (Interlocked.Increment(ref active) > 6) { Interlocked.Decrement(ref active); try { c.Close(); } catch { } continue; }
                 var client = c;
                 new Thread(() => { try { Handle(client); } finally { Interlocked.Decrement(ref active); } }) { IsBackground = true, Name = "ssn-drag-req" }.Start();
