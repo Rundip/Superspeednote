@@ -1396,11 +1396,14 @@ grid.addEventListener('contextmenu', e => {
   setSel(c.dataset.id, false); noteMenu(c.dataset.id, e.clientX, e.clientY);
 });
 let dragId = null, dropAt = null, dragTold = 0;   // dropAt: { id, after } - exactly where the line is shown
-// Dragging a note out of the app (the desktop, a folder in Explorer): the drag carries the note as a file named
-// after it (DownloadURL: Windows fetches it from the app's own loopback server when it is dropped) and as plain
-// text for programs that take text (Notepad, a mail body). Settings › 데이터 picks HTML or text.
-let noteDrag = 0, dragSeq = 0, dragSrc = null, sbDrag = null, sbDrop = null, pinTold = 0;
-const isNoteDrag = e => !!e.dataTransfer && Array.from(e.dataTransfer.types).includes('text/x-ssn');
+// Dragging a note out of the app (the desktop, a folder, a mail): a file named after the note (Settings › 데이터
+// picks HTML or text), made and dragged by the shell, with the note's text for programs that take text.
+let noteDrag = 0, dragSrc = null, sbDrag = null, sbDrop = null, pinTold = 0;
+// a note being dragged: in the app the shell's own file drag (it carries a file, so it is told apart by this flag),
+// in a browser the page's drag (its own type)
+const isNoteDrag = e => (HOST && !!noteDrag) || (!!e.dataTransfer && Array.from(e.dataTransfer.types).includes('text/x-ssn'));
+// a click means no drag is going on (in case the shell's "ended" never came)
+document.addEventListener('mousedown', () => { if (HOST && noteDrag && now() - noteDrag > 400) dragDone(); }, true);
 function dragDone() {
   noteDrag = 0; dragId = null; dropAt = null; dragSrc = null; sbDrag = null; sbDrop = null; hideDropMark();
   $$('.card', grid).forEach(c => c.classList.remove('dragging', 'drop-l', 'drop-r'));
@@ -1433,18 +1436,21 @@ function dragNoteOut(e, id) {
   if (!n) return;
   if (id === cur) flushNote();
   noteDrag = now(); dragSrc = id;
+  const kind = st.dragFormat === 'txt' ? 'txt' : 'html', { name, content } = exportContent(id, kind);
+  const text = (n.title ? n.title + '\n\n' : '') + noteText(id);
+  if (HOST) {
+    // the app drags a real file itself (WebView2 makes no file from a page's drag): this drag stops here, the
+    // shell's starts at once while the button is still down. Over the app it reorders like this one did; the
+    // shell says when it ended (dragOutDone)
+    e.preventDefault();
+    host.send('dragOut', kind, name.replace(/\.[^.]+$/, ''), text.replace(/\x1f/g, ' '), content);
+    return;
+  }
   e.dataTransfer.setData('text/x-ssn', id);
   // dragend goes to the element the drag started on, even once a re-render (a reorder, a save) has taken it off
   // the page - where it no longer reaches the board's or the list's own listener
   e.target.addEventListener('dragend', dragDone, { once: true });
-  const kind = st.dragFormat === 'txt' ? 'txt' : 'html', { name, content } = exportContent(id, kind);
-  const text = (n.title ? n.title + '\n\n' : '') + noteText(id);
   e.dataTransfer.setData('text/plain', text);
-  if (HOST && boot.dragBase) {
-    const key = id + '-' + (++dragSeq);
-    host.send('dragFile', key, kind, content);
-    e.dataTransfer.setData('DownloadURL', `${kind === 'txt' ? 'text/plain' : 'text/html'}:${name}:${boot.dragBase}${encodeURIComponent(key)}`);
-  }
 }
 grid.addEventListener('dragstart', e => {
   const c = e.target.closest('.card[data-id]');
@@ -5850,6 +5856,7 @@ if (HOST) window.chrome.webview.addEventListener('message', e => {
     }
     case 'trash': onTrash(arg); break;
     case 'trashRestored': onTrashRestored(arg); break;
+    case 'dragOutDone': if (noteDrag) { dragDone(); if (view === 'board') boardSearch.focus({ preventScroll: true }); } break;
     case 'quick':                                 // global quick memo hotkey
       if (arg === 'open') quickStart();
       else if (arg === 'close' || arg === 'main') quickEnd(arg);

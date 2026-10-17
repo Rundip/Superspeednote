@@ -33,7 +33,7 @@ namespace SuperSpeedNote
 {
     static class Program
     {
-        public const string Version = "1.4.6";
+        public const string Version = "1.4.7";
         public const string WebView2Version = "1.0.4258.31";
         public static string DataDir, LocalDir;
         public static bool Portable;                  // a "data" folder next to the exe holds the notes (test / USB copies)
@@ -392,7 +392,6 @@ namespace SuperSpeedNote
             webStarted = false;
             try { if (ctl != null) ctl.Close(); } catch { }
             ctl = null; wv = null; env = null; envTask = null; bootTask = null;
-            DragServer.Clear();
             activeNote = ""; hasReturn = false; pendingOpen = null; pendingNew = false; pendingPalette = null; paletteOpen = false;
             GC.Collect(); GC.WaitForPendingFinalizers(); GC.Collect();
             UpdateTrayText();
@@ -1250,7 +1249,7 @@ namespace SuperSpeedNote
                 wv.WebResourceRequested += OnResource;
                 wv.WebMessageReceived += OnMessage;
                 wv.NewWindowRequested += (o, e) => { e.Handled = true; OpenUrl(e.Uri); };
-                wv.DownloadStarting += (o, e) => { e.Handled = true; };   // a note dragged out: no download pop-up
+                wv.DownloadStarting += (o, e) => { e.Cancel = true; e.Handled = true; };   // the app never downloads (no empty download list)
                 wv.NavigationStarting += (o, e) => { if (!e.Uri.StartsWith(Origin, StringComparison.OrdinalIgnoreCase)) e.Cancel = true; };
                 wv.PermissionRequested += (o, e) =>
                 {
@@ -1301,8 +1300,6 @@ namespace SuperSpeedNote
             catch (Exception ex) { Program.Log(ex); }
             sb.Append("},unread:[").Append(string.Join(",", unread.Distinct().Select(Json))).Append("]");
             sb.Append(",autostart:").Append(Json(GetStartupMode()));
-            DragServer.Start();
-            sb.Append(",dragBase:").Append(Json(DragServer.Base ?? ""));
             sb.Append(",dataDir:").Append(Json(Program.DataDir)).Append("};");
             return sb.ToString();
         }
@@ -1484,12 +1481,10 @@ namespace SuperSpeedNote
                     if (quick != null) quick.BackColor = quickBg;
                     if (ctl != null) ctl.DefaultBackgroundColor = webIn == pop ? popBg : webIn == quick ? quickBg : bg;
                     break;
-                case "dragFile":                                 // key, "html" | "txt", the note as that file: fetched when dropped
+                case "dragOut":                                  // "html" | "txt", file name, plain text, the note as that file
                     {
-                        // only kept here: the file (pictures inlined) is made when something actually fetches it
-                        string key = Cut(ref a), kind = Cut(ref a), body = a;
-                        if (kind == "txt") DragServer.Put(key, "text/plain; charset=utf-8", () => new UTF8Encoding(true).GetPreamble().Concat(Encoding.UTF8.GetBytes(body.Replace("\r\n", "\n").Replace("\n", "\r\n"))).ToArray());
-                        else DragServer.Put(key, "text/html; charset=utf-8", () => Encoding.UTF8.GetBytes(InlineImages(body)));
+                        string kind = Cut(ref a), name = Cut(ref a), text = Cut(ref a), body = a;
+                        BeginInvoke(new Action(() => DragOut(kind, name, text, body)));
                         break;
                     }
                 case "export": { string name = Cut(ref a), body = a; BeginInvoke(new Action(() => Export(name, body))); break; }
@@ -1591,6 +1586,36 @@ namespace SuperSpeedNote
                 string f = Path.Combine(ImagesDir, m.Groups[1].Value);
                 return File.Exists(f) ? "data:" + Mime(f) + ";base64," + Convert.ToBase64String(File.ReadAllBytes(f)) : m.Value;
             });
+        }
+
+        // Dragging a note out of the app (the desktop, a folder, a mail): WebView2 can't make a file from a page's drag
+        // (its DownloadURL drop only opens an empty download list), so the app drags a real file itself - written to a
+        // temp folder under the note's name - with the note's text alongside. The page cancels its own drag and asks
+        // for this one while the mouse button is still down; dropped back on the app, the page reorders as before.
+        void DragOut(string kind, string name, string text, string body)
+        {
+            try
+            {
+                string root = Path.Combine(Path.GetTempPath(), "SuperSpeedNote-drag");
+                try   // files of earlier drags (a folder or the desktop took a copy, or nothing did)
+                {
+                    if (Directory.Exists(root))
+                        foreach (string d in Directory.GetDirectories(root))
+                            if (Directory.GetCreationTimeUtc(d) < DateTime.UtcNow.AddMinutes(-30)) Directory.Delete(d, true);
+                }
+                catch (Exception ex) { Program.Log(ex); }
+                string dir = Path.Combine(root, Guid.NewGuid().ToString("N").Substring(0, 10));   // its own folder: the name stays the note's
+                Directory.CreateDirectory(dir);
+                string file = Path.Combine(dir, NoteFiles.FileBase(name) + (kind == "txt" ? ".txt" : ".html"));
+                if (kind == "txt") File.WriteAllText(file, body.Replace("\r\n", "\n").Replace("\n", "\r\n"), new UTF8Encoding(true));
+                else File.WriteAllText(file, InlineImages(body), new UTF8Encoding(false));
+                var data = new DataObject();
+                data.SetData(DataFormats.FileDrop, new[] { file });
+                if (text.Length > 0) data.SetData(DataFormats.UnicodeText, text);
+                DoDragDrop(data, DragDropEffects.Copy | DragDropEffects.Move);
+            }
+            catch (Exception ex) { Program.Log(ex); }
+            finally { Post("dragOutDone", ""); }
         }
 
         void Export(string name, string content)
@@ -2499,110 +2524,6 @@ namespace SuperSpeedNote
             Directory.CreateDirectory(Path.GetDirectoryName(target));
             File.Move(path, target);
             if (info.Length > 0) File.WriteAllText(Path.ChangeExtension(target, ".json"), info, Utf8);
-        }
-    }
-
-    // Dragging a note out of the app (onto the desktop, into a folder): the page gives the drag a "DownloadURL" that
-    // points here, and when the note is dropped Windows fetches the file from this tiny server. It listens on the
-    // loopback address only, every address carries a random key, and it only hands out the notes the page put
-    // here for a drag (the last few). A request gets a few seconds and a handful at a time, so nothing local can
-    // tie it up.
-    static class DragServer
-    {
-        sealed class Item { public string Mime; public Func<byte[]> Make; public byte[] Bytes; }
-        static System.Net.Sockets.TcpListener listener;
-        static string prefix;
-        static int active;
-        static readonly object gate = new object();
-        static readonly Dictionary<string, Item> files = new Dictionary<string, Item>(StringComparer.Ordinal);
-        static readonly Queue<string> order = new Queue<string>();
-        public static string Base { get; private set; }
-
-        public static void Start()
-        {
-            lock (gate)
-            {
-                if (listener != null) return;
-                try
-                {
-                    var rnd = new byte[16];
-                    using (var rng = System.Security.Cryptography.RandomNumberGenerator.Create()) rng.GetBytes(rnd);
-                    string token = string.Concat(rnd.Select(b => b.ToString("x2")));
-                    listener = new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback, 0);
-                    listener.Start();
-                    prefix = "/drag/" + token + "/";
-                    Base = "http://127.0.0.1:" + ((System.Net.IPEndPoint)listener.LocalEndpoint).Port + prefix;
-                    new Thread(Serve) { IsBackground = true, Name = "ssn-drag" }.Start();
-                }
-                catch (Exception ex) { Program.Log(ex); listener = null; Base = null; }
-            }
-        }
-
-        // make: builds the file when it is fetched (once)
-        public static void Put(string key, string mime, Func<byte[]> make)
-        {
-            lock (gate)
-            {
-                if (!files.ContainsKey(key)) order.Enqueue(key);
-                files[key] = new Item { Mime = mime, Make = make };
-                while (order.Count > 4) files.Remove(order.Dequeue());
-            }
-        }
-
-        public static void Clear() { lock (gate) { files.Clear(); order.Clear(); } }
-
-        static void Serve()
-        {
-            while (true)
-            {
-                System.Net.Sockets.TcpClient c;
-                try { c = listener.AcceptTcpClient(); }
-                catch (ObjectDisposedException) { return; }
-                catch (Exception ex) { Program.Log(ex); Thread.Sleep(200); continue; }   // one failed accept doesn't stop the server
-                if (Interlocked.Increment(ref active) > 6) { Interlocked.Decrement(ref active); try { c.Close(); } catch { } continue; }
-                var client = c;
-                new Thread(() => { try { Handle(client); } finally { Interlocked.Decrement(ref active); } }) { IsBackground = true, Name = "ssn-drag-req" }.Start();
-            }
-        }
-
-        static void Handle(System.Net.Sockets.TcpClient c)
-        {
-            using (c)
-            using (var deadline = new System.Threading.Timer(_ => { try { c.Close(); } catch { } }, null, 3000, Timeout.Infinite))
-            {
-                try
-                {
-                    c.ReceiveTimeout = 3000; c.SendTimeout = 10000;
-                    var s = c.GetStream();
-                    var buf = new byte[8192];
-                    int n = 0;
-                    while (n < buf.Length)
-                    {
-                        int k = s.Read(buf, n, buf.Length - n);
-                        if (k <= 0) break;
-                        n += k;
-                        if (Encoding.ASCII.GetString(buf, 0, n).Contains("\r\n\r\n")) break;
-                    }
-                    deadline.Change(30000, Timeout.Infinite);           // the request is in: time to send the file
-                    string[] req = Encoding.ASCII.GetString(buf, 0, n).Split('\r')[0].Split(' ');
-                    Item f = null;
-                    bool head = req.Length >= 2 && req[0] == "HEAD";
-                    if (req.Length >= 2 && (req[0] == "GET" || head) && req[1].StartsWith(prefix, StringComparison.Ordinal))
-                        lock (gate) files.TryGetValue(Uri.UnescapeDataString(req[1].Substring(prefix.Length)), out f);
-                    byte[] data = null;
-                    if (f != null)
-                    {
-                        data = f.Bytes;
-                        if (data == null) { data = f.Make(); lock (gate) f.Bytes = data; }
-                    }
-                    byte[] top = Encoding.ASCII.GetBytes(data != null
-                        ? "HTTP/1.1 200 OK\r\nContent-Type: " + f.Mime + "\r\nContent-Length: " + data.Length + "\r\nCache-Control: no-store\r\nConnection: close\r\n\r\n"
-                        : "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
-                    s.Write(top, 0, top.Length);
-                    if (data != null && !head) s.Write(data, 0, data.Length);
-                }
-                catch (Exception ex) { Program.Log(ex); }
-            }
         }
     }
 
