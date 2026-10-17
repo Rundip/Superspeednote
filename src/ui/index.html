@@ -2506,13 +2506,23 @@ function liAtLineStart() {
   pre.setStart(li, 0); pre.setEnd(r.startContainer, r.startOffset);
   return pre.toString() || pre.cloneContents().querySelector('img') ? null : li;
 }
-// Backspace at the start of a list line: 1st press takes the bullet off that line only (the text stays where it
-// is), the next press moves the line out one level; an empty top-level line leaves the list at once.
+// Backspace at the start of a list line, the way back up:
+//  - a sub-item goes up one level at once, bullet and all (like Shift+Tab): it becomes the next item of the
+//    level above - numbered on from it - and the lines below it become its sub-items
+//  - a top-level line: the 1st press takes its bullet off (the text stays where it is, the numbers below carry
+//    on), the next press makes it a normal line; an empty top-level line leaves the list at once
 function listBackspace() {
   const li = liAtLineStart();
   if (!li) return false;
+  const up = li.parentElement.parentElement, nested = isList(up) || (up && up.nodeName === 'LI');
   edit(() => {
-    if (!li.classList.contains('nob') && !emptyHtml(li.innerHTML)) {
+    if (nested) {
+      li.classList.remove('nob');
+      liftItem(li);
+      const L = li.parentElement;
+      if (L && !L.classList.contains('checklist')) delete li.dataset.checked;
+      else if (L && !li.dataset.checked) li.dataset.checked = 'false';
+    } else if (!li.classList.contains('nob') && !emptyHtml(li.innerHTML)) {
       li.classList.add('nob'); delete li.dataset.checked;
       placeCaret(li, false);
     } else liftItem(li);
