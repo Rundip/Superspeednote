@@ -1574,7 +1574,23 @@ namespace SuperSpeedNote
                 case "dragOut":                                  // "html" | "txt", file name, plain text, the note as that file
                     {
                         string kind = Cut(ref a), name = Cut(ref a), text = Cut(ref a), body = a;
-                        BeginInvoke(new Action(() => DragOut(kind, name, text, body)));
+                        BeginInvoke(new Action(() => DragOut(kind, new[] { name }, new[] { body }, text)));
+                        break;
+                    }
+                case "dragOutMany":                              // several picked notes: kind, all their text, then
+                    {                                            // name \x1d file of each, \x1e between notes
+                        string kind = Cut(ref a), text = Cut(ref a);
+                        var names = new List<string>();
+                        var bodies = new List<string>();
+                        foreach (string it in a.Split('\x1e'))
+                        {
+                            int k = it.IndexOf('\x1d');
+                            if (k < 0) continue;
+                            names.Add(it.Substring(0, k));
+                            bodies.Add(it.Substring(k + 1));
+                        }
+                        if (names.Count > 0) BeginInvoke(new Action(() => DragOut(kind, names.ToArray(), bodies.ToArray(), text)));
+                        else Post("dragOutDone", "");
                         break;
                     }
                 case "export": { string name = Cut(ref a), body = a; BeginInvoke(new Action(() => Export(name, body))); break; }
@@ -1682,7 +1698,7 @@ namespace SuperSpeedNote
         // (its DownloadURL drop only opens an empty download list), so the app drags a real file itself - written to a
         // temp folder under the note's name - with the note's text alongside. The page cancels its own drag and asks
         // for this one while the mouse button is still down; dropped back on the app, the page reorders as before.
-        void DragOut(string kind, string name, string text, string body)
+        void DragOut(string kind, string[] names, string[] bodies, string text)
         {
             try
             {
@@ -1694,13 +1710,20 @@ namespace SuperSpeedNote
                             if (Directory.GetCreationTimeUtc(d) < DateTime.UtcNow.AddMinutes(-30)) Directory.Delete(d, true);
                 }
                 catch (Exception ex) { Program.Log(ex); }
-                string dir = Path.Combine(root, Guid.NewGuid().ToString("N").Substring(0, 10));   // its own folder: the name stays the note's
+                string dir = Path.Combine(root, Guid.NewGuid().ToString("N").Substring(0, 10));   // its own folder: the names stay the notes'
                 Directory.CreateDirectory(dir);
-                string file = Path.Combine(dir, NoteFiles.FileBase(name) + (kind == "txt" ? ".txt" : ".html"));
-                if (kind == "txt") File.WriteAllText(file, body.Replace("\r\n", "\n").Replace("\n", "\r\n"), new UTF8Encoding(true));
-                else File.WriteAllText(file, InlineImages(body), new UTF8Encoding(false));
+                string ext = kind == "txt" ? ".txt" : ".html";
+                var files = new List<string>();
+                for (int i = 0; i < names.Length; i++)
+                {
+                    string stem = NoteFiles.FileBase(names[i]), file = Path.Combine(dir, stem + ext);
+                    for (int k = 2; File.Exists(file); k++) file = Path.Combine(dir, stem + " (" + k + ")" + ext);   // two notes, one name
+                    if (kind == "txt") File.WriteAllText(file, bodies[i].Replace("\r\n", "\n").Replace("\n", "\r\n"), new UTF8Encoding(true));
+                    else File.WriteAllText(file, InlineImages(bodies[i]), new UTF8Encoding(false));
+                    files.Add(file);
+                }
                 var data = new DataObject();
-                data.SetData(DataFormats.FileDrop, new[] { file });
+                data.SetData(DataFormats.FileDrop, files.ToArray());
                 if (text.Length > 0) data.SetData(DataFormats.UnicodeText, text);
                 DoDragDrop(data, DragDropEffects.Copy | DragDropEffects.Move);
             }

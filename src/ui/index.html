@@ -1441,12 +1441,19 @@ grid.addEventListener('mousedown', e => {
   const id = c.dataset.id;
   if (e.shiftKey) { e.preventDefault(); setSel(id, false, 'range'); }
   else if (e.ctrlKey || e.metaKey) { e.preventDefault(); setSel(id, false, 'toggle'); }
-  else if (e.button === 2 && multi.has(id) && multi.size > 1) { selId = id; markSel(); }   // right-click inside a multi-selection keeps it
+  else if (multi.has(id) && multi.size > 1) {     // pressed inside a multi-selection: it stays, so a right-click or a
+    selId = id; markSel();                        // drag (out to a folder) takes them all; a plain click picks this one
+    keepPick = e.button === 0 ? id : null;
+  }
   else setSel(id, false);
 });
+let keepPick = null;
 grid.addEventListener('click', e => {
   const cp = e.target.closest('.c-copy');
   if (cp) { copyNote(cp.closest('.card').dataset.id); return; }
+  const kc = e.target.closest('.card[data-id]');
+  if (keepPick && kc && kc.dataset.id === keepPick && !e.shiftKey && !e.ctrlKey && !e.metaKey) { keepPick = null; setSel(kc.dataset.id, false); return; }
+  keepPick = null;
   if (e.target.closest('.card.new')) newNote();
   else if (!e.target.closest('.card[data-id]') && e.target === grid) clearMulti();       // click on empty space
 });
@@ -1516,26 +1523,37 @@ function pinnedTold(over) {
   if (!n || !n.pinned || !over || over.dataset.id === dragSrc || now() - pinTold < 3000) return;
   pinTold = now(); toast('고정한 메모는 이름 순서로 정렬돼요 · 고정을 풀면 옮길 수 있어요');
 }
-function dragNoteOut(e, id) {
+// group: the notes picked with Ctrl / Shift (board or list) - dragging one of them takes them all out, a file each
+function dragNoteOut(e, id, group) {
   const n = noteById(id);
-  if (!n) return;
-  if (id === cur) flushNote();
+  if (!n) return 0;
+  const ids = group && group.size > 1 && group.has(id) ? ordered().map(x => x.id).filter(x => group.has(x)) : [id];
+  if (ids.includes(cur)) flushNote();
   noteDrag = now(); dragSrc = id;
-  const kind = st.dragFormat === 'txt' ? 'txt' : 'html', { name, content } = exportContent(id, kind);
-  const text = (n.title ? n.title + '\n\n' : '') + noteText(id);
+  const kind = st.dragFormat === 'txt' ? 'txt' : 'html';
+  const textOf = i => { const m = noteById(i); return (m && m.title ? m.title + '\n\n' : '') + noteText(i); };
+  const text = ids.map(textOf).join('\n\n');
   if (HOST) {
     // the app drags a real file itself (WebView2 makes no file from a page's drag): this drag stops here, the
     // shell's starts at once while the button is still down. Over the app it reorders like this one did; the
     // shell says when it ended (dragOutDone)
     e.preventDefault();
-    host.send('dragOut', kind, name.replace(/\.[^.]+$/, ''), text.replace(/\x1f/g, ' '), content);
-    return;
+    const clean = s => s.replace(/[\x1d\x1e\x1f]/g, ' ');
+    if (ids.length === 1) {
+      const { name, content } = exportContent(id, kind);
+      host.send('dragOut', kind, name.replace(/\.[^.]+$/, ''), clean(text), content);
+    } else {                                        // several: name and file of each (\x1d inside, \x1e between)
+      const items = ids.map(i => { const { name, content } = exportContent(i, kind); return clean(name.replace(/\.[^.]+$/, '')) + '\x1d' + clean(content); });
+      host.send('dragOutMany', kind, clean(text), items.join('\x1e'));
+    }
+    return ids.length;
   }
   e.dataTransfer.setData('text/x-ssn', id);
   // dragend goes to the element the drag started on, even once a re-render (a reorder, a save) has taken it off
   // the page - where it no longer reaches the board's or the list's own listener
   e.target.addEventListener('dragend', dragDone, { once: true });
   e.dataTransfer.setData('text/plain', text);
+  return ids.length;
 }
 grid.addEventListener('dragstart', e => {
   const c = e.target.closest('.card[data-id]');
@@ -1543,7 +1561,8 @@ grid.addEventListener('dragstart', e => {
   const pn = noteById(c.dataset.id);
   dragId = query.trim() || (pn && pn.pinned) ? null : c.dataset.id;   // searching / pinned: the order can't change, but the note still drags out
   e.dataTransfer.effectAllowed = 'copyMove';
-  dragNoteOut(e, c.dataset.id);
+  keepPick = null;                                // a drag, not a click: the selection stays as it is
+  if (dragNoteOut(e, c.dataset.id, multi) > 1) dragId = null;   // several out at once: no reordering by it
   c.classList.add('dragging');
 });
 grid.addEventListener('dragend', () => { dragDone(); boardSearch.focus({ preventScroll: true }); });
@@ -2042,9 +2061,9 @@ sbList.addEventListener('dragstart', e => {
   const it = e.target.closest('.sb-item');
   if (!it) { e.preventDefault(); return; }
   e.dataTransfer.effectAllowed = 'copyMove';
-  dragNoteOut(e, it.dataset.id);
+  const many = dragNoteOut(e, it.dataset.id, sbMulti) > 1;
   const n = noteById(it.dataset.id);
-  sbDrag = n && !n.pinned ? n.id : null;          // the list reorders like the board (pinned notes keep their name order)
+  sbDrag = n && !n.pinned && !many ? n.id : null;          // the list reorders like the board (pinned notes keep their name order)
 });
 sbList.addEventListener('dragend', dragDone);
 sbList.addEventListener('dragover', e => {
@@ -2430,8 +2449,18 @@ editor.addEventListener('keydown', e => {
     else { done = false; if (code === 'KeyV' && sh) plainNext = true; }
     if (done) { e.preventDefault(); return; }
   }
+  if (!mod && !e.shiftKey && (e.key === 'Escape' || (e.altKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')))) {
+    const pre = closestSel('pre');                 // in a code block: Esc selects it as one block, Alt+↑/↓ moves it
+    if (pre && pre.parentNode === editor) {
+      e.preventDefault(); e.stopPropagation();
+      selectObj(pre);
+      if (e.key !== 'Escape') moveObj(pre, e.key === 'ArrowUp');
+      return;
+    }
+  }
   if (mod || e.altKey) return;
   if (e.shiftKey && (e.key === 'ArrowDown' || e.key === 'ArrowUp') && lineSelect(e.key === 'ArrowDown')) { e.preventDefault(); return; }
+  if (e.key === 'ArrowDown' && !e.shiftKey && boxDown()) { e.preventDefault(); return; }   // out of a code block / quote below
   const td = closestSel('td');
   if (td && (e.key === 'Enter' || e.key === 'Tab') && onTableKey(e, td)) return;
   if (e.key === 'Tab') {
@@ -3022,6 +3051,40 @@ function boxEnter() {
   } else edit(() => exec('insertLineBreak'));
   return true;
 }
+// A code block (or quote) at the very end of a note had no way out below it. ↓ on its last line now goes to the
+// line under it - made when there is none - and so does a click in the empty space under the note's last block.
+function lineBelow(box) {
+  let n = box.nextElementSibling;
+  if (!n || !/^(DIV|P|H[1-6])$/.test(n.nodeName)) edit(() => { n = document.createElement('div'); n.innerHTML = '<br>'; box.after(n); });
+  placeCaret(n, false);
+  scrollCaretIntoView();
+}
+function boxDown() {
+  const r = selRange();
+  if (!r || !r.collapsed) return false;
+  const box = closestSel('pre') || closestSel('blockquote');
+  if (!box || box.closest('td') || box.parentNode !== editor) return false;
+  const rest = document.createRange(); rest.setStart(r.startContainer, r.startOffset); rest.setEnd(box, box.childNodes.length);
+  const tail = document.createElement('div');
+  tail.appendChild(rest.cloneContents());
+  if (toPlain(tail).replace(/\n+$/, '').includes('\n')) return false;     // another line still follows: the browser's own ↓
+  const s = getSelection(), top0 = r.getBoundingClientRect().top, at = [s.focusNode, s.focusOffset];
+  s.modify('move', 'forward', 'line');
+  if (s.focusNode && !box.contains(s.focusNode)) return true;              // the browser went down by itself
+  const r1 = selRange(), top1 = r1 ? r1.getBoundingClientRect().top : 0;
+  if (top0 && top1 > top0 + 2) return true;                                // a long last line wraps: down within it
+  try { s.collapse(at[0], at[1]); } catch (e) { /* moved */ }
+  lineBelow(box);
+  return true;
+}
+editor.addEventListener('mousedown', e => {
+  if (e.button !== 0 || e.target !== editor || e.shiftKey || e.detail > 1) return;
+  const last = editor.lastElementChild;
+  if (!last || !/^(PRE|BLOCKQUOTE|TABLE|HR)$/.test(last.nodeName) || e.clientY <= last.getBoundingClientRect().bottom) return;
+  e.preventDefault();
+  ensureEditorFocus();
+  lineBelow(last);
+});
 // Backspace at the start of the line after a table (Delete at the end of the line before one) used to do nothing:
 // an empty line goes away into the table's last cell, otherwise the table gets selected (pressed again: deleted)
 function besideTable(back) {
@@ -3848,6 +3911,7 @@ let objSel = null;
 function selectObj(el) {
   if (!el || !editor.contains(el)) return;
   clearNav();
+  if (el.nodeName === 'PRE' && objSel !== el) toast('코드란 선택 · Alt+↑/↓ 옮기기 · Delete 삭제 · Enter 다시 쓰기');
   objSel = el;
   editor.classList.add('objsel');
   if (document.activeElement !== editor) editor.focus({ preventScroll: true });
@@ -3899,10 +3963,40 @@ function deleteObj() {
     const s = getSelection(); s.removeAllRanges(); s.addRange(r);
   });
 }
+// A selected block (code block, table, divider, a picture on its own line) moves up / down past the block next to it
+// with Alt+↑ / Alt+↓ - and stays selected, so it can go on moving. One undo step each.
+function objBlock(el) {
+  if (!el || !el.isConnected) return null;
+  if (el.parentNode === editor) return el;
+  const p = el.parentNode;                        // a picture alone on its line: the line moves
+  return el.nodeName === 'IMG' && p.parentNode === editor && !p.textContent.trim() && p.querySelectorAll('img').length === 1 ? p : null;
+}
+function moveObj(el, up) {
+  const b = objBlock(el);
+  if (!b) { toast('줄 안에 든 그림은 옮길 수 없어요 · 그림만 있는 줄이면 돼요'); return; }
+  const sib = up ? b.previousElementSibling : b.nextElementSibling;
+  if (!sib) { toast(up ? '맨 위예요' : '맨 아래예요'); return; }
+  edit(() => { if (up) sib.before(b); else sib.after(b); });
+  selectObj(el);
+  el.scrollIntoView({ block: 'nearest' });
+}
+function codeSelectedKey(e, el, mod) {             // a selected code block: back to writing in it
+  if (el.nodeName !== 'PRE' || mod || e.altKey) return false;
+  const typing = e.key.length === 1 || e.keyCode === 229;   // a letter, or Korean typing: never over the whole block
+  if (!(e.key === 'Enter' || e.key === 'Escape' || e.key === 'F2' || typing)) return false;
+  clearObj();
+  const [n, o] = endPoint(el), r = document.createRange(); r.setStart(n, o); r.collapse(true);
+  const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+  if (typing) return false;                       // the key is typed at its end
+  e.preventDefault(); e.stopPropagation();
+  return true;
+}
 function objKey(e) {
   if (!objSel.isConnected) { clearObj(); return false; }
   const mod = e.ctrlKey || e.metaKey;
   if ((e.key === 'Delete' || e.key === 'Backspace') && !mod && !e.altKey) { e.preventDefault(); deleteObj(); return true; }
+  if (e.altKey && !mod && !e.shiftKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) { e.preventDefault(); moveObj(objSel, e.key === 'ArrowUp'); return true; }
+  if (objSel.nodeName === 'PRE') { const done = codeSelectedKey(e, objSel, mod); if (done || !objSel) return done; }
   if (/^(Control|Shift|Alt|Meta)$/.test(e.key) || (mod && /^Key[CX]$/.test(e.code))) return false;   // copy / cut keep it
   const el = objSel;
   clearObj();
@@ -4560,9 +4654,14 @@ editor.addEventListener('contextmenu', e => {
       { label: nr > 1 ? `행 ${nr}개 삭제` : '행 삭제', kbd: kl('delRow'), action: () => tableOp('delRow', t, td) },
       { label: nc > 1 ? `열 ${nc}개 삭제` : '열 삭제', kbd: kl('delCol'), action: () => tableOp('delCol', t, td) }, { sep: true },
       { label: t.classList.contains('hdr') ? '머리글 행 끄기' : '머리글 행 켜기', action: () => tableOp('header', t, td) },
-      { label: '표 통째로 선택', icon: 'i-table', action: () => selectObj(t) },
+      { label: '표 통째로 선택', icon: 'i-table', kbd: 'Alt+↑/↓ 옮기기', action: () => selectObj(t) },
       { label: '표 삭제', icon: 'i-trash', danger: true, action: () => tableOp('delTable', t, td) });
   } else if (!img) {                             // text formatting means nothing for a picture
+    const pre = e.target.closest && e.target.closest('pre');
+    if (pre && pre.parentNode === editor) items.push({ sep: true },
+      { label: '코드란 통째로 선택', kbd: 'Esc', action: () => selectObj(pre) },
+      { label: '코드란 위로 옮기기', kbd: 'Alt+↑', action: () => moveObj(pre, true) },
+      { label: '코드란 아래로 옮기기', kbd: 'Alt+↓', action: () => moveObj(pre, false) });
     items.push({ sep: true },
       { label: '굵게', glyph: '<b>B</b>', kbd: kl('bold'), action: () => fmt('bold') },
       { label: '밑줄', glyph: '<u>U</u>', kbd: kl('underline'), action: () => fmt('underline') },
