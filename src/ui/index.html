@@ -2285,6 +2285,7 @@ editor.addEventListener('input', e => {
   statsSoon();
   posOvSoon();
   if (findOpen) findSoon();
+  if (arrowAfterTyping(e)) return;
   if (burstSel) {                                 // where the caret is now: moved away from here = the step ends
     grpAt = selSave(); grpAtKey = JSON.stringify(grpAt);
     if (/^insert(Text|CompositionText)$/.test(e.inputType) && e.data) {
@@ -2294,6 +2295,36 @@ editor.addEventListener('input', e => {
     if (grpKind === 'other') histCommit();        // a drop / an IME suggestion ... on its own
   }
 });
+// "->" typed in a note becomes "→" (not in code). Backspace right after it, or Ctrl+Z, gives "->" back.
+let autoArrow = null;                             // { node, at }: the caret right after an arrow just made
+function arrowAfterTyping(e) {
+  if (composing || e.inputType !== 'insertText' || e.data !== '>') return false;
+  const r = selRange();
+  if (!r || !r.collapsed || r.startContainer.nodeType !== 3) return false;
+  const n = r.startContainer, k = r.startOffset;
+  if (k < 2 || n.nodeValue[k - 2] !== '-' || (n.parentNode.closest && n.parentNode.closest('pre,code'))) return false;
+  histCommit();                                   // "->" as typed is a step of its own: Ctrl+Z brings it back
+  edit(() => {
+    const x = document.createRange(); x.setStart(n, k - 2); x.setEnd(n, k);
+    const sel = getSelection(); sel.removeAllRanges(); sel.addRange(x);
+    exec('insertText', '→');
+  });
+  const r2 = selRange();
+  autoArrow = r2 && r2.collapsed ? { node: r2.startContainer, at: r2.startOffset } : null;
+  return true;
+}
+function arrowBack() {
+  const a = autoArrow, r = selRange();
+  autoArrow = null;
+  if (!a || !r || !r.collapsed || r.startContainer !== a.node || r.startOffset !== a.at || a.node.nodeType !== 3 || a.node.nodeValue[a.at - 1] !== '→') return false;
+  edit(() => {
+    const x = document.createRange(); x.setStart(a.node, a.at - 1); x.setEnd(a.node, a.at);
+    const sel = getSelection(); sel.removeAllRanges(); sel.addRange(x);
+    exec('insertText', '->');
+  });
+  return true;
+}
+editor.addEventListener('mousedown', () => { autoArrow = null; }, true);
 editor.addEventListener('compositionstart', () => {
   if (burstSel && (grpKind === 'del' || (grpAtKey && JSON.stringify(selSave()) !== grpAtKey))) histCommit(true);   // Korean typing after deleting / somewhere else: a new step
   composing = true; editor.classList.remove('is-empty');
@@ -2305,7 +2336,9 @@ editor.addEventListener('keydown', e => {
     if (editCell) { if (!editCell.isConnected) clearNav(); else if (e.keyCode !== 229 && editKey(e)) return; }
     else if (navLive() && navKey(e)) return;
   }
-  if (e.isComposing || e.keyCode === 229) return;
+  if (e.isComposing || e.keyCode === 229) { autoArrow = null; return; }
+  if (e.key === 'Backspace' && !e.shiftKey && !e.ctrlKey && arrowBack()) { e.preventDefault(); return; }
+  if (e.key !== 'Shift') autoArrow = null;
   const mod = e.ctrlKey || e.metaKey, code = e.code;
   const act = actionFor(e, 'ed');                   // editing shortcuts from Settings > 단축키
   if (act) { e.preventDefault(); e.stopPropagation(); act.run(); return; }
