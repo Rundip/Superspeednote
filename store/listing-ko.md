@@ -60,9 +60,9 @@
 
 메모, 메모장, 빠른 메모, 단축키, 클립보드, 붙여넣기, 노트
 
-## 이번 버전의 새로운 기능 (1.4.8)
+## 이번 버전의 새로운 기능 (1.4.9)
 
-메모 저장 안정성 강화(여러 버전을 써도 메모 목록 유지), 번호 목록 1. 가. a. 자동 번호, 목록 Tab·Backspace 개선, 복사할 때 글머리·번호를 글자로 함께 복사(워드·한글·노션), 글자색 검정·형광펜 없음 선택 유지, 표에서 Tab 후 Enter는 바로 아래 칸, 제목만 있는 메모도 검색.
+코드란 맨 아래에서 ↓로 아래 줄로 이동, 코드란을 통째로 선택해 Alt+↑/↓로 옮기기, 여러 메모를 한 번에 바탕화면·폴더로 끌어내기, 표 칸 편집 중 방향키는 칸 안에서 움직이고 Esc로 칸 선택, 표에서 Tab 후 Enter는 바로 아래 칸, 글자색 검정·형광펜 없음 선택 유지.
 
 ## 제한된 기능(restricted capability) 사용 이유 — Partner Center '제출 옵션'에 영어로 입력
 
@@ -73,7 +73,7 @@ Super Speed Note is a Win32 desktop app (WinForms + WebView2) packaged with the 
 
 ## 심사 담당자 메모 (Notes for certification, 영어)
 
-Update 1.4.8: editor and data-safety fixes only; no new capabilities or permissions. Earlier changes (product ID 9N4JKW5GFTHS): the unvirtualizedResources restricted capability and the desktop6 FileSystemWriteVirtualization / RegistryWriteVirtualization properties have been removed. All app data now lives in the package's own data folders (LocalState / LocalCache) under standard MSIX virtualization, so the only restricted capability left is runFullTrust (a Win32 desktop app). Minimum supported version: Windows 10, version 2004 (build 19041). The support contact is now an e-mail address (no GitHub links).
+Update 1.4.9: editor fixes only (code blocks, tables, dragging several notes out as files); no new capabilities or permissions. Earlier changes (product ID 9N4JKW5GFTHS): the unvirtualizedResources restricted capability and the desktop6 FileSystemWriteVirtualization / RegistryWriteVirtualization properties have been removed. All app data now lives in the package's own data folders (LocalState / LocalCache) under standard MSIX virtualization, so the only restricted capability left is runFullTrust (a Win32 desktop app). Minimum supported version: Windows 10, version 2004 (build 19041). The support contact is now an e-mail address (no GitHub links).
 
 No account or sign-in is needed. Try: press Ctrl+Alt+F in any app (e.g. Notepad) to open the search window, type a word from a note and press Enter to paste that line back. Ctrl+Alt+M opens a quick memo in the screen corner; press it again to close. The app has no network communication.
 
