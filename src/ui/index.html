@@ -3321,7 +3321,7 @@ function tblHint(m) {
   const h = $('#stHint');
   h.classList.toggle('tbl', !!m);
   h.textContent = m === 'nav' ? '칸 선택 · 입력하면 새로 씀 · F2 이어 쓰기 · Delete 지우기 · Ctrl+Enter 표 밖으로'
-    : m === 'edit' ? '칸 편집 중 · Enter 확정 · Esc 취소 · Shift+Enter 줄바꿈'
+    : m === 'edit' ? '칸 편집 중 · 방향키는 칸 안에서 · Enter 확정 · Esc 칸 선택으로 · Shift+Enter 줄바꿈'
     : m === 'obj' ? '표 선택됨 · Ctrl+C 복사 · Delete 삭제 · Esc 해제' : defaultHint;
 }
 let parked = null, mouseSel = false, parkAfterMouse = false, dragFrom = null;   // dragFrom: the cell a mouse drag began in
@@ -3482,10 +3482,9 @@ function editKey(e) {
   if (!td.isConnected) { clearNav(); return false; }
   const t = td.closest('table'), r = td.parentElement.rowIndex, c = td.cellIndex;
   const back = () => { histCommit(); nav = { t, ar: r, ac: c, fr: r, fc: c }; editCell = null; };
-  if (e.key === 'Escape') {                      // cancel the edit
+  if (e.key === 'Escape') {                      // back to selecting the cell (what was typed stays; Ctrl+Z takes it back)
     e.preventDefault(); e.stopPropagation();
-    if (td.innerHTML !== editOrig) { td.innerHTML = editOrig; markDirty(); }
-    dropEditSteps();
+    histCommit();
     setNav(t, r, c);
     return true;
   }
@@ -3494,19 +3493,17 @@ function editKey(e) {
   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); back(); navDown(t); return true; }
   if (e.key === 'Tab') { e.preventDefault(); back(); navTab(t, e.shiftKey); return true; }
   if (ARROWS[e.key] && !e.shiftKey) {
-    let leave = editKind === 'type';             // typed straight in: arrows move to the next cell (Excel "enter" mode)
-    if (!leave && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
-      // F2 mode: arrows move inside the text; up/down leave the cell only from its first / last line
-      const sr = selRange(), cr = sr && sr.getBoundingClientRect(), tr = td.getBoundingClientRect();
-      const lh = parseFloat(getComputedStyle(td).lineHeight) || 22;
-      const top = cr && cr.height ? cr.top : tr.top, bottom = cr && cr.height ? cr.bottom : tr.bottom;
-      leave = e.key === 'ArrowUp' ? top - tr.top < lh * 1.4 : tr.bottom - bottom < lh * 1.4;
-    }
-    if (!leave) return false;
+    // Editing a cell (caret in it): the arrows move in its text - ↑ / ↓ to the line above / below, ← / → by a
+    // letter - and never out of the cell; at its first / last line or its edges the caret goes to its start / end.
+    // Esc goes back to selecting the cell, where the arrows move between cells.
     e.preventDefault();
-    back();
-    const [dr, dc] = ARROWS[e.key];
-    if ((dr < 0 && r === 0) || (dr > 0 && r === t.rows.length - 1)) leaveTable(t, dr < 0); else moveNav(dr, dc);
+    const s = getSelection(), up = e.key === 'ArrowUp' || e.key === 'ArrowLeft';
+    if (!s.isCollapsed) s.collapse(up ? s.anchorNode : s.focusNode, up ? s.anchorOffset : s.focusOffset);   // a selection: to its side
+    else s.modify('move', up ? 'backward' : 'forward', e.key === 'ArrowUp' || e.key === 'ArrowDown' ? 'line' : 'character');
+    if (!s.focusNode || !td.contains(s.focusNode) || s.focusNode === td.parentNode) {
+      if (up) placeCaret(td, false);
+      else { const [n, o] = endPoint(td), rr = document.createRange(); rr.setStart(n, o); rr.collapse(true); s.removeAllRanges(); s.addRange(rr); }
+    }
     return true;
   }
   return false;
