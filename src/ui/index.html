@@ -2451,7 +2451,7 @@ editor.addEventListener('keydown', e => {
   }
   if (!mod && !e.shiftKey && (e.key === 'Escape' || (e.altKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')))) {
     const pre = closestSel('pre');                 // in a code block: Esc selects it as one block, Alt+↑/↓ moves it
-    if (pre && pre.parentNode === editor) {
+    if (pre && !pre.closest('td')) {
       e.preventDefault(); e.stopPropagation();
       selectObj(pre);
       if (e.key !== 'Escape') moveObj(pre, e.key === 'ArrowUp');
@@ -3063,24 +3063,33 @@ function boxDown() {
   const r = selRange();
   if (!r || !r.collapsed) return false;
   const box = closestSel('pre') || closestSel('blockquote');
-  if (!box || box.closest('td') || box.parentNode !== editor) return false;
+  if (!box || box.closest('td')) return false;       // also a code block inside a list item / a wrapping line
   const rest = document.createRange(); rest.setStart(r.startContainer, r.startOffset); rest.setEnd(box, box.childNodes.length);
   const tail = document.createElement('div');
   tail.appendChild(rest.cloneContents());
   if (toPlain(tail).replace(/\n+$/, '').includes('\n')) return false;     // another line still follows: the browser's own ↓
   const s = getSelection(), top0 = r.getBoundingClientRect().top, at = [s.focusNode, s.focusOffset];
   s.modify('move', 'forward', 'line');
-  if (s.focusNode && !box.contains(s.focusNode)) return true;              // the browser went down by itself
-  const r1 = selRange(), top1 = r1 ? r1.getBoundingClientRect().top : 0;
-  if (top0 && top1 > top0 + 2) return true;                                // a long last line wraps: down within it
+  const f = s.focusNode;
+  if (f && !box.contains(f)) {                    // the browser went down by itself - onto a real line below?
+    const b = blockOf(f);
+    if (b && !b.contains(box)) return true;
+  } else {
+    const r1 = selRange(), top1 = r1 ? r1.getBoundingClientRect().top : 0;
+    if (top0 && top1 > top0 + 2) return true;     // a long last line wraps: down within it
+  }
+  // stuck, or somewhere with no line (beside the block, or the list item holding it): a line under it all
   try { s.collapse(at[0], at[1]); } catch (e) { /* moved */ }
-  lineBelow(box);
+  lineBelow(topLevel(box) || box);
   return true;
 }
 editor.addEventListener('mousedown', e => {
   if (e.button !== 0 || e.target !== editor || e.shiftKey || e.detail > 1) return;
   const last = editor.lastElementChild;
-  if (!last || !/^(PRE|BLOCKQUOTE|TABLE|HR)$/.test(last.nodeName) || e.clientY <= last.getBoundingClientRect().bottom) return;
+  // under the last block when it isn't a plain line (a code block, quote, table, divider, a list - or a line or
+  // list item holding a code block / table)
+  if (!last || e.clientY <= last.getBoundingClientRect().bottom) return;
+  if (/^(DIV|P|H[1-6])$/.test(last.nodeName) && !last.querySelector('pre,table,blockquote')) return;
   e.preventDefault();
   ensureEditorFocus();
   lineBelow(last);
@@ -3968,6 +3977,7 @@ function deleteObj() {
 function objBlock(el) {
   if (!el || !el.isConnected) return null;
   if (el.parentNode === editor) return el;
+  if (el.nodeName === 'PRE') return el;            // a code block inside a list item / line: it moves among what is next to it there
   const p = el.parentNode;                        // a picture alone on its line: the line moves
   return el.nodeName === 'IMG' && p.parentNode === editor && !p.textContent.trim() && p.querySelectorAll('img').length === 1 ? p : null;
 }
@@ -4658,7 +4668,7 @@ editor.addEventListener('contextmenu', e => {
       { label: '표 삭제', icon: 'i-trash', danger: true, action: () => tableOp('delTable', t, td) });
   } else if (!img) {                             // text formatting means nothing for a picture
     const pre = e.target.closest && e.target.closest('pre');
-    if (pre && pre.parentNode === editor) items.push({ sep: true },
+    if (pre && !pre.closest('td')) items.push({ sep: true },
       { label: '코드란 통째로 선택', kbd: 'Esc', action: () => selectObj(pre) },
       { label: '코드란 위로 옮기기', kbd: 'Alt+↑', action: () => moveObj(pre, true) },
       { label: '코드란 아래로 옮기기', kbd: 'Alt+↓', action: () => moveObj(pre, false) });
