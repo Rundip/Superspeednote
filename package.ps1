@@ -25,7 +25,8 @@ if ($Unregister) {
 # version from the app (Store versions are a.b.c.0)
 $m = Select-String -Path (Join-Path $root 'src\Program.cs') -Pattern 'const string Version = "(\d+\.\d+\.\d+)"'
 if (-not $m) { throw 'Version not found in src\Program.cs' }
-$version = $m.Matches[0].Groups[1].Value + '.0'
+$appVersion = $m.Matches[0].Groups[1].Value
+$version = $appVersion + '.0'
 
 # 1) Windows SDK build tools (makeappx, makepri)
 $btVer = '10.0.28000.2705'
@@ -44,17 +45,17 @@ if (-not $makeappx -or -not $makepri) { throw "makeappx / makepri not found in $
 
 # 2) the app
 if (-not $NoBuild) { & powershell -ExecutionPolicy Bypass -File (Join-Path $root 'build.ps1'); if ($LASTEXITCODE) { throw 'build.ps1 failed' } }
-$exe = Join-Path $root 'dist\SuperSpeedNote.exe'
-if (-not (Test-Path $exe)) { throw 'dist\SuperSpeedNote.exe missing - run build.ps1' }
+$exe = Join-Path $root "dist\SuperSpeedNote_$appVersion.exe"
+if (-not (Test-Path $exe)) { throw "dist\SuperSpeedNote_$appVersion.exe missing - run build.ps1" }
 
 # a test install runs straight from the layout folder: let it go first
-$running = Get-Process SuperSpeedNote -ErrorAction SilentlyContinue | Where-Object { $_.Path -like "$layout*" }
+$running = Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.ProcessName -like 'SuperSpeedNote*' -and $_.Path -like "$layout*" }
 if ($running) { Start-Process $running[0].Path -ArgumentList '--quit' -Wait; Start-Sleep -Seconds 2 }
 
 # 3) layout: app, start-up helper, logos, manifest, resources.pri
 if (Test-Path $layout) { Remove-Item $layout -Recurse -Force }
 New-Item -ItemType Directory -Force $layout, $out | Out-Null
-Copy-Item $exe $layout
+Copy-Item $exe (Join-Path $layout 'SuperSpeedNote.exe')   # inside the package the name stays plain (the manifest points at it)
 & $csc /nologo /target:winexe /optimize+ "/out:$(Join-Path $layout 'SuperSpeedNoteStartup.exe')" "/win32icon:$(Join-Path $root 'assets\app.ico')" (Join-Path $root 'src\Startup.cs')
 if ($LASTEXITCODE) { throw 'start-up helper compile failed' }
 $gen = Join-Path $obj 'IconGen.exe'

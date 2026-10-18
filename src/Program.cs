@@ -33,7 +33,7 @@ namespace SuperSpeedNote
 {
     static class Program
     {
-        public const string Version = "1.4.8";
+        public const string Version = "1.5.0";
         public const string WebView2Version = "1.0.4258.31";
         public static string DataDir, LocalDir;
         public static bool Portable;                  // a "data" folder next to the exe holds the notes (test / USB copies)
@@ -267,6 +267,9 @@ namespace SuperSpeedNote
         PopForm pop;
         bool popWanted;
         bool popShown { get { return pop != null && webIn == pop; } }
+        // the app window as it was when its page went into the search window: shown in its place meanwhile, so an
+        // app window left open behind other programs keeps its look instead of turning into a bare navy box
+        Bitmap still;
         Color popBg = Color.White, quickBg = Color.White;
         const string QuickKey = "@quick";
         QuickForm quick;
@@ -289,7 +292,9 @@ namespace SuperSpeedNote
         NotifyIcon tray;
         Icon appIcon, trayIcon;
         Color bg = Color.FromArgb(0x08, 0x15, 0x36);
-        readonly Saver saver = new Saver { Mirror = new NoteMirror(MirrorDir, NotesDir) };
+        // the notes live in notes\<id>.html only (fixed names, whatever the note is called); the readable copies in
+        // the 메모 folder are no longer written - one place, nothing to keep in step
+        readonly Saver saver = new Saver();
         System.Windows.Forms.Timer backupTimer;
 
         // global hotkeys: registration id -> note id ("@app" = show/hide the app)
@@ -307,6 +312,10 @@ namespace SuperSpeedNote
         static string NotesDir { get { return Path.Combine(Program.DataDir, "notes"); } }
         static string MirrorDir { get { return Path.Combine(Program.DataDir, "메모"); } }   // readable copies named after the notes
         static string TrashDir { get { return Path.Combine(Program.DataDir, "trash"); } }
+        // what the newest version knew about every note (name, colour, pin, place) - older versions never write it,
+        // so a note an older version's list lost comes back with its name instead of as '제목 없음'
+        int jsErrors;
+        static string MetaPath { get { return Path.Combine(Program.DataDir, "notes-meta.json"); } }
         static string ImagesDir { get { return Path.Combine(Program.DataDir, "images"); } }
         static string StatePath { get { return Path.Combine(Program.DataDir, "state.json"); } }
 
@@ -454,9 +463,15 @@ namespace SuperSpeedNote
 
         protected override void OnPaintBackground(PaintEventArgs e)
         {
-            // Splash shown for the few hundred ms before the page paints.
             Rectangle rc = ClientRectangle;
             if (rc.Width < 2 || rc.Height < 2) return;
+            if (still != null && webIn != this)
+            {
+                e.Graphics.FillRectangle(Brushes.Black, rc);
+                e.Graphics.DrawImage(still, new Rectangle(0, 0, still.Width, still.Height));
+                return;
+            }
+            // Splash shown for the few hundred ms before the page paints.
             using (var br = new LinearGradientBrush(rc, bg, Color.FromArgb(0x16, 0x30, 0x6A), 90f))
                 e.Graphics.FillRectangle(br, rc);
             if (webReady) return;
@@ -788,6 +803,7 @@ namespace SuperSpeedNote
         void OpenPop()
         {
             RememberReturn();
+            KeepStill();
             if (pop == null)
             {
                 pop = new PopForm();
@@ -874,10 +890,36 @@ namespace SuperSpeedNote
             }
         }
 
+        // a picture of the app window with its page, taken before the page leaves it (see still)
+        void KeepStill()
+        {
+            DropStill();
+            if (!Visible || WindowState == FormWindowState.Minimized || webIn != this || ctl == null) return;
+            Size cs = ClientSize;
+            if (cs.Width < 2 || cs.Height < 2) return;
+            Bitmap b = null;
+            try
+            {
+                b = new Bitmap(cs.Width, cs.Height);
+                bool ok;
+                using (Graphics g = Graphics.FromImage(b))
+                {
+                    IntPtr hdc = g.GetHdc();
+                    try { ok = Native.PrintWindow(Handle, hdc, 3 /*PW_CLIENTONLY | PW_RENDERFULLCONTENT: the page too*/); }
+                    finally { g.ReleaseHdc(hdc); }
+                }
+                if (ok) { still = b; b = null; }
+            }
+            catch (Exception ex) { Program.Log(ex); }
+            finally { if (b != null) b.Dispose(); }
+        }
+        void DropStill() { if (still != null) { still.Dispose(); still = null; } }
+
         // Move the page into one of our windows (main / search / quick memo).
         void PutWeb(Form f)
         {
             webIn = f;
+            if (f == this) DropStill();
             if (ctl == null) return;
             try
             {
@@ -1272,6 +1314,22 @@ namespace SuperSpeedNote
             }
         }
 
+        // A note about to lose most of its text (typed into while shown blank, a slip): the version on disk is kept in
+        // backups\overwritten first (the newest 50), so no single write can take a note's text away for good.
+        static void KeepBeforeShrink(string file, string next)
+        {
+            try
+            {
+                var fi = new FileInfo(file);
+                if (!fi.Exists || fi.Length < 600 || (long)Encoding.UTF8.GetByteCount(next ?? "") * 3 > fi.Length) return;
+                string dir = Path.Combine(Program.DataDir, "backups", "overwritten");
+                Directory.CreateDirectory(dir);
+                File.Copy(file, Path.Combine(dir, Path.GetFileNameWithoutExtension(file) + "_" + DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".html"), true);
+                foreach (var f in new DirectoryInfo(dir).GetFiles("*.html").OrderByDescending(f => f.CreationTimeUtc).Skip(50)) f.Delete();
+            }
+            catch (Exception ex) { Program.Log(ex); }
+        }
+
         // Everything the page needs at start (state + every note), served as /boot.js.
         static string BuildBootScript()
         {
@@ -1299,6 +1357,23 @@ namespace SuperSpeedNote
             }
             catch (Exception ex) { Program.Log(ex); }
             sb.Append("},unread:[").Append(string.Join(",", unread.Distinct().Select(Json))).Append("]");
+            string meta = null;
+            try { if (File.Exists(MetaPath)) meta = File.ReadAllText(MetaPath, Encoding.UTF8); } catch { }
+            sb.Append(",meta:").Append(meta == null ? "null" : Json(meta));
+            // notes with a copy in the trash: listed by an older list but deleted since - not to come back blank
+            var trashed = new HashSet<string>(StringComparer.Ordinal);
+            try
+            {
+                if (Directory.Exists(TrashDir))
+                    foreach (string f in Directory.GetFiles(TrashDir, "*.html"))
+                    {
+                        string n = Path.GetFileNameWithoutExtension(f);
+                        int u = n.IndexOf('_');
+                        if (u > 0 && SafeId(n.Substring(0, u))) trashed.Add(n.Substring(0, u));
+                    }
+            }
+            catch (Exception ex) { Program.Log(ex); }
+            sb.Append(",trashed:[").Append(string.Join(",", trashed.Select(Json))).Append("]");
             sb.Append(",autostart:").Append(Json(GetStartupMode()));
             sb.Append(",dataDir:").Append(Json(Program.DataDir)).Append("};");
             return sb.ToString();
@@ -1379,8 +1454,23 @@ namespace SuperSpeedNote
                     {
                         string id = Cut(ref a);
                         if (!SafeId(id)) break;
+                        KeepBeforeShrink(Path.Combine(NotesDir, id + ".html"), a);
                         saver.Write(Path.Combine(NotesDir, id + ".html"), a);
                         saver.MirrorWrite(id, a);
+                        break;
+                    }
+                case "saveMeta": saver.Write(MetaPath, a); break;
+                case "jsError":                                  // an error in the page: written to error.log (the first 50 a run)
+                    if (jsErrors++ < 50) Program.Log(new Exception("page: " + a));
+                    break;
+                case "readNote":                                 // a note shown blank: its file read again before it can be typed in
+                    {
+                        if (!SafeId(a)) break;
+                        string file = Path.Combine(NotesDir, a + ".html"), text = null;
+                        saver.Flush(2000);
+                        try { if (File.Exists(file)) text = NoteFiles.Strip(NoteFiles.ReadShared(file)); }
+                        catch (Exception ex) { Program.Log(ex); Post("noteBody", a + SEP + "\u0001"); break; }   // there but unreadable
+                        Post("noteBody", text == null ? a : a + SEP + text);
                         break;
                     }
                 case "noteNames":                                // "id\tname" lines: the readable copies follow the names in the app
@@ -1484,7 +1574,23 @@ namespace SuperSpeedNote
                 case "dragOut":                                  // "html" | "txt", file name, plain text, the note as that file
                     {
                         string kind = Cut(ref a), name = Cut(ref a), text = Cut(ref a), body = a;
-                        BeginInvoke(new Action(() => DragOut(kind, name, text, body)));
+                        BeginInvoke(new Action(() => DragOut(kind, new[] { name }, new[] { body }, text)));
+                        break;
+                    }
+                case "dragOutMany":                              // several picked notes: kind, all their text, then
+                    {                                            // name \x1d file of each, \x1e between notes
+                        string kind = Cut(ref a), text = Cut(ref a);
+                        var names = new List<string>();
+                        var bodies = new List<string>();
+                        foreach (string it in a.Split('\x1e'))
+                        {
+                            int k = it.IndexOf('\x1d');
+                            if (k < 0) continue;
+                            names.Add(it.Substring(0, k));
+                            bodies.Add(it.Substring(k + 1));
+                        }
+                        if (names.Count > 0) BeginInvoke(new Action(() => DragOut(kind, names.ToArray(), bodies.ToArray(), text)));
+                        else Post("dragOutDone", "");
                         break;
                     }
                 case "export": { string name = Cut(ref a), body = a; BeginInvoke(new Action(() => Export(name, body))); break; }
@@ -1592,7 +1698,7 @@ namespace SuperSpeedNote
         // (its DownloadURL drop only opens an empty download list), so the app drags a real file itself - written to a
         // temp folder under the note's name - with the note's text alongside. The page cancels its own drag and asks
         // for this one while the mouse button is still down; dropped back on the app, the page reorders as before.
-        void DragOut(string kind, string name, string text, string body)
+        void DragOut(string kind, string[] names, string[] bodies, string text)
         {
             try
             {
@@ -1604,13 +1710,20 @@ namespace SuperSpeedNote
                             if (Directory.GetCreationTimeUtc(d) < DateTime.UtcNow.AddMinutes(-30)) Directory.Delete(d, true);
                 }
                 catch (Exception ex) { Program.Log(ex); }
-                string dir = Path.Combine(root, Guid.NewGuid().ToString("N").Substring(0, 10));   // its own folder: the name stays the note's
+                string dir = Path.Combine(root, Guid.NewGuid().ToString("N").Substring(0, 10));   // its own folder: the names stay the notes'
                 Directory.CreateDirectory(dir);
-                string file = Path.Combine(dir, NoteFiles.FileBase(name) + (kind == "txt" ? ".txt" : ".html"));
-                if (kind == "txt") File.WriteAllText(file, body.Replace("\r\n", "\n").Replace("\n", "\r\n"), new UTF8Encoding(true));
-                else File.WriteAllText(file, InlineImages(body), new UTF8Encoding(false));
+                string ext = kind == "txt" ? ".txt" : ".html";
+                var files = new List<string>();
+                for (int i = 0; i < names.Length; i++)
+                {
+                    string stem = NoteFiles.FileBase(names[i]), file = Path.Combine(dir, stem + ext);
+                    for (int k = 2; File.Exists(file); k++) file = Path.Combine(dir, stem + " (" + k + ")" + ext);   // two notes, one name
+                    if (kind == "txt") File.WriteAllText(file, bodies[i].Replace("\r\n", "\n").Replace("\n", "\r\n"), new UTF8Encoding(true));
+                    else File.WriteAllText(file, InlineImages(bodies[i]), new UTF8Encoding(false));
+                    files.Add(file);
+                }
                 var data = new DataObject();
-                data.SetData(DataFormats.FileDrop, new[] { file });
+                data.SetData(DataFormats.FileDrop, files.ToArray());
                 if (text.Length > 0) data.SetData(DataFormats.UnicodeText, text);
                 DoDragDrop(data, DragDropEffects.Copy | DragDropEffects.Move);
             }
@@ -2542,6 +2655,7 @@ namespace SuperSpeedNote
         [DllImport("user32.dll")] public static extern bool BringWindowToTop(IntPtr hWnd);
         [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr hWnd, int cmd);
         [DllImport("user32.dll")] public static extern bool IsWindow(IntPtr hWnd);
+        [DllImport("user32.dll")] public static extern bool PrintWindow(IntPtr hWnd, IntPtr hdc, uint flags);
         [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr hWnd);
         [DllImport("user32.dll")] public static extern bool IsIconic(IntPtr hWnd);
         [DllImport("user32.dll")] public static extern bool IsZoomed(IntPtr hWnd);

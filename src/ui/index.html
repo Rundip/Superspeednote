@@ -16,7 +16,7 @@
   --sh-2:0 2px 4px rgba(10,22,50,.05),0 20px 44px -16px rgba(10,22,50,.34);
   --sh-pop:0 18px 50px -10px rgba(6,18,48,.30),0 2px 8px rgba(6,18,48,.08);
   --band:radial-gradient(900px 420px at 88% -140px,rgba(110,155,255,.34),transparent 70%),radial-gradient(760px 420px at -10% 108%,rgba(120,160,245,.22),transparent 70%),linear-gradient(180deg,#0a1532 0%,#0f2356 16%,#22448d 36%,#5f80c4 56%,#a9bde6 76%,#dfe7f6 92%,#f3f6fc 100%);
-  --side:linear-gradient(180deg,#0a1532 0,#0e1f4c 55%,#132c68 100%);
+  --side:linear-gradient(180deg,#0a1532 0,#10245a 45%,#22428a 80%,#3a5ba0 100%);   /* a little more light toward the bottom */
   --pane:linear-gradient(180deg,#e9eff9 0,#f4f6fb 220px);
   --ui:"Pretendard Variable",Pretendard,"Segoe UI","Malgun Gothic","맑은 고딕",system-ui,sans-serif;
   --mono:"Cascadia Code",Consolas,D2Coding,monospace;
@@ -32,7 +32,7 @@
   --sh-2:0 2px 6px rgba(0,0,0,.35),0 20px 44px -14px rgba(0,0,0,.6);
   --sh-pop:0 16px 48px rgba(0,0,0,.55);
   --band:radial-gradient(900px 420px at 88% -140px,rgba(91,140,255,.24),transparent 70%),radial-gradient(760px 420px at -10% 108%,rgba(70,110,220,.14),transparent 70%),linear-gradient(180deg,#050c1f 0%,#0a1940 28%,#10255a 55%,#0c1a3c 80%,#0a1226 100%);
-  --side:linear-gradient(180deg,#050c1f 0,#0a1838 60%,#0e2150 100%);
+  --side:linear-gradient(180deg,#050c1f 0,#0b1b40 50%,#16306a 100%);
   --pane:linear-gradient(180deg,#0d1833 0,#0a1226 220px);
 }
 *{box-sizing:border-box}
@@ -212,11 +212,16 @@ body[data-view=editor] #editorView{display:flex}
 .card.new:hover .plus{transform:scale(1.08)}
 .card.dragging{opacity:.35}
 /* where a dragged note will land: a bar in the gap between cards (board) or rows (list), with round ends */
-#dropMark{position:fixed;display:none;pointer-events:none;z-index:60;border-radius:3px;background:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 22%,transparent),0 0 18px color-mix(in srgb,var(--accent) 55%,transparent)}
-#dropMark.v,#dropMark.h{display:block}
-#dropMark::before,#dropMark::after{content:'';position:absolute;width:10px;height:10px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 2px var(--paper)}
-#dropMark.v::before{left:-3px;top:-6px}#dropMark.v::after{left:-3px;bottom:-6px}
-#dropMark.h::before{top:-3px;left:-6px}#dropMark.h::after{top:-3px;right:-6px}
+#dropMark{position:fixed;left:0;top:0;opacity:0;pointer-events:none;z-index:60;border-radius:999px;--dm:var(--accent);
+  background:linear-gradient(var(--dm-dir,180deg),color-mix(in srgb,var(--dm) 0%,transparent),var(--dm) 22%,var(--dm) 78%,color-mix(in srgb,var(--dm) 0%,transparent));
+  box-shadow:0 0 12px color-mix(in srgb,var(--dm) 38%,transparent);transform:scale(.6);
+  transition:opacity .14s ease,transform .18s cubic-bezier(.2,.9,.3,1.2),left .1s ease-out,top .1s ease-out,width .1s ease-out,height .1s ease-out}
+#dropMark.v,#dropMark.h{opacity:1;transform:none}
+#dropMark.h{--dm-dir:90deg}
+#dropMark.snap{transition:opacity .14s ease,transform .18s cubic-bezier(.2,.9,.3,1.2)}   /* first shown: appears where it is, doesn't fly in */
+#dropMark.h::before{content:'';position:absolute;left:-3px;top:50%;width:7px;height:7px;margin-top:-3.5px;border-radius:50%;background:var(--dm);box-shadow:0 0 0 2px color-mix(in srgb,var(--dm) 25%,transparent)}
+#dropMark.v{--dm:#fff;box-shadow:0 0 0 1px color-mix(in srgb,var(--accent) 75%,transparent),0 0 14px 2px color-mix(in srgb,var(--accent) 55%,transparent)}   /* on the board's blue band: a lit white line */
+#dropMark.h{--dm:#8fb4ff}   /* the list is on the navy sidebar: a lighter blue reads there */
 .empty{grid-column:1/-1;padding:48px;text-align:center;color:rgba(225,234,255,.85)}
 .empty.zero{order:-1;padding:6px 2px 2px;text-align:left}   /* no notes at all: a heading above the new-note card */
 .empty b{display:block;font-size:15px;font-weight:700}
@@ -330,6 +335,9 @@ body.sb-off #sidebar{display:none}
 #editor ol ol ol ol ol ol ol{list-style-type:ko-circle}
 #editor ol ol ol ol ol ol ol ol{list-style-type:ko-ga-circle}
 #editor ol li::marker{font-variant-numeric:tabular-nums}
+#editor ol[data-type=number]{list-style-type:decimal}
+#editor ol[data-type=hangul]{list-style-type:ko-ga}
+#editor ol[data-type=alpha]{list-style-type:lower-alpha}
 /* a line whose bullet was taken off (Backspace at its start): stays in place, no marker, not counted */
 #editor li.nob{display:block}
 #editor ul.checklist>li.nob::before{display:none}
@@ -877,7 +885,7 @@ const CORNERS = { tl: '왼쪽 위', tr: '오른쪽 위', bl: '왼쪽 아래', br
 const COLOR_NAMES = { navy: '남색', blue: '파랑', sky: '하늘', teal: '청록', green: '초록', amber: '주황', coral: '빨강', violet: '보라' };
 // text colours chosen for contrast on white; dark theme remaps them (see injected CSS)
 const FG = [
-  { n: '기본', v: '' }, { n: '남색', v: '#1d3a8a', d: '#a5bdff' }, { n: '파랑', v: '#1d4ed8', d: '#7fa8ff' },
+  { n: '검정', v: '#000000', d: 'var(--ink)' }, { n: '남색', v: '#1d3a8a', d: '#a5bdff' }, { n: '파랑', v: '#1d4ed8', d: '#7fa8ff' },
   { n: '빨강', v: '#d92d20', d: '#ff8f84' }, { n: '초록', v: '#067647', d: '#5ad39b' }, { n: '주황', v: '#c2410c', d: '#ffa56e' },
   { n: '보라', v: '#6d28d9', d: '#c9a8ff' }, { n: '회색', v: '#475467', d: '#a6b1c6' }
 ];
@@ -896,7 +904,8 @@ const FONTS = {
 {
   const st = document.createElement('style');
   st.textContent = FG.filter(c => c.v).map(c => `[data-theme=dark] #editor font[color="${c.v}"]{color:${c.d}}`).join('') +
-    '[data-theme=dark] #editor span[style*="background-color"]{color:#101828}';
+    '[data-theme=dark] #editor span[style*="background-color"]:not([style*="transparent"]){color:#101828}' +
+    '#editor font[color="#010203"]{color:inherit}';   // the old 'default colour' left on text typed after it: the normal ink
   document.head.appendChild(st);
 }
 
@@ -949,22 +958,66 @@ const unread = new Set(boot.unread || []);
 // in the list but no file came with them (one that couldn't be read, a write that never landed): never deleted
 // for good as 'empty' - into the trash like any other note
 const missing = new Set();
+// notes being read again from disk (opened blank though they shouldn't be): read-only until the answer comes
+const rechecking = new Set();
+function onNoteBody(arg) {
+  const k = arg.indexOf(SEP), id = k < 0 ? arg : arg.slice(0, k), h = k < 0 ? null : arg.slice(k + 1);
+  if (!rechecking.delete(id)) return;
+  if (h === '\u0001') { unread.add(id); if (cur === id) toast('이 메모 파일을 읽지 못해서 지금은 고칠 수 없어요 · 앱을 다시 시작해 보세요'); return; }
+  if (h != null && !emptyHtml(h)) {                // its text was there after all: shown now, nothing was lost
+    bodies[id] = h; missing.delete(id); textCache.delete(id); H.delete(id);
+    const n = noteById(id);
+    if (n) n.preview = previewOf(frag(h));
+    if (cur === id && view === 'editor') { editor.innerHTML = h; setBig(h.length); histInit(id, null); stats(); renderSidebarSoon(); }
+  } else if (h != null) missing.delete(id);       // the file is there and really empty
+  if (cur === id) editor.contentEditable = unread.has(id) ? 'false' : 'true';
+}
 if (!S || !Array.isArray(S.notes)) S = { v: 1, notes: [], settings: {} };
 S.settings = Object.assign({
   theme: 'light', closeToTray: true, onTop: false, fontSize: 15, font: 'ui', sidebar: true,
   appHotkey: { mods: 3, vk: 78, label: 'Ctrl+Alt+N' }, findHotkey: { mods: 3, vk: 70, code: 'KeyF', label: 'Ctrl+Alt+F' },
-  quickHotkey: { mods: 3, vk: 77, code: 'KeyM', label: 'Ctrl+Alt+M' }, fg: '#d92d20', hl: '#fff176', quickCorner: 'br'
+  quickHotkey: { mods: 3, vk: 77, code: 'KeyM', label: 'Ctrl+Alt+M' }, fg: '#000000', hl: '', quickCorner: 'br'
 }, S.settings || {});
 const st = S.settings;
+if (!st.fg || !FG.some(c => c.v === st.fg)) st.fg = '#000000';           // the old '기본' (no colour) is black now
+if (st.hl && !HL.some(c => c.v === st.hl)) st.hl = '';
 // v1.2: the first default (Ctrl+Alt+Space) is taken by other apps (e.g. Claude desktop) -> F for "find"
 if (!st.findHotkeyMine && st.findHotkey && st.findHotkey.label === 'Ctrl+Alt+Space') st.findHotkey = { mods: 3, vk: 70, code: 'KeyF', label: 'Ctrl+Alt+F' };
-{ // reconcile index with note files (adopt orphans after a crash, keep titles of missing bodies)
+// Reconcile the list with the note files, whichever version wrote them last: no note file is ever left out of the
+// list, and a note the list lost (an older version wrote its own list over this one, a crash) comes back with its
+// name, colour, pin and place - from notes-meta.json (kept by this version only), else the list's previous copy.
+// A note still listed whose file went to the trash since was deleted (by another version): it isn't brought back
+// as a blank note - it is in the trash.
+let adopted = 0;
+{
   S.notes = S.notes.filter(n => n && n.id);
   const known = new Set(S.notes.map(n => n.id));
-  for (const id of Object.keys(bodies)) {
-    if (known.has(id) || S.notes.length >= MAX_NOTES) continue;
-    S.notes.push({ id, title: '', color: 'navy', pinned: false, hotkey: null, created: now(), updated: now(), preview: previewOf(frag(bodies[id])) });
+  let arch = {};
+  try { const a = JSON.parse(boot.meta || 'null'); if (a && a.notes && typeof a.notes === 'object') arch = a.notes; } catch (e) { /* none */ }
+  const bak = {};
+  try { const b = JSON.parse(boot.stateBak || 'null'); if (b && Array.isArray(b.notes)) b.notes.forEach((n, i) => { if (n && n.id) bak[n.id] = Object.assign({ pos: i }, n); }); } catch (e) { /* none */ }
+  const trashed = new Set(boot.trashed || []);
+  S.notes = S.notes.filter(n => n.id in bodies || !trashed.has(n.id) || unread.has(n.id));
+  // an older version found such a note first and listed it as a fresh '제목 없음' note (it has no names to go by):
+  // a note's 'created' never changes, so a different one than this version knew means exactly that - it gets its
+  // name, colour and pin back
+  for (const n of S.notes) {
+    const m = arch[n.id];
+    if (!m || n.title || !m.title || !m.created || n.created === m.created) continue;
+    n.title = m.title; n.color = m.color || n.color; n.pinned = !!m.pinned; n.created = m.created || n.created;
+    adopted++;
   }
+  const keys = new Set(S.notes.map(n => n.hotkey && n.hotkey.label).filter(Boolean));
+  const back = [];
+  for (const id of Object.keys(bodies)) {
+    if (known.has(id)) continue;
+    const m = arch[id] || bak[id] || {}, hk = m.hotkey && m.hotkey.label && !keys.has(m.hotkey.label) ? m.hotkey : null;
+    if (hk) keys.add(hk.label);
+    back.push({ pos: typeof m.pos === 'number' ? m.pos : 1e9, n: { id, title: m.title || '', color: m.color || 'navy', pinned: !!m.pinned, hotkey: hk,
+      created: m.created || now(), updated: m.updated || now(), preview: previewOf(frag(bodies[id])) } });
+  }
+  back.sort((a, b) => a.pos - b.pos);
+  for (const x of back) { if (S.notes.length >= MAX_NOTES) break; S.notes.splice(Math.min(x.pos, S.notes.length), 0, x.n); adopted++; }
   for (const n of S.notes) {
     if (!(n.id in bodies)) { bodies[n.id] = ''; missing.add(n.id); }
     if (!NOTE_COLORS[n.color]) n.color = 'navy';
@@ -1176,7 +1229,36 @@ function flushNote() {
   renderSidebarSoon();
 }
 function saveStateSoon() { stateDirty = true; clearTimeout(stateT); stateT = setTimeout(flushState, 300); }
-function flushState() { clearTimeout(stateT); stateT = 0; if (!stateDirty) return; stateDirty = false; sendNames(); host.send('saveState', JSON.stringify(S)); }
+// The list goes out first and always: a note that can't be written as it is goes as its plain fields, and nothing
+// else (the meta file) runs before it. Any failure is reported to the app's error.log.
+const NOTE_KEYS = ['id', 'title', 'color', 'pinned', 'hotkey', 'created', 'updated', 'preview', 'line1', 'at'];
+function plainNote(n) { const o = {}; for (const k of NOTE_KEYS) if (n[k] !== undefined) { try { o[k] = JSON.parse(JSON.stringify(n[k])); } catch (e) { /* skip */ } } return o; }
+function flushState() {
+  clearTimeout(stateT); stateT = 0;
+  if (!stateDirty) return;
+  stateDirty = false;
+  let json;
+  try { S.notes = S.notes.filter(n => n && n.id); json = JSON.stringify(S); }
+  catch (e) {
+    reportError('saveState', e);
+    try { json = JSON.stringify({ v: S.v || 1, notes: S.notes.filter(n => n && n.id).map(plainNote), settings: JSON.parse(JSON.stringify(S.settings || {})), lastOpen: S.lastOpen || null }); }
+    catch (e2) { reportError('saveState fallback', e2); stateDirty = true; return; }
+  }
+  host.send('saveState', json);
+  try { saveMeta(); } catch (e) { reportError('saveMeta', e); }
+}
+function reportError(where, e) { try { host.send('jsError', where + ': ' + (e && (e.stack || e.message) || e)); } catch (x) { /* nothing more to do */ } }
+window.addEventListener('error', e => reportError('error', e.error || e.message));
+window.addEventListener('unhandledrejection', e => reportError('promise', e.reason));
+// notes-meta.json: every note's name, colour, pin, hotkey and place, written only by this version and later - an
+// older version writing its own list never touches it, so whatever that list loses can be found again (above)
+let metaSig = '';
+function saveMeta() {
+  const notes = {};
+  S.notes.forEach((n, i) => { notes[n.id] = { title: n.title || '', color: n.color, pinned: !!n.pinned, hotkey: n.hotkey || null, created: n.created, updated: n.updated, pos: i }; });
+  const s = JSON.stringify({ v: 1, notes });
+  if (s !== metaSig) { metaSig = s; host.send('saveMeta', s); }
+}
 // the readable copies in the 메모 folder are named like the notes in the app (title, else first line): tell the
 // shell when a name changes; at start-up every name (copies of notes no longer here go)
 const sentNames = new Map();
@@ -1359,12 +1441,19 @@ grid.addEventListener('mousedown', e => {
   const id = c.dataset.id;
   if (e.shiftKey) { e.preventDefault(); setSel(id, false, 'range'); }
   else if (e.ctrlKey || e.metaKey) { e.preventDefault(); setSel(id, false, 'toggle'); }
-  else if (e.button === 2 && multi.has(id) && multi.size > 1) { selId = id; markSel(); }   // right-click inside a multi-selection keeps it
+  else if (multi.has(id) && multi.size > 1) {     // pressed inside a multi-selection: it stays, so a right-click or a
+    selId = id; markSel();                        // drag (out to a folder) takes them all; a plain click picks this one
+    keepPick = e.button === 0 ? id : null;
+  }
   else setSel(id, false);
 });
+let keepPick = null;
 grid.addEventListener('click', e => {
   const cp = e.target.closest('.c-copy');
   if (cp) { copyNote(cp.closest('.card').dataset.id); return; }
+  const kc = e.target.closest('.card[data-id]');
+  if (keepPick && kc && kc.dataset.id === keepPick && !e.shiftKey && !e.ctrlKey && !e.metaKey) { keepPick = null; setSel(kc.dataset.id, false); return; }
+  keepPick = null;
   if (e.target.closest('.card.new')) newNote();
   else if (!e.target.closest('.card[data-id]') && e.target === grid) clearMulti();       // click on empty space
 });
@@ -1413,16 +1502,19 @@ const dropMark = document.createElement('div');
 dropMark.id = 'dropMark';
 document.body.appendChild(dropMark);
 function showDropMark(el, after, vertical) {
-  const r = el.getBoundingClientRect(), m = dropMark.style;
+  const r = el.getBoundingClientRect(), m = dropMark.style, kind = vertical ? 'v' : 'h';
+  const fresh = !dropMark.classList.contains(kind);   // just appearing (or switching board <-> list): no gliding in
+  if (fresh) { dropMark.className = 'snap'; void dropMark.offsetWidth; }
   if (vertical) {
     const gap = parseFloat(getComputedStyle(grid).columnGap) || 16;
     Object.assign(m, { left: ((after ? r.right + gap / 2 : r.left - gap / 2) - 2) + 'px', top: (r.top + 8) + 'px', width: '4px', height: Math.max(0, r.height - 16) + 'px' });
   } else {                                        // midway between this row and the one before / after it
     const nb = after ? el.nextElementSibling : el.previousElementSibling, q = nb && nb.getBoundingClientRect();
     const y = after ? (q ? (r.bottom + q.top) / 2 : r.bottom + 3) : (q ? (q.bottom + r.top) / 2 : r.top - 3);
-    Object.assign(m, { left: (r.left + 10) + 'px', top: (y - 2) + 'px', width: Math.max(0, r.width - 20) + 'px', height: '4px' });
+    Object.assign(m, { left: (r.left + 14) + 'px', top: (y - 1.5) + 'px', width: Math.max(0, r.width - 26) + 'px', height: '3px' });
   }
-  dropMark.className = vertical ? 'v' : 'h';
+  dropMark.className = kind + (fresh ? ' snap' : '');
+  if (fresh) requestAnimationFrame(() => dropMark.classList.remove('snap'));
 }
 function hideDropMark() { dropMark.className = ''; }
 // pinned notes keep their name order: dragging one shows it can't go elsewhere (it still drags out of the app)
@@ -1431,26 +1523,37 @@ function pinnedTold(over) {
   if (!n || !n.pinned || !over || over.dataset.id === dragSrc || now() - pinTold < 3000) return;
   pinTold = now(); toast('고정한 메모는 이름 순서로 정렬돼요 · 고정을 풀면 옮길 수 있어요');
 }
-function dragNoteOut(e, id) {
+// group: the notes picked with Ctrl / Shift (board or list) - dragging one of them takes them all out, a file each
+function dragNoteOut(e, id, group) {
   const n = noteById(id);
-  if (!n) return;
-  if (id === cur) flushNote();
+  if (!n) return 0;
+  const ids = group && group.size > 1 && group.has(id) ? ordered().map(x => x.id).filter(x => group.has(x)) : [id];
+  if (ids.includes(cur)) flushNote();
   noteDrag = now(); dragSrc = id;
-  const kind = st.dragFormat === 'txt' ? 'txt' : 'html', { name, content } = exportContent(id, kind);
-  const text = (n.title ? n.title + '\n\n' : '') + noteText(id);
+  const kind = st.dragFormat === 'txt' ? 'txt' : 'html';
+  const textOf = i => { const m = noteById(i); return (m && m.title ? m.title + '\n\n' : '') + noteText(i); };
+  const text = ids.map(textOf).join('\n\n');
   if (HOST) {
     // the app drags a real file itself (WebView2 makes no file from a page's drag): this drag stops here, the
     // shell's starts at once while the button is still down. Over the app it reorders like this one did; the
     // shell says when it ended (dragOutDone)
     e.preventDefault();
-    host.send('dragOut', kind, name.replace(/\.[^.]+$/, ''), text.replace(/\x1f/g, ' '), content);
-    return;
+    const clean = s => s.replace(/[\x1d\x1e\x1f]/g, ' ');
+    if (ids.length === 1) {
+      const { name, content } = exportContent(id, kind);
+      host.send('dragOut', kind, name.replace(/\.[^.]+$/, ''), clean(text), content);
+    } else {                                        // several: name and file of each (\x1d inside, \x1e between)
+      const items = ids.map(i => { const { name, content } = exportContent(i, kind); return clean(name.replace(/\.[^.]+$/, '')) + '\x1d' + clean(content); });
+      host.send('dragOutMany', kind, clean(text), items.join('\x1e'));
+    }
+    return ids.length;
   }
   e.dataTransfer.setData('text/x-ssn', id);
   // dragend goes to the element the drag started on, even once a re-render (a reorder, a save) has taken it off
   // the page - where it no longer reaches the board's or the list's own listener
   e.target.addEventListener('dragend', dragDone, { once: true });
   e.dataTransfer.setData('text/plain', text);
+  return ids.length;
 }
 grid.addEventListener('dragstart', e => {
   const c = e.target.closest('.card[data-id]');
@@ -1458,7 +1561,8 @@ grid.addEventListener('dragstart', e => {
   const pn = noteById(c.dataset.id);
   dragId = query.trim() || (pn && pn.pinned) ? null : c.dataset.id;   // searching / pinned: the order can't change, but the note still drags out
   e.dataTransfer.effectAllowed = 'copyMove';
-  dragNoteOut(e, c.dataset.id);
+  keepPick = null;                                // a drag, not a click: the selection stays as it is
+  if (dragNoteOut(e, c.dataset.id, multi) > 1) dragId = null;   // several out at once: no reordering by it
   c.classList.add('dragging');
 });
 grid.addEventListener('dragend', () => { dragDone(); boardSearch.focus({ preventScroll: true }); });
@@ -1700,6 +1804,7 @@ const EXPORT_LIST_CSS = '@counter-style ko-ga{system:alphabetic;symbols:"가" "�
   '@counter-style ko-num-paren{system:extends decimal;suffix:") "}@counter-style ko-ga-paren{system:extends ko-ga;suffix:") "}' +
   '@counter-style ko-num-wrap{system:extends decimal;prefix:"(";suffix:") "}@counter-style ko-ga-wrap{system:extends ko-ga;prefix:"(";suffix:") "}' +
   'ol ol{list-style-type:ko-ga}ol ol ol{list-style-type:ko-num-paren}ol ol ol ol{list-style-type:ko-ga-paren}ol ol ol ol ol{list-style-type:ko-num-wrap}ol ol ol ol ol ol{list-style-type:ko-ga-wrap}' +
+  'ol[data-type=number]{list-style-type:decimal}ol[data-type=hangul]{list-style-type:ko-ga}ol[data-type=alpha]{list-style-type:lower-alpha}' +
   'li.nob{display:block}ul.checklist li.nob::before{content:none}';
 // a Windows file name that reads as the note's name (the same rule as the readable copies in the 메모 folder):
 // refused characters become their full-width twins, at most 80 characters, never a device name
@@ -1751,10 +1856,14 @@ function openNote(id, o = {}) {
     clearNav(); clearObj();
     if (o.browse) getSelection().removeAllRanges();   // shown from the list: no caret in it (a table cell would take the keys)
     cur = id; selId = id;
-    editor.contentEditable = unread.has(id) ? 'false' : 'true';
+    const blank = !bodies[id] || emptyHtml(bodies[id]);
+    const doubt = HOST && !unread.has(id) && blank && (missing.has(id) || !!(n.preview || '').trim());   // no file came, or the list remembers text
+    editor.contentEditable = unread.has(id) || doubt ? 'false' : 'true';
     if (unread.has(id)) setTimeout(() => toast('이 메모 파일을 읽지 못해서 지금은 고칠 수 없어요 · 앱을 다시 시작해 보세요'), 0);
+    if (doubt) { rechecking.add(id); host.send('readNote', id); }
     editor.innerHTML = bodies[id] || '<div><br></div>';
     if (!editor.firstChild) editor.innerHTML = '<div><br></div>';
+    relist();
     setBig((bodies[id] || '').length);
     histInit(id, isBig ? bodies[id] : null);   // big notes: reuse the string instead of serializing again
     titleIn.value = n.title || '';
@@ -1952,9 +2061,9 @@ sbList.addEventListener('dragstart', e => {
   const it = e.target.closest('.sb-item');
   if (!it) { e.preventDefault(); return; }
   e.dataTransfer.effectAllowed = 'copyMove';
-  dragNoteOut(e, it.dataset.id);
+  const many = dragNoteOut(e, it.dataset.id, sbMulti) > 1;
   const n = noteById(it.dataset.id);
-  sbDrag = n && !n.pinned ? n.id : null;          // the list reorders like the board (pinned notes keep their name order)
+  sbDrag = n && !n.pinned && !many ? n.id : null;          // the list reorders like the board (pinned notes keep their name order)
 });
 sbList.addEventListener('dragend', dragDone);
 sbList.addEventListener('dragover', e => {
@@ -2020,10 +2129,21 @@ titleIn.addEventListener('input', () => {
   $('#tbMid').textContent = titleOf(n);
   saveStateSoon(); renderSidebarSoon();
 });
+// Enter / Tab / ↓ in the title: on to the very start of the note (into the first cell / list line if it begins
+// with one). Pressed while a Korean syllable is still being typed, it goes once the syllable is done.
+function bodyStart() {
+  let n = editor.firstChild;
+  while (n && n.nodeType === 1 && /^(TABLE|TBODY|THEAD|TR|UL|OL)$/.test(n.nodeName)) n = n.firstElementChild;
+  return n || editor.firstChild || editor;
+}
+function toBody() { editor.focus(); scroller.scrollTop = 0; placeCaret(bodyStart(), false); }
+let titleGo = false;
 titleIn.addEventListener('keydown', e => {
-  if (e.isComposing) return;
-  if (e.key === 'Enter' || e.key === 'ArrowDown') { e.preventDefault(); editor.focus(); placeCaret(editor.firstChild || editor, false); }
+  const go = e.code === 'Enter' || e.code === 'NumpadEnter' || e.key === 'Enter' || ((e.code === 'Tab' || e.key === 'Tab') && !e.shiftKey && !e.ctrlKey && !e.altKey);
+  if (e.isComposing) { if (go) { e.preventDefault(); titleGo = true; } return; }
+  if (go || e.key === 'ArrowDown') { e.preventDefault(); toBody(); }
 });
+titleIn.addEventListener('compositionend', () => { if (titleGo) { titleGo = false; setTimeout(toBody, 0); } });
 const narrow = matchMedia('(max-width:820px)');  // a half-screen window: the list opens as a drawer over the note
 $('#hSide').onclick = () => {
   if (narrow.matches) { app.classList.toggle('sb-peek'); return; }
@@ -2198,7 +2318,9 @@ function histCommit(keepNodes) {
 // and not typed in again after the undo
 function finishIme() {
   if (!composing) return;
+  const at = selSave();
   editor.blur(); editor.focus({ preventScroll: true });
+  if (at) selRestore(at);                         // the caret stays after the finished syllable
   composing = false;
 }
 function undo() {
@@ -2224,6 +2346,7 @@ function applySnap(h, sel) {
   editor.innerHTML = h;
   setBig(h.length);
   if (!editor.firstChild) editor.innerHTML = '<div><br></div>';
+  relist();
   editor.focus({ preventScroll: true });
   if (sel) selRestore(sel); else placeCaret(editor.lastChild, true);
   // the "type here" hint goes (or comes back) with the undone text at once, not with the delayed character count
@@ -2250,6 +2373,7 @@ function edit(fn) {
   if (hs) hs.st[hs.i].u = selSave();
   try { fn(); } finally {
     caretBeforeBr();
+    relist();
     histCommit();
     if (editor.classList.contains('is-empty')) stats(); else statsSoon();
     markDirty(); posOvSoon();
@@ -2280,6 +2404,7 @@ editor.addEventListener('input', e => {
     const li = closestSel('ul.checklist > li');
     if (li && li.dataset.checked === 'true' && !li.textContent) li.dataset.checked = 'false';
   }
+  if (!/^insert(Text|CompositionText|ReplacementText)$/.test(e.inputType)) relist();   // Enter, deleting, a drop: numbers again
   markDirty();
   histSoon();
   statsSoon();
@@ -2357,7 +2482,18 @@ editor.addEventListener('keydown', e => {
     else { done = false; if (code === 'KeyV' && sh) plainNext = true; }
     if (done) { e.preventDefault(); return; }
   }
+  if (!mod && !e.shiftKey && (e.key === 'Escape' || (e.altKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')))) {
+    const pre = closestSel('pre');                 // in a code block: Esc selects it as one block, Alt+↑/↓ moves it
+    if (pre && !pre.closest('td')) {
+      e.preventDefault(); e.stopPropagation();
+      selectObj(pre);
+      if (e.key !== 'Escape') moveObj(pre, e.key === 'ArrowUp');
+      return;
+    }
+  }
   if (mod || e.altKey) return;
+  if (e.shiftKey && (e.key === 'ArrowDown' || e.key === 'ArrowUp') && lineSelect(e.key === 'ArrowDown')) { e.preventDefault(); return; }
+  if (e.key === 'ArrowDown' && !e.shiftKey && boxDown()) { e.preventDefault(); return; }   // out of a code block / quote below
   const td = closestSel('td');
   if (td && (e.key === 'Enter' || e.key === 'Tab') && onTableKey(e, td)) return;
   if (e.key === 'Tab') {
@@ -2479,9 +2615,12 @@ function keepSel(fn) {
   if (!k) return;
   try { const nr = document.createRange(); nr.setStart(k[0], k[1]); nr.setEnd(k[2], k[3]); const s = getSelection(); s.removeAllRanges(); s.addRange(nr); } catch (e) { /* node moved */ }
 }
-function applyFg(v) {
+// Text colour / highlight: the pen picked in the menu stays the toolbar's pen (shown on its bar, saved) until another
+// is picked - the A / marker button applies that pen. Black is a colour like the others; '형광펜 없음' is a pen too
+// (the button then takes highlights off).
+function applyFg(v, choose) {
   ensureEditorFocus();
-  if (v) { st.fg = v; saveStateSoon(); updateSwatches(); }
+  if (choose && v) { st.fg = v; saveStateSoon(); updateSwatches(); }
   const strip = () => keepSel(() => {
     for (const f of $$('font[color]', editor)) if (f.getAttribute('color').toLowerCase() === '#010203') { f.removeAttribute('color'); if (!f.attributes.length) unwrap(f); }
     for (const sp of $$('span[style*="color"]', editor)) if (sp.style.color === 'rgb(1, 2, 3)') { sp.style.removeProperty('color'); if (!sp.getAttribute('style')) unwrap(sp); }
@@ -2490,10 +2629,14 @@ function applyFg(v) {
   if (onCells(() => exec('foreColor', v || '#010203'), v ? null : strip)) return;
   edit(() => { exec('foreColor', v || '#010203'); if (!v) strip(); });
 }
-function applyHl(v) {
+function applyHl(v, choose) {
   ensureEditorFocus();
-  if (v) { st.hl = v; saveStateSoon(); updateSwatches(); }
+  if (choose) { st.hl = v || ''; saveStateSoon(); updateSwatches(); }
   if (onCells(() => exec('hiliteColor', v || 'rgb(1, 2, 3)'), v ? null : () => keepSel(stripSentinelBg))) return;
+  const r = selRange();
+  // no highlight at a bare caret: what is typed next gets none (a see-through background beats the one around it;
+  // the old way left a near-black background on it)
+  if (!v && r && r.collapsed) { edit(() => exec('hiliteColor', 'transparent')); return; }
   edit(() => { exec('hiliteColor', v || 'rgb(1, 2, 3)'); if (!v) keepSel(stripSentinelBg); });
 }
 function stripSentinelBg() {
@@ -2505,6 +2648,7 @@ function stripSentinelBg() {
 }
 function toggleHl() {
   ensureEditorFocus();
+  if (!st.hl) { applyHl(null); return; }          // pen '형광펜 없음': the button takes highlights off
   const want = rgbOf(st.hl).replace(/\s/g, '');
   let has;
   if (navLive()) {                                // selected cells: is the first cell already highlighted?
@@ -2516,7 +2660,8 @@ function toggleHl() {
 function clearFmt() {
   ensureEditorFocus();
   if (onCells(() => { exec('removeFormat'); exec('hiliteColor', 'rgb(1, 2, 3)'); }, () => keepSel(stripSentinelBg))) return;
-  edit(() => { exec('removeFormat'); exec('hiliteColor', 'rgb(1, 2, 3)'); keepSel(stripSentinelBg); });
+  const r = selRange(), bare = !!r && r.collapsed;   // at a bare caret: the next letters plain (no near-black background)
+  edit(() => { exec('removeFormat'); exec('hiliteColor', bare ? 'transparent' : 'rgb(1, 2, 3)'); if (!bare) keepSel(stripSentinelBg); });
   updateToolbar();
 }
 function setBlock(tag) {
@@ -2539,17 +2684,50 @@ function liAtLineStart() {
   pre.setStart(li, 0); pre.setEnd(r.startContainer, r.startOffset);
   return pre.toString() || pre.cloneContents().querySelector('img') ? null : li;
 }
-// Backspace at the start of a list line: 1st press takes the bullet off that line only (the text stays where it
-// is), the next press moves the line out one level; an empty top-level line leaves the list at once.
+// Backspace at the start of a list line, the way back up:
+//  - a sub-item goes up one level at once, bullet and all (like Shift+Tab): it becomes the next item of the
+//    level above - numbered on from it - and the lines below it become its sub-items
+//  - a top-level line: the 1st press takes its bullet off (the text stays where it is, the numbers below carry
+//    on), the next press makes it a normal line; an empty top-level line leaves the list at once
 function listBackspace() {
   const li = liAtLineStart();
   if (!li) return false;
+  const up = li.parentElement.parentElement, nested = isList(up) || (up && up.nodeName === 'LI');
   edit(() => {
-    if (!li.classList.contains('nob') && !emptyHtml(li.innerHTML)) {
+    if (nested) {
+      li.classList.remove('nob');
+      liftItem(li);
+      const L = li.parentElement;
+      if (L && !L.classList.contains('checklist')) delete li.dataset.checked;
+      else if (L && !li.dataset.checked) li.dataset.checked = 'false';
+    } else if (!li.classList.contains('nob') && !emptyHtml(li.innerHTML)) {
       li.classList.add('nob'); delete li.dataset.checked;
       placeCaret(li, false);
     } else liftItem(li);
   });
+  return true;
+}
+// Shift+↑/↓ from the start (or end) of a line: Chrome keeps the caret's x from line to line, so a selection made
+// line by line ran a few characters into a less indented line (a sub-item -> the item below it: 2 Hangul / 3 Latin
+// letters). Crossing into another line it now lands on that line's start (or end), like a word processor.
+function lineEdge(node, off) {                    // 'start' / 'end' of its visual line, or null in the middle
+  const blk = blockOf(node);
+  if (!blk || blk.nodeName === 'TD') return null;
+  const t = textOffset(blk, node, off), len = blk.textContent.length;
+  if (t === 0) return 'start';
+  if (t >= len) return 'end';
+  const at = k => { const [n, o] = textPos(blk, k), r = document.createRange(); r.setStart(n, o); r.setEnd(...textPos(blk, k + 1)); return r.getBoundingClientRect(); };
+  const before = at(t - 1), after = at(t);
+  return after.top > before.top + 2 ? 'start' : null;    // the character after it starts the next visual line
+}
+function lineSelect(down) {
+  const s = getSelection();
+  if (!s.rangeCount || !s.focusNode || !editor.contains(s.focusNode)) return false;
+  const edge = lineEdge(s.focusNode, s.focusOffset);
+  if (!edge) return false;
+  const b0 = blockOf(s.focusNode);
+  s.modify('extend', down ? 'forward' : 'backward', 'line');
+  if (blockOf(s.focusNode) !== b0) s.modify('extend', edge === 'start' ? 'backward' : 'forward', 'lineboundary');
   return true;
 }
 // one level out; from the top level the line leaves the list as a normal line
@@ -2571,7 +2749,6 @@ function liftItem(li) {
   } else {                                        // top level: a normal line between the two halves
     if (tail) {
       list.after(tail);
-      if (list.nodeName === 'OL') tail.start = (list.start || 1) + $$(':scope > li:not(.nob)', list).length - (li.classList.contains('nob') ? 0 : 1);
     }
     const d = document.createElement('div');
     while (li.firstChild) d.appendChild(li.firstChild);
@@ -2582,32 +2759,104 @@ function liftItem(li) {
   }
   if (!list.querySelector('li')) list.remove();
   placeCaret(moved, false);
+  return moved;
+}
+// one level in: the line joins the sub-list right above it (or starts one), its own sub-items go along one level
+// deeper. Done here rather than by the browser's indent, which wraps a line it doesn't take for a list item (a list
+// split by earlier edits) in a quote box.
+function sinkItem(li) {
+  const L = li.parentElement, prev = li.previousElementSibling;
+  const kids = li.nextElementSibling && isList(li.nextElementSibling) ? li.nextElementSibling : null;
+  let T = null;
+  if (prev && isList(prev)) T = prev;                                            // Chrome's shape: a list after its item
+  else if (prev && prev.nodeName === 'LI' && isList(prev.lastElementChild)) T = prev.lastElementChild;   // pasted shape
+  if (!T) {
+    T = document.createElement(L.nodeName === 'OL' ? 'OL' : 'UL');
+    if (L.classList.contains('checklist')) T.className = 'checklist';
+    li.before(T);
+  }
+  T.appendChild(li);
+  if (kids) li.after(kids);
+  const nx = T.nextElementSibling;                // the rest of a sub-list that was split off: one list again
+  if (nx && nx !== kids && isList(nx) && nx.nodeName === T.nodeName) { while (nx.firstChild) T.appendChild(nx.firstChild); nx.remove(); }
+  if (T.classList.contains('checklist')) { if (!li.dataset.checked) li.dataset.checked = 'false'; } else delete li.dataset.checked;
 }
 // Tab / Shift+Tab on a list line: indent / outdent the line, keeping checklists checklists
 function listIndent(out) {
-  const one = out && closestSel('li'), r = selRange();
-  if (one && r && one.contains(r.endContainer) && !isList(one.parentElement.parentElement) && one.parentElement.parentElement.nodeName !== 'LI') {
-    edit(() => liftItem(one));                    // top level: a proper line, and the numbers below carry on
+  const li = closestSel('li'), r = selRange();
+  if (li && r && li.contains(r.startContainer) && li.contains(r.endContainer) && !li.closest('td')) {   // one line: done by hand,
+    const k = [textOffset(li, r.startContainer, r.startOffset), textOffset(li, r.endContainer, r.endOffset)];   // caret kept
+    edit(() => {
+      const moved = out ? liftItem(li) : (sinkItem(li), li);
+      if (moved) setSelOffsets(moved, k[0], k[1]);
+    });
     updateToolbar();
     return;
   }
+  // several lines: each list line in the selection moves one level (top to bottom in, bottom to top out); the
+  // selection then covers the same lines again
+  if (!r) return;
+  const lis = $$('li', editor).filter(x => r.intersectsNode(x) && !x.closest('td'));
+  if (!lis.length) return;
   edit(() => {
-    exec(out ? 'outdent' : 'indent');
-    const li = closestSel('li'), L = li && li.parentElement;
-    if (!L) return;
-    const outer = L.parentElement && L.parentElement.closest('ul,ol');
-    if (L.nodeName === 'UL' && outer && outer.classList.contains('checklist')) L.classList.add('checklist');
-    if (!L.classList.contains('checklist')) delete li.dataset.checked;
+    const moved = [];
+    if (out) for (let i = lis.length - 1; i >= 0; i--) moved.unshift(liftItem(lis[i]) || lis[i]);
+    else for (const x of lis) { sinkItem(x); moved.push(x); }
+    const a = moved[0], z = moved[moved.length - 1];
+    if (a && z && a.isConnected && z.isConnected) {
+      const nr = document.createRange(); nr.selectNodeContents(a); const e2 = document.createRange(); e2.selectNodeContents(z);
+      nr.setEnd(e2.endContainer, e2.endOffset);
+      const sel = getSelection(); sel.removeAllRanges(); sel.addRange(nr);
+    }
   });
   updateToolbar();
 }
-// what number a numbered line shows (1. 가. 1) 가) (1) (가) ① ㉮ by depth) - for copying as text
+// Numbers of numbered lists, in one pass from the top of the note (the way word processors do it). A line keeps
+// no number of its own: only its depth (list nesting) and its list's kind (data-type: number / hangul / alpha, or
+// none = the depth's default 1. 가. 1) ...). For each list line, top to bottom, counters[depth] goes up by one and
+// every deeper counter starts again; a normal line between lists ends the run (all counters start again). A list
+// split in two by edits carries on its numbers (its start), and a list made without a kind takes the kind of the
+// list before it at the same depth - so deleting or adding a line in the middle never jumps back to '1.'.
+const LIST_KINDS = new Set(['number', 'hangul', 'alpha']);
+function relist() {
+  if (!editor.querySelector('ol')) return;
+  const counters = new Array(10).fill(0), kinds = new Array(10).fill(null);
+  const run = (L, d) => {
+    d = Math.min(d, 9);
+    let kind = 'bullet';
+    if (L.nodeName === 'OL') {
+      kind = LIST_KINDS.has(L.dataset.type) ? L.dataset.type : '';
+      if (!kind && kinds[d] && kinds[d] !== 'bullet') { kind = kinds[d]; L.dataset.type = kind; }   // inherited
+    }
+    if (kinds[d] !== null && kinds[d] !== kind) counters[d] = 0;      // another kind at this depth counts again
+    kinds[d] = kind;
+    if (L.nodeName === 'OL') {
+      const first = counters[d] + 1;
+      if (first > 1) { if (L.getAttribute('start') !== String(first)) L.setAttribute('start', first); }
+      else if (L.hasAttribute('start')) L.removeAttribute('start');
+    }
+    for (const c of L.children) {
+      if (c.nodeName === 'LI') {
+        if (!c.classList.contains('nob')) { counters[d]++; for (let k = d + 1; k < 10; k++) counters[k] = 0; }
+        for (const sub of c.children) if (isList(sub)) run(sub, d + 1);   // pasted shape: a list inside its item
+      } else if (isList(c)) run(c, d + 1);                               // Chrome's shape: a list after its item
+    }
+  };
+  for (const b of editor.children) {
+    if (isList(b)) run(b, 0);
+    else { counters.fill(0); kinds.fill(null); }                       // a normal line: the list run ends
+  }
+}
+// what number a numbered line shows (1. 가. 1) 가) (1) (가) ① ㉮ by depth, or its list's own kind) - for copying as text
 function olLabel(li) {
   const ol = li.parentElement;
   let n = ol.start || 1, depth = 0;
   for (let s = li.previousElementSibling; s; s = s.previousElementSibling) if (s.nodeName === 'LI' && !s.classList.contains('nob')) n++;
   for (let p = ol; p && p !== editor; p = p.parentElement) if (p.nodeName === 'OL') depth++;
   const ko = i => { let t = ''; for (i--; i >= 0; i = Math.floor(i / 14) - 1) t = '가나다라마바사아자차카타파하'[i % 14] + t; return t; };
+  if (ol.dataset.type === 'number') return n + '. ';
+  if (ol.dataset.type === 'hangul') return ko(n) + '. ';
+  if (ol.dataset.type === 'alpha') { let t = ''; for (let i = n - 1; i >= 0; i = Math.floor(i / 26) - 1) t = String.fromCharCode(97 + i % 26) + t; return t + '. '; }
   switch ((depth - 1) % 8) {
     case 1: return ko(n) + '. ';
     case 2: return n + ') ';
@@ -2649,7 +2898,11 @@ function liftList() {
   if (k) setSelOffsets(li, k[0], k[1]);
 }
 function toggleList(kind) {
+  // A Korean syllable still being typed is finished first, and a first line typed as bare text gets its line box:
+  // the list made around a syllable the IME was still composing came apart (the box gone, the letters doubled)
+  finishIme();
   ensureEditorFocus();
+  if (needsRoot()) ensureRoot();
   const keep = caretKeep();                       // making a list keeps the caret where you were typing
   edit(() => {
     listInner(kind);
@@ -2701,18 +2954,38 @@ function mdShortcut() {
   const r = selRange();
   if (!r || !r.collapsed) return false;
   const blk = blockOf(r.startContainer);
+  if (blk && blk.nodeName === 'LI' && blk.parentElement.nodeName === 'OL' && !blk.closest('td')) {   // "가. " typed in a numbered line
+    const pre0 = document.createRange(); pre0.setStart(blk, 0); pre0.setEnd(r.startContainer, r.startOffset);
+    const m0 = /^(\d{1,3}|[가나다라마바사아자차카타파하]|[a-zA-Z])[.)]$/.exec(pre0.toString());
+    if (!m0) return false;
+    const k0 = /\d/.test(m0[1]) ? 'number' : /[a-zA-Z]/.test(m0[1]) ? 'alpha' : 'hangul';
+    exec('insertText', ' '); histCommit();
+    edit(() => {
+      const r2 = selRange(), p2 = document.createRange(); p2.setStart(blk, 0); p2.setEnd(r2.startContainer, r2.startOffset);
+      const s0 = getSelection(); s0.removeAllRanges(); s0.addRange(p2);
+      exec('delete');
+      blk.parentElement.dataset.type = k0;
+    });
+    return true;
+  }
   if (!blk || /^(LI|TD|PRE)$/.test(blk.nodeName)) return false;
   const pre = document.createRange();
   pre.setStart(blk, 0); pre.setEnd(r.startContainer, r.startOffset);
-  const map = { '#': 'h1', '##': 'h2', '###': 'h3', '-': 'ul', '*': 'ul', '1.': 'ol', '[]': 'chk', '[ ]': 'chk', '>': 'blockquote', '```': 'pre' };
-  const kind = map[pre.toString()];
+  const map = { '#': 'h1', '##': 'h2', '###': 'h3', '-': 'ul', '*': 'ul', '[]': 'chk', '[ ]': 'chk', '>': 'blockquote', '```': 'pre' };
+  const typed = pre.toString(), m = /^(\d{1,3}|[가나다라마바사아자차카타파하]|[a-zA-Z])[.)]$/.exec(typed);
+  const numKind = m ? (/\d/.test(m[1]) ? 'number' : /[a-zA-Z]/.test(m[1]) ? 'alpha' : 'hangul') : null;
+  const kind = numKind ? 'ol' : map[typed];
   if (!kind) return false;
   exec('insertText', ' '); histCommit();          // Ctrl+Z brings back what you typed ("# "), not an empty line
   edit(() => {
     const r2 = selRange(), pre2 = document.createRange(); pre2.setStart(blk, 0); pre2.setEnd(r2.startContainer, r2.startOffset);
     const s = getSelection(); s.removeAllRanges(); s.addRange(pre2);
     exec('delete');
-    if (kind === 'ul' || kind === 'ol') { exec(kind === 'ul' ? 'insertUnorderedList' : 'insertOrderedList'); liftList(); }
+    if (kind === 'ul' || kind === 'ol') {
+      exec(kind === 'ul' ? 'insertUnorderedList' : 'insertOrderedList'); liftList();
+      const li = closestSel('li');
+      if (numKind && li && li.parentElement.nodeName === 'OL') li.parentElement.dataset.type = numKind;   // the pass gives the number
+    }
     else if (kind === 'chk') { exec('insertUnorderedList'); const li = closestSel('li'); if (li) li.parentElement.classList.add('checklist'); liftList(); }
     else exec('formatBlock', kind);
   });
@@ -2727,11 +3000,77 @@ function textPos(root, k) {                       // [text node, offset] k chara
   while ((n = w.nextNode())) { if (k <= pos + n.nodeValue.length) return [n, k - pos]; pos += n.nodeValue.length; last = n; }
   return last ? [last, last.nodeValue.length] : [root, 0];
 }
+// A quote holds its lines as <div>s: Enter starts a new <div> line inside it with the caret at its very start. (A <br>
+// line break put the caret after a <br>, where Windows' Korean IME types the first consonant twice: "ㄱ가".) An
+// older quote whose lines are split by <br> is turned into <div> lines first. Enter on an empty last line leaves.
+function quoteLines(box) {
+  const kids = [...box.childNodes];
+  if (!kids.some(n => n.nodeType === 3 || (n.nodeType === 1 && !BLOCK_TAGS.test(n.nodeName)))) return;
+  const lines = [];
+  let cur = [];
+  for (const n of kids) {
+    if (n.nodeName === 'BR') { lines.push(cur); cur = []; }
+    else if (n.nodeType === 1 && BLOCK_TAGS.test(n.nodeName)) { if (cur.length) lines.push(cur); lines.push(n); cur = []; }
+    else cur.push(n);
+  }
+  if (cur.length || !lines.length) lines.push(cur);
+  else if (Array.isArray(lines[lines.length - 1]) && !lines[lines.length - 1].length && kids[kids.length - 1].nodeName === 'BR' && lines.length > 1) lines.pop();   // the closing <br> only shows the line before it
+  box.textContent = '';
+  for (const l of lines) {
+    if (!Array.isArray(l)) { box.appendChild(l); continue; }
+    const d = document.createElement('div');
+    l.forEach(n => d.appendChild(n));
+    if (!d.textContent && !d.querySelector('img,br')) d.appendChild(document.createElement('br'));
+    box.appendChild(d);
+  }
+}
+function quoteEnter(box) {
+  edit(() => {
+    const r = selRange(), mk = document.createElement('span');
+    r.insertNode(mk);
+    quoteLines(box);
+    let line = mk;
+    while (line && line.parentNode !== box) line = line.parentNode;
+    const empty = n => !n.textContent.replace(/​/g, '').trim() && !n.querySelector('img,table,hr');
+    if (!line || !/^(DIV|P)$/.test(line.nodeName)) {   // somewhere unexpected: a plain line break as before
+      const c = document.createRange(); c.setStartBefore(mk); c.collapse(true); mk.remove();
+      const sel = getSelection(); sel.removeAllRanges(); sel.addRange(c);
+      exec('insertLineBreak');
+      return;
+    }
+    if (empty(box)) {                              // an empty quote: Enter makes it a normal line
+      mk.remove();
+      const d = document.createElement('div'); d.innerHTML = '<br>';
+      box.replaceWith(d); placeCaret(d, false);
+      return;
+    }
+    if (empty(line) && line === box.lastElementChild) {   // empty last line: out of the quote
+      mk.remove(); line.remove();
+      const d = document.createElement('div'); d.innerHTML = '<br>';
+      box.after(d); placeCaret(d, false);
+      return;
+    }
+    const rest = document.createRange(); rest.setStartAfter(mk); rest.setEnd(line, line.childNodes.length);
+    const tail = rest.extractContents();
+    mk.remove();
+    const nl = document.createElement(line.nodeName === 'P' ? 'P' : 'DIV');
+    nl.appendChild(tail);
+    for (const x of [line, nl]) if (!x.textContent && !x.querySelector('img')) x.innerHTML = '<br>';
+    line.after(nl);
+    placeCaret(nl, false);                        // the very start of the new line (in front of its <br>)
+  });
+}
 function boxEnter() {
   const r = selRange();
   if (!r || !r.collapsed) return false;
   const box = closestSel('pre') || closestSel('blockquote');
   if (!box || box.closest('td')) return false;
+  if (box.nodeName === 'BLOCKQUOTE') {            // a list inside a quote: its own Enter
+    const li = closestSel('li');
+    if (li && box.contains(li)) return false;
+    quoteEnter(box);
+    return true;
+  }
   const before = document.createRange(); before.setStart(box, 0); before.setEnd(r.startContainer, r.startOffset);
   const after = document.createRange(); after.setStart(r.startContainer, r.startOffset); after.setEnd(box, box.childNodes.length);
   const tb = before.toString();
@@ -2745,6 +3084,49 @@ function boxEnter() {
   } else edit(() => exec('insertLineBreak'));
   return true;
 }
+// A code block (or quote) at the very end of a note had no way out below it. ↓ on its last line now goes to the
+// line under it - made when there is none - and so does a click in the empty space under the note's last block.
+function lineBelow(box) {
+  let n = box.nextElementSibling;
+  if (!n || !/^(DIV|P|H[1-6])$/.test(n.nodeName)) edit(() => { n = document.createElement('div'); n.innerHTML = '<br>'; box.after(n); });
+  placeCaret(n, false);
+  scrollCaretIntoView();
+}
+function boxDown() {
+  const r = selRange();
+  if (!r || !r.collapsed) return false;
+  const box = closestSel('pre') || closestSel('blockquote');
+  if (!box || box.closest('td')) return false;       // also a code block inside a list item / a wrapping line
+  const rest = document.createRange(); rest.setStart(r.startContainer, r.startOffset); rest.setEnd(box, box.childNodes.length);
+  const tail = document.createElement('div');
+  tail.appendChild(rest.cloneContents());
+  if (toPlain(tail).replace(/\n+$/, '').includes('\n')) return false;     // another line still follows: the browser's own ↓
+  const s = getSelection(), top0 = r.getBoundingClientRect().top, at = [s.focusNode, s.focusOffset];
+  s.modify('move', 'forward', 'line');
+  const f = s.focusNode;
+  if (f && !box.contains(f)) {                    // the browser went down by itself - onto a real line below?
+    const b = blockOf(f);
+    if (b && !b.contains(box)) return true;
+  } else {
+    const r1 = selRange(), top1 = r1 ? r1.getBoundingClientRect().top : 0;
+    if (top0 && top1 > top0 + 2) return true;     // a long last line wraps: down within it
+  }
+  // stuck, or somewhere with no line (beside the block, or the list item holding it): a line under it all
+  try { s.collapse(at[0], at[1]); } catch (e) { /* moved */ }
+  lineBelow(topLevel(box) || box);
+  return true;
+}
+editor.addEventListener('mousedown', e => {
+  if (e.button !== 0 || e.target !== editor || e.shiftKey || e.detail > 1) return;
+  const last = editor.lastElementChild;
+  // under the last block when it isn't a plain line (a code block, quote, table, divider, a list - or a line or
+  // list item holding a code block / table)
+  if (!last || e.clientY <= last.getBoundingClientRect().bottom) return;
+  if (/^(DIV|P|H[1-6])$/.test(last.nodeName) && !last.querySelector('pre,table,blockquote')) return;
+  e.preventDefault();
+  ensureEditorFocus();
+  lineBelow(last);
+});
 // Backspace at the start of the line after a table (Delete at the end of the line before one) used to do nothing:
 // an empty line goes away into the table's last cell, otherwise the table gets selected (pressed again: deleted)
 function besideTable(back) {
@@ -2804,14 +3186,16 @@ function updateToolbar() {
   toolbar.querySelector('[data-list=ol]').classList.toggle('on', !!L && L.nodeName === 'OL');
   toolbar.querySelector('[data-list=chk]').classList.toggle('on', chk);
 }
-function updateSwatches() {
-  $('#fgBar').style.background = st.fg || 'var(--ink)';
-  $('#hlBar').style.background = st.hl;
+function updateSwatches() {                      // the bars show the pen as it looks in the note (dark theme too)
+  const c = FG.find(x => x.v === st.fg);
+  $('#fgBar').style.background = st.theme === 'dark' && c && c.d ? c.d : st.fg || 'var(--ink)';
+  $('#hlBar').style.background = st.hl || 'repeating-linear-gradient(135deg, var(--line-2) 0 2px, transparent 2px 4px)';
 }
 toolbar.addEventListener('mousedown', e => { if (!e.target.closest('#findbar')) e.preventDefault(); });
 toolbar.addEventListener('click', e => {
   const b = e.target.closest('button');
   if (!b || b.closest('#findbar')) return;
+  finishIme();                                    // the button keeps the focus, so a syllable may still be open
   if (b.dataset.cmd) fmt(b.dataset.cmd);
   else if (b.dataset.list) toggleList(b.dataset.list);
   else if (b.dataset.pop) toolPop(b.dataset.pop, b);
@@ -2835,10 +3219,10 @@ function toolPop(kind, anchor) {
   } else if (kind === 'fg') {
     showPop(r.left, r.bottom + 6, `<div class="mlabel">글자색 · 잘 보이는 색만 골랐어요</div><div class="swatches">${FG.map(c => c.v
       ? `<button class="sw txt${st.fg === c.v ? ' on' : ''}" data-v="${c.v}" title="${c.n}" style="color:${st.theme === 'dark' && c.d ? c.d : c.v}">A</button>`
-      : `<button class="sw none" data-v="" title="기본 색"></button>`).join('')}</div>`, b => { applyFg(b.dataset.v); });
+      : '').join('')}</div>`, b => { applyFg(b.dataset.v, true); });
   } else if (kind === 'hl') {
-    showPop(r.left, r.bottom + 6, `<div class="mlabel">형광펜</div><div class="swatches"><button class="sw none" data-v="" title="형광펜 지우기"></button>${HL.map(c => `<button class="sw${st.hl === c.v ? ' on' : ''}" data-v="${c.v}" title="${c.n}" style="background:${c.v}"></button>`).join('')}</div>`,
-      b => { applyHl(b.dataset.v || null); });
+    showPop(r.left, r.bottom + 6, `<div class="mlabel">형광펜</div><div class="swatches"><button class="sw none${st.hl ? '' : ' on'}" data-v="" title="형광펜 없음"></button>${HL.map(c => `<button class="sw${st.hl === c.v ? ' on' : ''}" data-v="${c.v}" title="${c.n}" style="background:${c.v}"></button>`).join('')}</div>`,
+      b => { applyHl(b.dataset.v || null, true); });
   } else if (kind === 'table') {
     let cells = '';
     for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) cells += `<i data-x="${x}" data-y="${y}"></i>`;
@@ -3033,7 +3417,7 @@ let nav = null;                                   // { t, ar, ac, fr, fc }  anch
 let editCell = null, editKind = '', editOrig = '';
 let editMark = null;                              // { id, i }: the undo step a cell edit began after (Esc drops what it added)
 function markEdit() { const hs = H.get(cur); editMark = hs ? { id: cur, i: hs.i } : null; }
-let tabFrom = -1;                                 // column a run of Tabs started in: Enter goes back to it, like Excel
+let tabFrom = -1;                                 // column a run of Tabs started in (Enter no longer goes back to it)
 // the status bar says what a key will do in a table (written only when the mode changes)
 let hintMode = '', defaultHint = '', tipAfterIme = false;
 function tblHint(m) {
@@ -3042,7 +3426,7 @@ function tblHint(m) {
   const h = $('#stHint');
   h.classList.toggle('tbl', !!m);
   h.textContent = m === 'nav' ? '칸 선택 · 입력하면 새로 씀 · F2 이어 쓰기 · Delete 지우기 · Ctrl+Enter 표 밖으로'
-    : m === 'edit' ? '칸 편집 중 · Enter 확정 · Esc 취소 · Shift+Enter 줄바꿈'
+    : m === 'edit' ? '칸 편집 중 · 방향키는 칸 안에서 · Enter 확정 · Esc 칸 선택으로 · Shift+Enter 줄바꿈'
     : m === 'obj' ? '표 선택됨 · Ctrl+C 복사 · Delete 삭제 · Esc 해제' : defaultHint;
 }
 let parked = null, mouseSel = false, parkAfterMouse = false, dragFrom = null;   // dragFrom: the cell a mouse drag began in
@@ -3151,8 +3535,8 @@ function moveNav(dr, dc, extend, jump) {
   if (jump) { if (dr) r = dr < 0 ? 0 : R - 1; if (dc) c = dc < 0 ? 0 : C - 1; }
   setNav(t, r, c, extend);
 }
-function navDown(t) {                             // Enter: next row (back in the column the Tabs began in); on the last row a new row
-  const r = nav.fr, c = tabFrom >= 0 ? tabFrom : nav.fc;
+function navDown(t) {                             // Enter: the cell right below (also after Tabs); on the last row a new row
+  const r = nav.fr, c = nav.fc;
   if (r < t.rows.length - 1) { setNav(t, r + 1, c); return; }
   edit(() => addRow(t, t.rows.length));
   setNav(t, t.rows.length - 1, c);
@@ -3203,10 +3587,9 @@ function editKey(e) {
   if (!td.isConnected) { clearNav(); return false; }
   const t = td.closest('table'), r = td.parentElement.rowIndex, c = td.cellIndex;
   const back = () => { histCommit(); nav = { t, ar: r, ac: c, fr: r, fc: c }; editCell = null; };
-  if (e.key === 'Escape') {                      // cancel the edit
+  if (e.key === 'Escape') {                      // back to selecting the cell (what was typed stays; Ctrl+Z takes it back)
     e.preventDefault(); e.stopPropagation();
-    if (td.innerHTML !== editOrig) { td.innerHTML = editOrig; markDirty(); }
-    dropEditSteps();
+    histCommit();
     setNav(t, r, c);
     return true;
   }
@@ -3215,19 +3598,17 @@ function editKey(e) {
   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); back(); navDown(t); return true; }
   if (e.key === 'Tab') { e.preventDefault(); back(); navTab(t, e.shiftKey); return true; }
   if (ARROWS[e.key] && !e.shiftKey) {
-    let leave = editKind === 'type';             // typed straight in: arrows move to the next cell (Excel "enter" mode)
-    if (!leave && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
-      // F2 mode: arrows move inside the text; up/down leave the cell only from its first / last line
-      const sr = selRange(), cr = sr && sr.getBoundingClientRect(), tr = td.getBoundingClientRect();
-      const lh = parseFloat(getComputedStyle(td).lineHeight) || 22;
-      const top = cr && cr.height ? cr.top : tr.top, bottom = cr && cr.height ? cr.bottom : tr.bottom;
-      leave = e.key === 'ArrowUp' ? top - tr.top < lh * 1.4 : tr.bottom - bottom < lh * 1.4;
-    }
-    if (!leave) return false;
+    // Editing a cell (caret in it): the arrows move in its text - ↑ / ↓ to the line above / below, ← / → by a
+    // letter - and never out of the cell; at its first / last line or its edges the caret goes to its start / end.
+    // Esc goes back to selecting the cell, where the arrows move between cells.
     e.preventDefault();
-    back();
-    const [dr, dc] = ARROWS[e.key];
-    if ((dr < 0 && r === 0) || (dr > 0 && r === t.rows.length - 1)) leaveTable(t, dr < 0); else moveNav(dr, dc);
+    const s = getSelection(), up = e.key === 'ArrowUp' || e.key === 'ArrowLeft';
+    if (!s.isCollapsed) s.collapse(up ? s.anchorNode : s.focusNode, up ? s.anchorOffset : s.focusOffset);   // a selection: to its side
+    else s.modify('move', up ? 'backward' : 'forward', e.key === 'ArrowUp' || e.key === 'ArrowDown' ? 'line' : 'character');
+    if (!s.focusNode || !td.contains(s.focusNode) || s.focusNode === td.parentNode) {
+      if (up) placeCaret(td, false);
+      else { const [n, o] = endPoint(td), rr = document.createRange(); rr.setStart(n, o); rr.collapse(true); s.removeAllRanges(); s.addRange(rr); }
+    }
     return true;
   }
   return false;
@@ -3572,6 +3953,7 @@ let objSel = null;
 function selectObj(el) {
   if (!el || !editor.contains(el)) return;
   clearNav();
+  if (el.nodeName === 'PRE' && objSel !== el) toast('코드란 선택 · Alt+↑/↓ 옮기기 · Delete 삭제 · Enter 다시 쓰기');
   objSel = el;
   editor.classList.add('objsel');
   if (document.activeElement !== editor) editor.focus({ preventScroll: true });
@@ -3623,10 +4005,41 @@ function deleteObj() {
     const s = getSelection(); s.removeAllRanges(); s.addRange(r);
   });
 }
+// A selected block (code block, table, divider, a picture on its own line) moves up / down past the block next to it
+// with Alt+↑ / Alt+↓ - and stays selected, so it can go on moving. One undo step each.
+function objBlock(el) {
+  if (!el || !el.isConnected) return null;
+  if (el.parentNode === editor) return el;
+  if (el.nodeName === 'PRE') return el;            // a code block inside a list item / line: it moves among what is next to it there
+  const p = el.parentNode;                        // a picture alone on its line: the line moves
+  return el.nodeName === 'IMG' && p.parentNode === editor && !p.textContent.trim() && p.querySelectorAll('img').length === 1 ? p : null;
+}
+function moveObj(el, up) {
+  const b = objBlock(el);
+  if (!b) { toast('줄 안에 든 그림은 옮길 수 없어요 · 그림만 있는 줄이면 돼요'); return; }
+  const sib = up ? b.previousElementSibling : b.nextElementSibling;
+  if (!sib) { toast(up ? '맨 위예요' : '맨 아래예요'); return; }
+  edit(() => { if (up) sib.before(b); else sib.after(b); });
+  selectObj(el);
+  el.scrollIntoView({ block: 'nearest' });
+}
+function codeSelectedKey(e, el, mod) {             // a selected code block: back to writing in it
+  if (el.nodeName !== 'PRE' || mod || e.altKey) return false;
+  const typing = e.key.length === 1 || e.keyCode === 229;   // a letter, or Korean typing: never over the whole block
+  if (!(e.key === 'Enter' || e.key === 'Escape' || e.key === 'F2' || typing)) return false;
+  clearObj();
+  const [n, o] = endPoint(el), r = document.createRange(); r.setStart(n, o); r.collapse(true);
+  const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+  if (typing) return false;                       // the key is typed at its end
+  e.preventDefault(); e.stopPropagation();
+  return true;
+}
 function objKey(e) {
   if (!objSel.isConnected) { clearObj(); return false; }
   const mod = e.ctrlKey || e.metaKey;
   if ((e.key === 'Delete' || e.key === 'Backspace') && !mod && !e.altKey) { e.preventDefault(); deleteObj(); return true; }
+  if (e.altKey && !mod && !e.shiftKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) { e.preventDefault(); moveObj(objSel, e.key === 'ArrowUp'); return true; }
+  if (objSel.nodeName === 'PRE') { const done = codeSelectedKey(e, objSel, mod); if (done || !objSel) return done; }
   if (/^(Control|Shift|Alt|Meta)$/.test(e.key) || (mod && /^Key[CX]$/.test(e.code))) return false;   // copy / cut keep it
   const el = objSel;
   clearObj();
@@ -3843,21 +4256,49 @@ function gridToClipboard(cd, rows) {
 }
 function wholeTable(t) { return { t, r0: 0, r1: t.rows.length - 1, c0: 0, c1: Math.max(0, tableCols(t) - 1) }; }
 let copyT = 0;
-// Copying text in a note: exactly what is selected - a line from a list comes without its bullet (pasted, it is
-// just that text, not another list item), lines from a list become plain lines, no empty line from a triple-click
+// Copying text in a note: exactly what is selected, no empty line from a triple-click. Lines from a list go out as
+// the text you see - indented by their level, their bullet / number / box as characters ("1. ", "가. ", "• ", "☐ ")
+// - so Word, 한글 or Notion show them as they are with nothing to fix after pasting. The numbers are the note's own
+// (a part copied from the middle keeps "다."). A line copied from its middle, or one line alone (pasted into
+// another line), comes without its bullet.
 function selClip() {
   const r = selRange();
   if (!r || r.collapsed || !editor.contains(r.commonAncestorContainer)) return null;
+  // the list lines the copy holds (in the order cloneContents gives them), and what each shows in front of it
+  const live = $$('li', editor).filter(li => r.intersectsNode(li) && !li.contains(r.commonAncestorContainer));
+  const marks = live.map(li => {
+    const st = document.createRange(); st.setStart(li, 0);
+    if (r.compareBoundaryPoints(Range.START_TO_START, st) > 0) {               // starts inside this line: only from its very start
+      st.setEnd(r.startContainer, r.startOffset);
+      if (st.toString() || st.cloneContents().querySelector('img')) return '';
+    }
+    let depth = 0;
+    for (let q = li.parentElement; q && q !== editor && q.nodeName !== 'TD'; q = q.parentElement) if (isList(q)) depth++;
+    const L = li.parentElement;
+    const mark = li.classList.contains('nob') ? '' : L.classList.contains('checklist') ? (li.dataset.checked === 'true' ? '☑ ' : '☐ ')
+      : L.nodeName === 'OL' ? olLabel(li) : '• ';
+    return ('    '.repeat(Math.max(0, depth - 1)) + mark).replace(/ /g, ' ');   // non-breaking: the spaces survive pasting
+  });
   const box = document.createElement('div');
   box.appendChild(r.cloneContents());
-  box.querySelectorAll('li').forEach(li => { const d = document.createElement('div'); while (li.firstChild) d.appendChild(li.firstChild); li.replaceWith(d); });
+  const copies = box.querySelectorAll('li'), markNodes = [];
+  copies.forEach((li, i) => {
+    const d = document.createElement('div');
+    const m = copies.length === live.length ? marks[i] : '';
+    if (m && (li.textContent.trim() || li.querySelector('img,hr,table'))) { const t = document.createTextNode(m); d.appendChild(t); markNodes.push(t); }
+    while (li.firstChild) d.appendChild(li.firstChild);
+    li.replaceWith(d);
+  });
   box.querySelectorAll('ul,ol').forEach(unwrap);
   const blank = n => n && (n.nodeType === 3 ? !n.nodeValue.trim() : n.nodeType === 1 && !n.textContent.trim() && !n.querySelector('img,hr,table') && !/^(IMG|HR|TABLE)$/.test(n.nodeName));
   while (box.childNodes.length > 1 && blank(box.lastChild)) box.lastChild.remove();     // the next line's start, caught by a triple-click
   while (box.childNodes.length > 1 && blank(box.firstChild)) box.firstChild.remove();
-  // one line (or part of one): its contents only, so the paste goes into the line it lands in
-  if (box.childNodes.length === 1 && box.firstChild.nodeType === 1 && /^(DIV|P)$/.test(box.firstChild.nodeName)) unwrap(box.firstChild);
-  return { html: box.innerHTML, text: toPlain(box).replace(/\n+$/, '') };
+  // one line (or part of one): its contents only, without a bullet, so the paste goes into the line it lands in
+  if (box.childNodes.length === 1 && box.firstChild.nodeType === 1 && /^(DIV|P)$/.test(box.firstChild.nodeName)) {
+    markNodes.forEach(t => { if (t.parentNode === box.firstChild) t.remove(); });
+    unwrap(box.firstChild);
+  }
+  return { html: box.innerHTML, text: toPlain(box).replace(/ /g, ' ').replace(/\n+$/, '') };
 }
 editor.addEventListener('copy', e => {
   const whole = objSel && objSel.nodeName === 'TABLE', rc = whole ? wholeTable(objSel) : selCellRect();
@@ -4256,9 +4697,14 @@ editor.addEventListener('contextmenu', e => {
       { label: nr > 1 ? `행 ${nr}개 삭제` : '행 삭제', kbd: kl('delRow'), action: () => tableOp('delRow', t, td) },
       { label: nc > 1 ? `열 ${nc}개 삭제` : '열 삭제', kbd: kl('delCol'), action: () => tableOp('delCol', t, td) }, { sep: true },
       { label: t.classList.contains('hdr') ? '머리글 행 끄기' : '머리글 행 켜기', action: () => tableOp('header', t, td) },
-      { label: '표 통째로 선택', icon: 'i-table', action: () => selectObj(t) },
+      { label: '표 통째로 선택', icon: 'i-table', kbd: 'Alt+↑/↓ 옮기기', action: () => selectObj(t) },
       { label: '표 삭제', icon: 'i-trash', danger: true, action: () => tableOp('delTable', t, td) });
   } else if (!img) {                             // text formatting means nothing for a picture
+    const pre = e.target.closest && e.target.closest('pre');
+    if (pre && !pre.closest('td')) items.push({ sep: true },
+      { label: '코드란 통째로 선택', kbd: 'Esc', action: () => selectObj(pre) },
+      { label: '코드란 위로 옮기기', kbd: 'Alt+↑', action: () => moveObj(pre, true) },
+      { label: '코드란 아래로 옮기기', kbd: 'Alt+↓', action: () => moveObj(pre, false) });
     items.push({ sep: true },
       { label: '굵게', glyph: '<b>B</b>', kbd: kl('bold'), action: () => fmt('bold') },
       { label: '밑줄', glyph: '<u>U</u>', kbd: kl('underline'), action: () => fmt('underline') },
@@ -4653,7 +5099,7 @@ function searchLines(q, limit = 50) {
     const fresh = (N - r) / N * 30;               // newer notes first among equals
     // every word is in the note's name: its lines come up too (after lines with the words), in order
     const byTitle = !!n.title && terms.every((t, j) => termAt(tn, t, kinds[j]) >= 0);
-    let fromTitle = 0;
+    let fromTitle = 0, any = false;
     for (let i = 0; i < L.length; i++) {
       const x = L[i], l = x.l;
       let inLine = 0, inCtx = 0, ok = true, end = 0, ak = '';   // end: where the last word found in the line ends
@@ -4671,9 +5117,10 @@ function searchLines(q, limit = 50) {
       }
       if (!ok) continue;
       if (!inLine) {
-        if (byTitle && fromTitle < 20 && x.s.trim()) out.push({ n, i, x, sc: 400 + fresh - fromTitle++ * 3, part: usedPart(use[n.id + SEP + x.s], x), ak: '', end: 0 });
+        if (byTitle && fromTitle < 20 && x.s.trim()) { out.push({ n, i, x, sc: 400 + fresh - fromTitle++ * 3, part: usedPart(use[n.id + SEP + x.s], x), ak: '', end: 0 }); any = true; }
         continue;
       }
+      any = true;
       let sc = (inLine === terms.length ? 1000 : 0) + inCtx * 50 + fresh - Math.min(60, x.s.length / 6) - (x.hd ? 150 : 0) - (x.hd2 ? 120 : 0);
       if (l === ql && !x.hd2) sc += 300;          // a heading is where to look, not what to paste
       else { const p = l.indexOf(terms[0]); if (p === 0) sc += 80; else if (p > 0 && /[\s\t(\[:/,·-]/.test(l[p - 1])) sc += 40; }
@@ -4681,6 +5128,9 @@ function searchLines(q, limit = 50) {
       if (u) sc += Math.min(240, u[0] * 60) + (u[1] > weekAgo ? 60 : 0);   // what you paste often comes first
       out.push({ n, i, x, sc, part: usedPart(u, x), ak, end });
     }
+    // found by its name but no line of text to show (only pictures, or empty): the name itself is the result -
+    // Enter pastes the name, Ctrl+Enter opens the note
+    if (byTitle && !any) { const t = titleOf(n); out.push({ n, i: -1, x: { s: t, l: t.toLowerCase() }, sc: 450 + fresh, part: -1, ak: '', end: 0 }); }
   }
   out.sort((a, b) => b.sc - a.sc);
   const top = out.slice(0, limit);
@@ -4851,6 +5301,7 @@ function openPalette(mode) {
     const quick = palMode === 'quick', pop = palMode === 'pop';
     if (how === 'open') {
       if (quick) return;                          // the memo window stays a memo
+      if (it.i < 0) { closeModal(); openNote(it.n.id); if (pop) host.send('show'); return; }   // found by its name only
       const t = terms.map(w => hitText(it.x.s, w)).find(Boolean) || it.x.s.split('\t').find(Boolean).slice(0, 40);
       const L = linesOf(it.n.id), tl = t.toLowerCase();
       let nth = 0;                                // land on this very line: count the same word above it
@@ -5574,6 +6025,7 @@ function updateKeyHints() {
 // ---------------------------------------------------------------- settings / help
 function applyTheme() {
   app.dataset.theme = st.theme;
+  if (typeof updateSwatches === 'function') updateSwatches();
   $('#btnTheme').innerHTML = ic(st.theme === 'dark' ? 'i-sun' : 'i-moon');
   $('#btnTheme').title = st.theme === 'dark' ? '라이트 모드로 바꾸기' : '다크 모드로 바꾸기';
 }
@@ -5880,6 +6332,7 @@ if (HOST) window.chrome.webview.addEventListener('message', e => {
     case 'hotkeyStatus': onHotkeyStatus(arg); break;
     case 'flush': if (freshIds.has(cur)) leaveNote(); flushAll(); host.send('flushed'); break;   // quit / standby: an untouched new note goes too
     case 'toast': toast(arg); break;
+    case 'noteBody': onNoteBody(arg); break;
     case 'backupDone': {
       const b = $('#setBackup');
       if (b) { b.disabled = false; b.textContent = '지금 백업'; }
@@ -5950,7 +6403,6 @@ host.send('ready');
 if (BOOT_FAILED) bootFailed();
 warmSearch();
 host.send('closeToTray', st.closeToTray ? '1' : '0');
-sendNames(true);
 host.send('quickCorner', st.quickCorner || 'br');
 host.send('theme', st.theme);
 if (st.onTop) host.send('top', '1');
@@ -5966,6 +6418,8 @@ if (HOST && !st.startupChosen) {
   }
 }
 if (recovered) { stateDirty = true; flushState(); setTimeout(() => toast('메모 목록 파일이 손상돼 직전 사본으로 복구했어요'), 600); }
+else if (adopted) { stateDirty = true; flushState(); }   // notes the list had lost: written back into it at once
+else saveMeta();
 setInterval(() => {                                // "3분 전" labels
   if (view !== 'board' || document.hidden) return;
   const byId = new Map(S.notes.map(n => [n.id, n]));

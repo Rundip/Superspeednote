@@ -1,14 +1,15 @@
 # Super Speed Note - install for the current user (no admin needed)
-# Copies dist\SuperSpeedNote.exe to %LOCALAPPDATA%\Programs\SuperSpeedNote and adds a Start menu shortcut.
+# Copies dist\SuperSpeedNote_<version>.exe to %LOCALAPPDATA%\Programs\SuperSpeedNote\SuperSpeedNote.exe and adds a Start menu shortcut.
 # Usage:  powershell -ExecutionPolicy Bypass -File install.ps1 [-Desktop]
 param([switch]$Desktop)
 
 $ErrorActionPreference = 'Stop'
-$src = Join-Path $PSScriptRoot 'dist\SuperSpeedNote.exe'
+$m = Select-String -Path (Join-Path $PSScriptRoot 'src\Program.cs') -Pattern 'const string Version = "(\d+\.\d+\.\d+)"'
+$src = Join-Path $PSScriptRoot "dist\SuperSpeedNote_$($m.Matches[0].Groups[1].Value).exe"
 if (-not (Test-Path $src)) { throw "Build first: powershell -ExecutionPolicy Bypass -File build.ps1" }
 
 # ask a running copy to save and exit (notes stay in %APPDATA%\SuperSpeedNote - installing never touches them)
-$running = Get-Process SuperSpeedNote -ErrorAction SilentlyContinue
+$running = Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.ProcessName -like 'SuperSpeedNote*' -and $_.ProcessName -ne 'SuperSpeedNoteStartup' }
 if ($running) {
     Add-Type -Namespace SSN -Name W -MemberDefinition @'
 [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern int RegisterWindowMessage(string s);
@@ -16,7 +17,7 @@ if ($running) {
 '@
     [SSN.W]::PostMessage([IntPtr]0xFFFF, [SSN.W]::RegisterWindowMessage('SuperSpeedNote.Quit'), [IntPtr]::Zero, [IntPtr]::Zero) | Out-Null
     $running | ForEach-Object { $_.WaitForExit(5000) | Out-Null }
-    $still = Get-Process SuperSpeedNote -ErrorAction SilentlyContinue
+    $still = Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.ProcessName -like 'SuperSpeedNote*' -and $_.ProcessName -ne 'SuperSpeedNoteStartup' }
     if ($still) { $still | ForEach-Object { $_.CloseMainWindow() | Out-Null }; Start-Sleep -Seconds 2; $still | Stop-Process -Force }
 }
 
