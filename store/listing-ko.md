@@ -50,7 +50,7 @@
 3. 화면 구석에 뜨는 빠른 메모 (단축키 한 번으로 열고 닫기)
 4. 메모마다 전역 단축키 지정, 다시 누르면 원래 창의 커서 자리로 복귀
 5. 엑셀 셀 복사 → 표 붙여넣기, 엑셀처럼 방향키·F2·Enter로 편집
-6. 굵게, 밑줄, 형광펜, 잘 보이는 글자색, 체크리스트, 제목, 목록
+6. 굵게, 밑줄, 형광펜, 잘 보이는 글자색, 체크리스트, 제목, 번호 목록(1. 가. a.)
 7. 앱 안의 모든 단축키를 원하는 키로 변경
 8. 자동 저장, 매일 자동 백업, 휴지통에서 복원
 9. 인터넷 통신·계정·광고 없음, 모든 데이터는 내 PC에만 저장
@@ -60,9 +60,9 @@
 
 메모, 메모장, 빠른 메모, 단축키, 클립보드, 붙여넣기, 노트
 
-## 이번 버전의 새로운 기능 (1.4.2)
+## 이번 버전의 새로운 기능 (1.4.8)
 
-보드·목록 보기, 이미지 크기 조절, 표에서 끝의 빈 행·열 끌어서 지우기, 찾은 칸 값 오른쪽 클릭 복사, 실행 취소 개선, 빠른 메모·한 줄 찾아 붙여넣기·휴지통.
+메모 저장 안정성 강화(여러 버전을 써도 메모 목록 유지), 번호 목록 1. 가. a. 자동 번호, 목록 Tab·Backspace 개선, 복사할 때 글머리·번호를 글자로 함께 복사(워드·한글·노션), 글자색 검정·형광펜 없음 선택 유지, 표에서 Tab 후 Enter는 바로 아래 칸, 제목만 있는 메모도 검색.
 
 ## 제한된 기능(restricted capability) 사용 이유 — Partner Center '제출 옵션'에 영어로 입력
 
@@ -73,7 +73,7 @@ Super Speed Note is a Win32 desktop app (WinForms + WebView2) packaged with the 
 
 ## 심사 담당자 메모 (Notes for certification, 영어)
 
-Changes since the last review (product ID 9N4JKW5GFTHS): the unvirtualizedResources restricted capability and the desktop6 FileSystemWriteVirtualization / RegistryWriteVirtualization properties have been removed. All app data now lives in the package's own data folders (LocalState / LocalCache) under standard MSIX virtualization, so the only restricted capability left is runFullTrust (a Win32 desktop app). Minimum supported version: Windows 10, version 2004 (build 19041). The support contact is now an e-mail address (no GitHub links).
+Update 1.4.8: editor and data-safety fixes only; no new capabilities or permissions. Earlier changes (product ID 9N4JKW5GFTHS): the unvirtualizedResources restricted capability and the desktop6 FileSystemWriteVirtualization / RegistryWriteVirtualization properties have been removed. All app data now lives in the package's own data folders (LocalState / LocalCache) under standard MSIX virtualization, so the only restricted capability left is runFullTrust (a Win32 desktop app). Minimum supported version: Windows 10, version 2004 (build 19041). The support contact is now an e-mail address (no GitHub links).
 
 No account or sign-in is needed. Try: press Ctrl+Alt+F in any app (e.g. Notepad) to open the search window, type a word from a note and press Enter to paste that line back. Ctrl+Alt+M opens a quick memo in the screen corner; press it again to close. The app has no network communication.
 

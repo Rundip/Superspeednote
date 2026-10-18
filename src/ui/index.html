@@ -16,7 +16,7 @@
   --sh-2:0 2px 4px rgba(10,22,50,.05),0 20px 44px -16px rgba(10,22,50,.34);
   --sh-pop:0 18px 50px -10px rgba(6,18,48,.30),0 2px 8px rgba(6,18,48,.08);
   --band:radial-gradient(900px 420px at 88% -140px,rgba(110,155,255,.34),transparent 70%),radial-gradient(760px 420px at -10% 108%,rgba(120,160,245,.22),transparent 70%),linear-gradient(180deg,#0a1532 0%,#0f2356 16%,#22448d 36%,#5f80c4 56%,#a9bde6 76%,#dfe7f6 92%,#f3f6fc 100%);
-  --side:linear-gradient(180deg,#0a1532 0,#0e1f4c 55%,#132c68 100%);
+  --side:linear-gradient(180deg,#0a1532 0,#10245a 45%,#22428a 80%,#3a5ba0 100%);   /* a little more light toward the bottom */
   --pane:linear-gradient(180deg,#e9eff9 0,#f4f6fb 220px);
   --ui:"Pretendard Variable",Pretendard,"Segoe UI","Malgun Gothic","맑은 고딕",system-ui,sans-serif;
   --mono:"Cascadia Code",Consolas,D2Coding,monospace;
@@ -32,7 +32,7 @@
   --sh-2:0 2px 6px rgba(0,0,0,.35),0 20px 44px -14px rgba(0,0,0,.6);
   --sh-pop:0 16px 48px rgba(0,0,0,.55);
   --band:radial-gradient(900px 420px at 88% -140px,rgba(91,140,255,.24),transparent 70%),radial-gradient(760px 420px at -10% 108%,rgba(70,110,220,.14),transparent 70%),linear-gradient(180deg,#050c1f 0%,#0a1940 28%,#10255a 55%,#0c1a3c 80%,#0a1226 100%);
-  --side:linear-gradient(180deg,#050c1f 0,#0a1838 60%,#0e2150 100%);
+  --side:linear-gradient(180deg,#050c1f 0,#0b1b40 50%,#16306a 100%);
   --pane:linear-gradient(180deg,#0d1833 0,#0a1226 220px);
 }
 *{box-sizing:border-box}
@@ -885,7 +885,7 @@ const CORNERS = { tl: '왼쪽 위', tr: '오른쪽 위', bl: '왼쪽 아래', br
 const COLOR_NAMES = { navy: '남색', blue: '파랑', sky: '하늘', teal: '청록', green: '초록', amber: '주황', coral: '빨강', violet: '보라' };
 // text colours chosen for contrast on white; dark theme remaps them (see injected CSS)
 const FG = [
-  { n: '기본', v: '' }, { n: '남색', v: '#1d3a8a', d: '#a5bdff' }, { n: '파랑', v: '#1d4ed8', d: '#7fa8ff' },
+  { n: '검정', v: '#000000', d: 'var(--ink)' }, { n: '남색', v: '#1d3a8a', d: '#a5bdff' }, { n: '파랑', v: '#1d4ed8', d: '#7fa8ff' },
   { n: '빨강', v: '#d92d20', d: '#ff8f84' }, { n: '초록', v: '#067647', d: '#5ad39b' }, { n: '주황', v: '#c2410c', d: '#ffa56e' },
   { n: '보라', v: '#6d28d9', d: '#c9a8ff' }, { n: '회색', v: '#475467', d: '#a6b1c6' }
 ];
@@ -904,7 +904,8 @@ const FONTS = {
 {
   const st = document.createElement('style');
   st.textContent = FG.filter(c => c.v).map(c => `[data-theme=dark] #editor font[color="${c.v}"]{color:${c.d}}`).join('') +
-    '[data-theme=dark] #editor span[style*="background-color"]{color:#101828}';
+    '[data-theme=dark] #editor span[style*="background-color"]:not([style*="transparent"]){color:#101828}' +
+    '#editor font[color="#010203"]{color:inherit}';   // the old 'default colour' left on text typed after it: the normal ink
   document.head.appendChild(st);
 }
 
@@ -975,9 +976,11 @@ if (!S || !Array.isArray(S.notes)) S = { v: 1, notes: [], settings: {} };
 S.settings = Object.assign({
   theme: 'light', closeToTray: true, onTop: false, fontSize: 15, font: 'ui', sidebar: true,
   appHotkey: { mods: 3, vk: 78, label: 'Ctrl+Alt+N' }, findHotkey: { mods: 3, vk: 70, code: 'KeyF', label: 'Ctrl+Alt+F' },
-  quickHotkey: { mods: 3, vk: 77, code: 'KeyM', label: 'Ctrl+Alt+M' }, fg: '#d92d20', hl: '#fff176', quickCorner: 'br'
+  quickHotkey: { mods: 3, vk: 77, code: 'KeyM', label: 'Ctrl+Alt+M' }, fg: '#000000', hl: '', quickCorner: 'br'
 }, S.settings || {});
 const st = S.settings;
+if (!st.fg || !FG.some(c => c.v === st.fg)) st.fg = '#000000';           // the old '기본' (no colour) is black now
+if (st.hl && !HL.some(c => c.v === st.hl)) st.hl = '';
 // v1.2: the first default (Ctrl+Alt+Space) is taken by other apps (e.g. Claude desktop) -> F for "find"
 if (!st.findHotkeyMine && st.findHotkey && st.findHotkey.label === 'Ctrl+Alt+Space') st.findHotkey = { mods: 3, vk: 70, code: 'KeyF', label: 'Ctrl+Alt+F' };
 // Reconcile the list with the note files, whichever version wrote them last: no note file is ever left out of the
@@ -2550,9 +2553,12 @@ function keepSel(fn) {
   if (!k) return;
   try { const nr = document.createRange(); nr.setStart(k[0], k[1]); nr.setEnd(k[2], k[3]); const s = getSelection(); s.removeAllRanges(); s.addRange(nr); } catch (e) { /* node moved */ }
 }
-function applyFg(v) {
+// Text colour / highlight: the pen picked in the menu stays the toolbar's pen (shown on its bar, saved) until another
+// is picked - the A / marker button applies that pen. Black is a colour like the others; '형광펜 없음' is a pen too
+// (the button then takes highlights off).
+function applyFg(v, choose) {
   ensureEditorFocus();
-  if (v) { st.fg = v; saveStateSoon(); updateSwatches(); }
+  if (choose && v) { st.fg = v; saveStateSoon(); updateSwatches(); }
   const strip = () => keepSel(() => {
     for (const f of $$('font[color]', editor)) if (f.getAttribute('color').toLowerCase() === '#010203') { f.removeAttribute('color'); if (!f.attributes.length) unwrap(f); }
     for (const sp of $$('span[style*="color"]', editor)) if (sp.style.color === 'rgb(1, 2, 3)') { sp.style.removeProperty('color'); if (!sp.getAttribute('style')) unwrap(sp); }
@@ -2561,10 +2567,14 @@ function applyFg(v) {
   if (onCells(() => exec('foreColor', v || '#010203'), v ? null : strip)) return;
   edit(() => { exec('foreColor', v || '#010203'); if (!v) strip(); });
 }
-function applyHl(v) {
+function applyHl(v, choose) {
   ensureEditorFocus();
-  if (v) { st.hl = v; saveStateSoon(); updateSwatches(); }
+  if (choose) { st.hl = v || ''; saveStateSoon(); updateSwatches(); }
   if (onCells(() => exec('hiliteColor', v || 'rgb(1, 2, 3)'), v ? null : () => keepSel(stripSentinelBg))) return;
+  const r = selRange();
+  // no highlight at a bare caret: what is typed next gets none (a see-through background beats the one around it;
+  // the old way left a near-black background on it)
+  if (!v && r && r.collapsed) { edit(() => exec('hiliteColor', 'transparent')); return; }
   edit(() => { exec('hiliteColor', v || 'rgb(1, 2, 3)'); if (!v) keepSel(stripSentinelBg); });
 }
 function stripSentinelBg() {
@@ -2576,6 +2586,7 @@ function stripSentinelBg() {
 }
 function toggleHl() {
   ensureEditorFocus();
+  if (!st.hl) { applyHl(null); return; }          // pen '형광펜 없음': the button takes highlights off
   const want = rgbOf(st.hl).replace(/\s/g, '');
   let has;
   if (navLive()) {                                // selected cells: is the first cell already highlighted?
@@ -2587,7 +2598,8 @@ function toggleHl() {
 function clearFmt() {
   ensureEditorFocus();
   if (onCells(() => { exec('removeFormat'); exec('hiliteColor', 'rgb(1, 2, 3)'); }, () => keepSel(stripSentinelBg))) return;
-  edit(() => { exec('removeFormat'); exec('hiliteColor', 'rgb(1, 2, 3)'); keepSel(stripSentinelBg); });
+  const r = selRange(), bare = !!r && r.collapsed;   // at a bare caret: the next letters plain (no near-black background)
+  edit(() => { exec('removeFormat'); exec('hiliteColor', bare ? 'transparent' : 'rgb(1, 2, 3)'); if (!bare) keepSel(stripSentinelBg); });
   updateToolbar();
 }
 function setBlock(tag) {
@@ -3069,9 +3081,10 @@ function updateToolbar() {
   toolbar.querySelector('[data-list=ol]').classList.toggle('on', !!L && L.nodeName === 'OL');
   toolbar.querySelector('[data-list=chk]').classList.toggle('on', chk);
 }
-function updateSwatches() {
-  $('#fgBar').style.background = st.fg || 'var(--ink)';
-  $('#hlBar').style.background = st.hl;
+function updateSwatches() {                      // the bars show the pen as it looks in the note (dark theme too)
+  const c = FG.find(x => x.v === st.fg);
+  $('#fgBar').style.background = st.theme === 'dark' && c && c.d ? c.d : st.fg || 'var(--ink)';
+  $('#hlBar').style.background = st.hl || 'repeating-linear-gradient(135deg, var(--line-2) 0 2px, transparent 2px 4px)';
 }
 toolbar.addEventListener('mousedown', e => { if (!e.target.closest('#findbar')) e.preventDefault(); });
 toolbar.addEventListener('click', e => {
@@ -3101,10 +3114,10 @@ function toolPop(kind, anchor) {
   } else if (kind === 'fg') {
     showPop(r.left, r.bottom + 6, `<div class="mlabel">글자색 · 잘 보이는 색만 골랐어요</div><div class="swatches">${FG.map(c => c.v
       ? `<button class="sw txt${st.fg === c.v ? ' on' : ''}" data-v="${c.v}" title="${c.n}" style="color:${st.theme === 'dark' && c.d ? c.d : c.v}">A</button>`
-      : `<button class="sw none" data-v="" title="기본 색"></button>`).join('')}</div>`, b => { applyFg(b.dataset.v); });
+      : '').join('')}</div>`, b => { applyFg(b.dataset.v, true); });
   } else if (kind === 'hl') {
-    showPop(r.left, r.bottom + 6, `<div class="mlabel">형광펜</div><div class="swatches"><button class="sw none" data-v="" title="형광펜 지우기"></button>${HL.map(c => `<button class="sw${st.hl === c.v ? ' on' : ''}" data-v="${c.v}" title="${c.n}" style="background:${c.v}"></button>`).join('')}</div>`,
-      b => { applyHl(b.dataset.v || null); });
+    showPop(r.left, r.bottom + 6, `<div class="mlabel">형광펜</div><div class="swatches"><button class="sw none${st.hl ? '' : ' on'}" data-v="" title="형광펜 없음"></button>${HL.map(c => `<button class="sw${st.hl === c.v ? ' on' : ''}" data-v="${c.v}" title="${c.n}" style="background:${c.v}"></button>`).join('')}</div>`,
+      b => { applyHl(b.dataset.v || null, true); });
   } else if (kind === 'table') {
     let cells = '';
     for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) cells += `<i data-x="${x}" data-y="${y}"></i>`;
@@ -3299,7 +3312,7 @@ let nav = null;                                   // { t, ar, ac, fr, fc }  anch
 let editCell = null, editKind = '', editOrig = '';
 let editMark = null;                              // { id, i }: the undo step a cell edit began after (Esc drops what it added)
 function markEdit() { const hs = H.get(cur); editMark = hs ? { id: cur, i: hs.i } : null; }
-let tabFrom = -1;                                 // column a run of Tabs started in: Enter goes back to it, like Excel
+let tabFrom = -1;                                 // column a run of Tabs started in (Enter no longer goes back to it)
 // the status bar says what a key will do in a table (written only when the mode changes)
 let hintMode = '', defaultHint = '', tipAfterIme = false;
 function tblHint(m) {
@@ -3417,8 +3430,8 @@ function moveNav(dr, dc, extend, jump) {
   if (jump) { if (dr) r = dr < 0 ? 0 : R - 1; if (dc) c = dc < 0 ? 0 : C - 1; }
   setNav(t, r, c, extend);
 }
-function navDown(t) {                             // Enter: next row (back in the column the Tabs began in); on the last row a new row
-  const r = nav.fr, c = tabFrom >= 0 ? tabFrom : nav.fc;
+function navDown(t) {                             // Enter: the cell right below (also after Tabs); on the last row a new row
+  const r = nav.fr, c = nav.fc;
   if (r < t.rows.length - 1) { setNav(t, r + 1, c); return; }
   edit(() => addRow(t, t.rows.length));
   setNav(t, t.rows.length - 1, c);
@@ -5873,6 +5886,7 @@ function updateKeyHints() {
 // ---------------------------------------------------------------- settings / help
 function applyTheme() {
   app.dataset.theme = st.theme;
+  if (typeof updateSwatches === 'function') updateSwatches();
   $('#btnTheme').innerHTML = ic(st.theme === 'dark' ? 'i-sun' : 'i-moon');
   $('#btnTheme').title = st.theme === 'dark' ? '라이트 모드로 바꾸기' : '다크 모드로 바꾸기';
 }

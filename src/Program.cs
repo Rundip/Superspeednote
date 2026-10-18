@@ -33,7 +33,7 @@ namespace SuperSpeedNote
 {
     static class Program
     {
-        public const string Version = "1.4.7";
+        public const string Version = "1.4.8";
         public const string WebView2Version = "1.0.4258.31";
         public static string DataDir, LocalDir;
         public static bool Portable;                  // a "data" folder next to the exe holds the notes (test / USB copies)
@@ -267,6 +267,9 @@ namespace SuperSpeedNote
         PopForm pop;
         bool popWanted;
         bool popShown { get { return pop != null && webIn == pop; } }
+        // the app window as it was when its page went into the search window: shown in its place meanwhile, so an
+        // app window left open behind other programs keeps its look instead of turning into a bare navy box
+        Bitmap still;
         Color popBg = Color.White, quickBg = Color.White;
         const string QuickKey = "@quick";
         QuickForm quick;
@@ -460,9 +463,15 @@ namespace SuperSpeedNote
 
         protected override void OnPaintBackground(PaintEventArgs e)
         {
-            // Splash shown for the few hundred ms before the page paints.
             Rectangle rc = ClientRectangle;
             if (rc.Width < 2 || rc.Height < 2) return;
+            if (still != null && webIn != this)
+            {
+                e.Graphics.FillRectangle(Brushes.Black, rc);
+                e.Graphics.DrawImage(still, new Rectangle(0, 0, still.Width, still.Height));
+                return;
+            }
+            // Splash shown for the few hundred ms before the page paints.
             using (var br = new LinearGradientBrush(rc, bg, Color.FromArgb(0x16, 0x30, 0x6A), 90f))
                 e.Graphics.FillRectangle(br, rc);
             if (webReady) return;
@@ -794,6 +803,7 @@ namespace SuperSpeedNote
         void OpenPop()
         {
             RememberReturn();
+            KeepStill();
             if (pop == null)
             {
                 pop = new PopForm();
@@ -880,10 +890,36 @@ namespace SuperSpeedNote
             }
         }
 
+        // a picture of the app window with its page, taken before the page leaves it (see still)
+        void KeepStill()
+        {
+            DropStill();
+            if (!Visible || WindowState == FormWindowState.Minimized || webIn != this || ctl == null) return;
+            Size cs = ClientSize;
+            if (cs.Width < 2 || cs.Height < 2) return;
+            Bitmap b = null;
+            try
+            {
+                b = new Bitmap(cs.Width, cs.Height);
+                bool ok;
+                using (Graphics g = Graphics.FromImage(b))
+                {
+                    IntPtr hdc = g.GetHdc();
+                    try { ok = Native.PrintWindow(Handle, hdc, 3 /*PW_CLIENTONLY | PW_RENDERFULLCONTENT: the page too*/); }
+                    finally { g.ReleaseHdc(hdc); }
+                }
+                if (ok) { still = b; b = null; }
+            }
+            catch (Exception ex) { Program.Log(ex); }
+            finally { if (b != null) b.Dispose(); }
+        }
+        void DropStill() { if (still != null) { still.Dispose(); still = null; } }
+
         // Move the page into one of our windows (main / search / quick memo).
         void PutWeb(Form f)
         {
             webIn = f;
+            if (f == this) DropStill();
             if (ctl == null) return;
             try
             {
@@ -2596,6 +2632,7 @@ namespace SuperSpeedNote
         [DllImport("user32.dll")] public static extern bool BringWindowToTop(IntPtr hWnd);
         [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr hWnd, int cmd);
         [DllImport("user32.dll")] public static extern bool IsWindow(IntPtr hWnd);
+        [DllImport("user32.dll")] public static extern bool PrintWindow(IntPtr hWnd, IntPtr hdc, uint flags);
         [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr hWnd);
         [DllImport("user32.dll")] public static extern bool IsIconic(IntPtr hWnd);
         [DllImport("user32.dll")] public static extern bool IsZoomed(IntPtr hWnd);

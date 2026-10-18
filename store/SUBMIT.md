@@ -1,22 +1,24 @@
-# Partner Center 제출 순서 (Super speed note 1.4.2)
+# Partner Center 제출 순서 (Super speed note 1.4.8 업데이트)
 
-> **2026-10-15 심사 결과 (1.3.0): 수정 필요**
-> 1. `unvirtualizedResources` 제한된 기능 거절 → **1.4.2에서 뺐음.** Store 버전은 메모를 앱 전용 폴더(`%LOCALAPPDATA%\Packages\Mukhodeveloper.Superspeednote_…\LocalState`)에 저장하고, 처음 실행할 때 이 PC의 exe 버전 메모가 있으면 한 번 복사해 옴. 앱을 제거하면 메모도 지워짐(설정에 안내).
-> 2. 지원 연락처에 GitHub 링크 불가 → **이메일 주소로 바꾸기.**
+> **1.4.8 업데이트 제출 (가장 짧은 길)**
+> 1. Partner Center › 앱 및 게임 › **Super speed note** › **제출 업데이트(Update submission)** (진행 중인 제출이 있으면 그 제출을 열기)
+> 2. ④ **패키지**: 이전 `.msix`는 지우고 `dist\store\SuperSpeedNote_1.4.8.0_x64.msix`를 끌어다 놓기 (같은 버전 이하는 올릴 수 없음)
+> 3. ⑤ **스토어 등록 정보 › 한국어**: '이번 버전의 새로운 기능' 칸만 `listing-ko.md`의 1.4.8 문단으로 바꾸기 (나머지 칸은 그대로)
+> 4. ⑥ **제출 옵션 › 인증 관련 메모**: `listing-ko.md`의 '심사 담당자 메모' 영문으로 바꾸기 (맨 앞에 'Update 1.4.8' 문장이 추가됨)
+> 5. **Microsoft Store에 제출**
 >
-> 다시 제출: 앱 및 게임 › Super speed note › 실패한 제출 열기(또는 '제출 업데이트') → ④ 패키지에서 1.3.0 패키지를 지우고 `SuperSpeedNote_1.4.2.0_x64.msix` 올리기 → ⑤ 스토어 등록 정보 › '지원 연락처'를 이메일로, '웹사이트'는 비우기 → ⑥ 제출 옵션 › 제한된 기능 사용 이유와 '인증 관련 메모'를 `listing-ko.md`의 새 글로 바꾸기 → 제출.
-
+> 처음 제출 때의 심사 의견(2026-10-15, 1.3.0): `unvirtualizedResources` 거절 → 1.4.2부터 뺐음 · 지원 연락처는 GitHub 링크 대신 이메일.
 
 준비물은 모두 이 폴더에 있습니다.
 
 | 파일 | 쓰는 곳 |
 |---|---|
-| `dist\store\SuperSpeedNote_1.4.2.0_x64.msix` | ④ 패키지 (프로젝트 폴더 기준, GitHub에는 없음) |
+| `dist\store\SuperSpeedNote_1.4.8.0_x64.msix` | ④ 패키지 (프로젝트 폴더 기준, GitHub에는 없음) |
 | `store\listing-ko.md` | ⑤ 스토어 등록 정보, ⑥ 제출 옵션에 붙여넣을 글 |
 | `store\screenshots\*.png` | ⑤ 스크린샷 (5장) |
 | `store\logos\store-logo-1080.png` | ⑤ 스토어 로고 (1:1) |
 
-Partner Center › 앱 및 게임 › **Super speed note** › **제출 시작**(Start submission)을 누르면 아래 항목이 나옵니다. 위에서부터 차례로 채우세요.
+아래 ①~⑦은 전체 항목 설명입니다. 업데이트 때는 위 5단계만 하면 되고, 나머지 칸은 이전 제출 내용이 그대로 남아 있습니다.
 
 ## ① 가격 책정 및 가용성 (Pricing and availability)
 - **시장:** 기본값(모든 시장) 그대로 두거나, 한국만 원하면 '대한민국'만 선택
@@ -43,14 +45,14 @@ Partner Center › 앱 및 게임 › **Super speed note** › **제출 시작**
 → 보통 **3세 이상**으로 나옵니다.
 
 ## ④ 패키지 (Packages)
-- `SuperSpeedNote_1.4.2.0_x64.msix`를 끌어다 놓기
+- `SuperSpeedNote_1.4.8.0_x64.msix`를 끌어다 놓기
 - 장치 패밀리: **Windows 10/11 Desktop**만 체크된 상태면 됩니다
 - 업로드하면 이름·게시자를 자동 확인해요. 오류가 나면 메시지를 그대로 보내 주세요
 
 ## ⑤ 스토어 등록 정보 (Store listings) › 한국어
 `store\listing-ko.md`에서 복사해 붙여넣기
 - **설명:** '## 설명' 아래 전체
-- **이번 버전의 새로운 기능:** '1.4.2' 한 줄
+- **이번 버전의 새로운 기능:** '1.4.8' 문단
 - **제품 기능:** '기능 목록' 1~10번을 한 칸에 하나씩
 - **스크린샷:** `store\screenshots` 5장을 1번부터 순서대로, 캡션은 표의 문구
 - **스토어 로고:** 1:1 상자 아트(1:1 box art) 자리에 `store\logos\store-logo-1080.png`
