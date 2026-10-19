@@ -3653,12 +3653,19 @@ function onCells(fn, after) {
   posOv(); updateToolbar();
   return true;
 }
+// Double-click on a cell: it opens for editing with all its text selected (type over it, copy it, or click once to put
+// the caret). In a cell already being edited it is a plain double-click: the word stays selected. (A caret put at
+// the click point used to undo the browser's selection a moment after it showed.)
 editor.addEventListener('dblclick', e => {
   const td = e.target.closest && e.target.closest('td');
   if (!td || !editor.contains(td)) return;
-  const cr = document.caretRangeFromPoint(e.clientX, e.clientY);
+  if (td === editCell) return;
   startEdit('f2', td, true);
-  if (cr && td.contains(cr.startContainer)) { const s = getSelection(); s.removeAllRanges(); s.addRange(cr); }
+  if (!td.textContent.trim()) { parkCaret(td); return; }
+  const r = document.createRange(); r.selectNodeContents(td);
+  const last = td.lastChild;
+  if (last && last.nodeName === 'BR') r.setEndBefore(last);    // not the cell's closing line break
+  const s = getSelection(); s.removeAllRanges(); s.addRange(r);
 });
 document.addEventListener('mouseup', e => {
   const park = parkAfterMouse, from = dragFrom;
