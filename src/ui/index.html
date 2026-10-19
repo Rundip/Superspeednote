@@ -2528,6 +2528,9 @@ editor.addEventListener('mousedown', e => {
     if (e.detail < 2) {                                         // a fresh click selects just that cell
       // the parked text is really selected: pressing on it would start a drag that moves it - drop it first
       if (parked) { const cr = document.caretRangeFromPoint(e.clientX, e.clientY); if (cr) { const s = getSelection(); s.removeAllRanges(); s.addRange(cr); } parked = null; }
+      // a click on the cell that is already selected (just that one): the caret goes in where you clicked, for
+      // editing - a drag from there selects text in it as usual
+      if (navLive() && nav.ar === nav.fr && nav.ac === nav.fc && cellAt(nav.t, nav.fr, nav.fc) === td) { startEdit('f2', td, true); return; }
       nav = null; editCell = null;
     }
   }
