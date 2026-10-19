@@ -3653,19 +3653,64 @@ function onCells(fn, after) {
   posOv(); updateToolbar();
   return true;
 }
-// Double-click on a cell: it opens for editing with all its text selected (type over it, copy it, or click once to put
-// the caret). In a cell already being edited it is a plain double-click: the word stays selected. (A caret put at
-// the click point used to undo the browser's selection a moment after it showed.)
-editor.addEventListener('dblclick', e => {
+// Clicking several times in a cell, one rule whether it was being edited or only selected:
+//   2 clicks = the word (어절: up to the spaces / line breaks around it), 3 = the line (up to the line breaks - a long
+//   line that only wraps is one line), 4 = everything in the cell. The cell opens for editing on the 2nd click.
+// The app does the selecting itself (the browser's own double / triple click is stopped), so nothing flashes: the
+// browser picked a paragraph of its own on the 3rd click, after a whole-cell selection had shown for a moment.
+function cellModel(td) {                          // the cell as text (a line break = '\n') and where each letter is
+  const s = [], pts = [];
+  const at = c => [c.parentNode, Array.prototype.indexOf.call(c.parentNode.childNodes, c)];
+  const walk = n => {
+    for (let c = n.firstChild; c; c = c.nextSibling) {
+      if (c.nodeType === 3) { for (let i = 0; i < c.nodeValue.length; i++) { s.push(c.nodeValue[i]); pts.push([c, i]); } }
+      else if (c.nodeName === 'BR') { s.push('\n'); pts.push(at(c)); }
+      else if (c.nodeType === 1) {
+        if (/^(DIV|P|LI|UL|OL)$/.test(c.nodeName) && s.length && s[s.length - 1] !== '\n') { s.push('\n'); pts.push(at(c)); }
+        walk(c);
+      }
+    }
+  };
+  walk(td);
+  pts.push(endPoint(td));
+  return { s: s.join(''), pts };
+}
+function selectInCell(td, x, y, clicks) {
+  const m = cellModel(td), s = m.s, len = s.length, sel = getSelection();
+  const body = s.replace(/\n+$/, '').length;      // not the cell's closing line break
+  if (!s.trim()) { parkCaret(td); return; }
+  let p = body;
+  const cr = document.caretRangeFromPoint(x, y);
+  if (cr && td.contains(cr.startContainer)) {
+    const here = document.createRange(); here.setStart(cr.startContainer, cr.startOffset);
+    p = len;
+    for (let i = 0; i <= len; i++) { try { if (here.comparePoint(m.pts[i][0], m.pts[i][1]) >= 0) { p = i; break; } } catch (e) { /* elsewhere */ } }
+  }
+  let a, b;
+  if (clicks >= 4) { a = 0; b = body; }
+  else if (clicks === 3) {
+    a = s.lastIndexOf('\n', p - 1) + 1;
+    b = s.indexOf('\n', p); if (b < 0) b = body;
+    if (p >= body) { b = body; a = s.lastIndexOf('\n', b - 1) + 1; }   // clicked after the last line: that line
+  } else {
+    const sp = c => /\s/.test(c || ' ');
+    if (sp(s[p]) && p > 0 && !sp(s[p - 1])) p--;  // just after a word: that word
+    if (sp(s[p])) { const r = document.createRange(); r.setStart(m.pts[Math.min(p, len)][0], m.pts[Math.min(p, len)][1]); r.collapse(true); sel.removeAllRanges(); sel.addRange(r); return; }
+    a = p; while (a > 0 && !sp(s[a - 1])) a--;
+    b = p; while (b < len && !sp(s[b])) b++;
+  }
+  const r = document.createRange();
+  r.setStart(m.pts[a][0], m.pts[a][1]);
+  r.setEnd(m.pts[Math.min(b, len)][0], m.pts[Math.min(b, len)][1]);
+  sel.removeAllRanges(); sel.addRange(r);
+}
+editor.addEventListener('mousedown', e => {
+  if (e.button !== 0 || e.detail < 2 || e.shiftKey || e.ctrlKey || e.metaKey || e.altKey) return;
   const td = e.target.closest && e.target.closest('td');
   if (!td || !editor.contains(td)) return;
-  if (td === editCell) return;
-  startEdit('f2', td, true);
-  if (!td.textContent.trim()) { parkCaret(td); return; }
-  const r = document.createRange(); r.selectNodeContents(td);
-  const last = td.lastChild;
-  if (last && last.nodeName === 'BR') r.setEndBefore(last);    // not the cell's closing line break
-  const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+  e.preventDefault();                             // no double / triple click of the browser's own
+  if (td !== editCell) startEdit('f2', td, true);
+  selectInCell(td, e.clientX, e.clientY, e.detail);
 });
 document.addEventListener('mouseup', e => {
   const park = parkAfterMouse, from = dragFrom;
