@@ -3916,13 +3916,16 @@ for (const b of [tins, tgrip, ...$$('.tbar', ov)]) {
 tins.addEventListener('click', () => {
   const t = ovTable, at = insAt;
   if (!t || !at || !t.isConnected) return;
+  // a Korean syllable still being typed is finished first: the + keeps the focus, so the IME went on composing in
+  // the cell it was in - the new row's typing landed there, over that cell's last letter
+  finishIme();
   const r = nav && nav.t === t ? nav.fr : 0, c = nav && nav.t === t ? nav.fc : 0;
   clearObj();
   edit(() => { if (at.row) addRow(t, at.i); else addCol(t, at.i); });
   if (at.row) setNav(t, at.i, c); else setNav(t, r >= t.rows.length ? 0 : r, at.i);
   posOv();
 });
-tgrip.addEventListener('click', () => { if (ovTable) selectObj(ovTable); });
+tgrip.addEventListener('click', () => { finishIme(); if (ovTable) selectObj(ovTable); });
 // add bars: a click adds one row / column, dragging out adds as many as the dashed preview shows, dragging back
 // into the table takes off the empty rows / columns at the end - it stops before one with anything in it
 function lastColWidth(t) {
@@ -4002,6 +4005,7 @@ for (const b of $$('.tbar', ov)) {
   b.addEventListener('pointerdown', e => {
     if (e.button !== 0 || !ovTable || !ovTable.rows.length) return;
     e.preventDefault();
+    finishIme();                                   // (as for the +: a syllable being typed is finished first)
     const t = ovTable, row = b.dataset.dir === 'row';
     const step = Math.round(clamp(row ? t.rows[t.rows.length - 1].getBoundingClientRect().height : lastColWidth(t), 24, 400));
     barDrag = { t, row, step, b, x: e.clientX, y: e.clientY, n: 1, max: emptyTail(t, row), into: false };
