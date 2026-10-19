@@ -3697,8 +3697,14 @@ function selectInCell(td, x, y, clicks) {
     if (p >= body) { b = body; a = s.lastIndexOf('\n', b - 1) + 1; }   // clicked after the last line: that line
   } else {
     const sp = c => /\s/.test(c || ' ');
-    if (sp(s[p]) && p > 0 && !sp(s[p - 1])) p--;  // just after a word: that word
-    if (sp(s[p])) { const r = document.createRange(); r.setStart(m.pts[Math.min(p, len)][0], m.pts[Math.min(p, len)][1]); r.collapse(true); sel.removeAllRanges(); sel.addRange(r); return; }
+    // the letter the click is on (the caret lands before or after it): a word only when that is a letter of one.
+    // A click on a space or in the blank past the end of a line puts the caret there - the word before it used to
+    // get selected.
+    const box = i => { if (i < 0 || i >= len || s[i] === '\n') return null; const lr = document.createRange(); lr.setStart(m.pts[i][0], m.pts[i][1]); lr.setEnd(m.pts[i + 1][0], m.pts[i + 1][1]); return lr.getBoundingClientRect(); };
+    const hits = slack => [p, p - 1].find(i => { const bx = box(i); return bx && bx.width && x >= bx.left - slack && x < bx.right + slack && y >= bx.top - 1 && y <= bx.bottom + 1; });
+    const on = hits(0) !== undefined ? hits(0) : hits(0.5);   // the letter that really holds the point first
+    if (on === undefined || sp(s[on])) { const r = document.createRange(); r.setStart(m.pts[Math.min(p, len)][0], m.pts[Math.min(p, len)][1]); r.collapse(true); sel.removeAllRanges(); sel.addRange(r); return; }
+    p = on;
     a = p; while (a > 0 && !sp(s[a - 1])) a--;
     b = p; while (b < len && !sp(s[b])) b++;
   }
