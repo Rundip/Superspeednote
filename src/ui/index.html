@@ -3656,8 +3656,8 @@ function onCells(fn, after) {
 // Clicking several times in a cell, one rule whether it was being edited or only selected:
 //   2 clicks = the word (어절: up to the spaces / line breaks around it), 3 = the line (up to the line breaks - a long
 //   line that only wraps is one line), 4 = everything in the cell. The cell opens for editing on the 2nd click.
-// The app does the selecting itself (the browser's own double / triple click is stopped), so nothing flashes: the
-// browser picked a paragraph of its own on the 3rd click, after a whole-cell selection had shown for a moment.
+// The app picks the range itself (the browser's own double / triple click is stopped, so nothing flashes) and sets it
+// when the button comes up.
 function cellModel(td) {                          // the cell as text (a line break = '\n') and where each letter is
   const s = [], pts = [];
   const at = c => [c.parentNode, Array.prototype.indexOf.call(c.parentNode.childNodes, c)];
@@ -3704,14 +3704,35 @@ function selectInCell(td, x, y, clicks) {
   r.setEnd(m.pts[Math.min(b, len)][0], m.pts[Math.min(b, len)][1]);
   sel.removeAllRanges(); sel.addRange(r);
 }
+let cellClicks = null;                            // the multi-click waiting for the button to come up
+// A cell that was only selected has its whole text selected, unseen (see parkNav). On the press that selection
+// becomes a caret, before the cell opens for editing - opening it first showed it, the whole cell flashing blue until
+// the button came up. Its letters are then drawn once unselected before the new range comes: going straight from it
+// to a word, Chrome kept the letters around the word drawn as selected ones (they looked bold).
 editor.addEventListener('mousedown', e => {
   if (e.button !== 0 || e.detail < 2 || e.shiftKey || e.ctrlKey || e.metaKey || e.altKey) return;
   const td = e.target.closest && e.target.closest('td');
   if (!td || !editor.contains(td)) return;
   e.preventDefault();                             // no double / triple click of the browser's own
-  if (td !== editCell) startEdit('f2', td, true);
-  selectInCell(td, e.clientX, e.clientY, e.detail);
+  const fresh = td !== editCell;
+  if (fresh) {                                    // the hidden whole-cell selection becomes a caret where you clicked
+    const cr = document.caretRangeFromPoint(e.clientX, e.clientY), s = getSelection();
+    if (cr && td.contains(cr.startContainer)) { s.removeAllRanges(); s.addRange(cr); } else parkCaret(td);
+    parked = null;
+    startEdit('f2', td, true);
+  }
+  cellClicks = { td, x: e.clientX, y: e.clientY, n: e.detail, fresh };
 });
+document.addEventListener('mouseup', () => {
+  const c = cellClicks;
+  cellClicks = null;
+  if (!c || !c.td.isConnected || c.td !== editCell) return;
+  if (!c.fresh) { selectInCell(c.td, c.x, c.y, c.n); return; }   // already editing: word -> line -> cell at once
+  let done = false;                               // after two frames - or 0.1 s, when the window isn't drawn (behind others)
+  const go = () => { if (done) return; done = true; if (c.td === editCell && c.td.isConnected) selectInCell(c.td, c.x, c.y, c.n); };
+  requestAnimationFrame(() => requestAnimationFrame(go));
+  setTimeout(go, 100);
+}, true);
 document.addEventListener('mouseup', e => {
   const park = parkAfterMouse, from = dragFrom;
   mouseSel = parkAfterMouse = false; dragFrom = null;
