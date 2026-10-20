@@ -2682,7 +2682,7 @@ function liAtLineStart() {
   const r = selRange();
   if (!r || !r.collapsed) return null;
   const li = closestSel('li');
-  if (!li || !editor.contains(li) || li.closest('td')) return null;
+  if (!li || !editor.contains(li)) return null;
   const pre = document.createRange();
   pre.setStart(li, 0); pre.setEnd(r.startContainer, r.startOffset);
   return pre.toString() || pre.cloneContents().querySelector('img') ? null : li;
@@ -2696,6 +2696,7 @@ function listBackspace() {
   const li = liAtLineStart();
   if (!li) return false;
   const up = li.parentElement.parentElement, nested = isList(up) || (up && up.nodeName === 'LI');
+  if (!nested && up && up.nodeName === 'TD') { edit(() => cellUnlist(li)); return true; }
   edit(() => {
     if (nested) {
       li.classList.remove('nob');
@@ -2732,6 +2733,28 @@ function lineSelect(down) {
   s.modify('extend', down ? 'forward' : 'backward', 'line');
   if (blockOf(s.focusNode) !== b0) s.modify('extend', edge === 'start' ? 'backward' : 'forward', 'lineboundary');
   return true;
+}
+// a list item straight in a table cell: one Backspace and it is the cell's plain text again (no bullet-less step -
+// an indented line in a narrow cell only looks broken); lines before / after it stay list items
+function cellUnlist(li) {
+  const list = li.parentElement, after = [];
+  for (let n = li.nextSibling; n; n = n.nextSibling) after.push(n);
+  let tail = null;
+  if (after.length) { tail = list.cloneNode(false); tail.removeAttribute('start'); after.forEach(n => tail.appendChild(n)); }
+  const frag = document.createDocumentFragment();
+  Array.from(li.childNodes).forEach(n => frag.appendChild(n));
+  const first = frag.firstChild, at = document.createTextNode('');
+  list.after(at);
+  li.remove();
+  if (!list.querySelector('li')) list.remove();
+  at.before(frag);                                // its text where the item was (a list is a block: lines stay apart)
+  if (tail) at.after(tail);
+  const td = at.parentNode, r = document.createRange();
+  if (first && first.isConnected) r.setStartBefore(first); else r.setStartBefore(at);
+  r.collapse(true);
+  at.remove();
+  if (!td.firstChild) { td.innerHTML = '<br>'; r.setStart(td, 0); r.collapse(true); }
+  const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r);
 }
 // one level out; from the top level the line leaves the list as a normal line
 function liftItem(li) {
@@ -2905,14 +2928,30 @@ function toggleList(kind) {
   // the list made around a syllable the IME was still composing came apart (the box gone, the letters doubled)
   finishIme();
   ensureEditorFocus();
+  // selected cells (not being edited): each whole cell, they stay selected. Chrome copies the selected cell's look
+  // (no caret, clear background) onto the text it takes out of a list: that wrapper goes
+  if (onCells(c => { editor.classList.remove('cellnav'); listInner(kind); plainSpans(c); })) return;
   if (needsRoot()) ensureRoot();
   const keep = caretKeep();                       // making a list keeps the caret where you were typing
+  // in a cell being edited: the caret's place in the cell's text, kept the same way
+  const td = !keep && closestSel('td'), r0 = td && selRange();
+  const keepTd = r0 ? [textOffset(td, r0.startContainer, r0.startOffset), textOffset(td, r0.endContainer, r0.endOffset)] : null;
   edit(() => {
     listInner(kind);
     const li = closestSel('li');
     if (li) { liftList(); if (keep) setSelOffsets(li, keep[0], keep[1]); }
+    if (keepTd && td.isConnected) setSelOffsets(td, keepTd[0], keepTd[1]);
   });
   updateToolbar();
+}
+// <span style="background-color: rgba(0, 0, 0, 0); caret-color: transparent"> left by an edit command: nothing to keep
+function plainSpans(root) {
+  for (const sp of root.querySelectorAll('span[style]')) {
+    const st = sp.style;
+    if (/^(transparent|rgba\(0, 0, 0, 0\))$/.test(st.backgroundColor)) st.removeProperty('background-color');
+    st.removeProperty('caret-color');
+    if (!sp.getAttribute('style').trim()) unwrap(sp);
+  }
 }
 function listInner(kind) {
   const li = closestSel('li');
