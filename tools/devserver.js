@@ -15,6 +15,15 @@ http.createServer((req, res) => {
     res.end('');
     return;
   }
+  if (rel === 'index.html') {       // the page is src/ui's parts joined in the order of parts.txt (as build.ps1 does)
+    try {
+      const parts = fs.readFileSync(path.join(root, 'parts.txt'), 'utf8').split(/\r?\n/).map(s => s.trim()).filter(s => s && !s.startsWith('#'));
+      const html = Buffer.concat(parts.map(p => fs.readFileSync(path.join(root, p)))).toString('utf8').replace(/\r\n/g, '\n');
+      res.writeHead(200, { 'Content-Type': types['.html'], 'Cache-Control': 'no-store' });
+      res.end(html);
+    } catch (e) { res.writeHead(500); res.end(String(e)); }
+    return;
+  }
   const file = path.join(root, rel);
   if (!file.startsWith(root)) { res.writeHead(403); res.end(); return; }
   fs.readFile(file, (err, data) => {

@@ -166,7 +166,7 @@ powershell -ExecutionPolicy Bypass -File build.ps1
 
 - Windows에 내장된 C# 컴파일러(`csc.exe`, .NET Framework 4.x)를 씁니다. 별도 SDK 설치가 필요 없습니다.
 - 첫 빌드 때 nuget.org에서 Microsoft WebView2 SDK 패키지(약 9MB)를 한 번 받아 `packages\`에 둡니다.
-- WebView2 DLL과 화면(`src/ui/index.html`)은 exe 안에 포함됩니다. 아이콘(`assets\app.ico`, 로고 PNG)은 `tools\IconGen.cs`가 바뀌면 빌드할 때 자동으로 다시 그립니다. 강제로 다시 만들려면 `-Icon` 옵션을 붙이세요.
+- WebView2 DLL과 화면(`src/ui/`의 부분 파일들을 `parts.txt` 순서로 합친 `obj/index.html`)은 exe 안에 포함됩니다. 아이콘(`assets\app.ico`, 로고 PNG)은 `tools\IconGen.cs`가 바뀌면 빌드할 때 자동으로 다시 그립니다. 강제로 다시 만들려면 `-Icon` 옵션을 붙이세요.
 - 화면만 브라우저에서 미리 보려면 `node tools/devserver.js` → http://127.0.0.1:5178 (데이터는 localStorage에 저장).
 
 ## Microsoft Store 버전 (MSIX)
@@ -198,7 +198,11 @@ powershell -ExecutionPolicy Bypass -File package.ps1
 
 ```
 src/Program.cs        네이티브 셸: 프레임리스 창, 전역 단축키, 포커스 전환, 트레이, 파일 저장
-src/ui/index.html     화면 전체: 보드, 에디터, 표, 서식, 검색, 설정 (HTML/CSS/JS 한 파일)
+src/ui/               화면 전체 (보드, 에디터, 표, 서식, 검색, 설정) - 부분별 파일
+  parts.txt           합치는 순서. build.ps1이 이 순서대로 이어 붙여 obj/index.html 한 파일로 만들어 exe에 넣음
+  page-head.html      <head> 시작 · style.css 화면 모양 · page-body.html 화면 뼈대(HTML)
+  js/00-start.js …    기능별 스크립트 (01-host-bridge, 06-board, 14-tables, 15-table-cells, 18-paste, 35-start …)
+  page-end.html       끝
 src/Startup.cs        Store 버전 전용: 로그인 시 '단축키 대기'로 앱을 켜는 작은 도우미
 src/app.manifest      DPI(모니터별), Windows 10/11 호환 선언
 tools/IconGen.cs      앱 아이콘 · Store 로고 생성기 (네이비 → 화이트 그라데이션 + SUPER SPEED 로고)

@@ -1,5 +1,5 @@
 ﻿// Super Speed Note - native shell.
-// A frameless WinForms window that hosts one WebView2 page (src/ui/index.html, embedded),
+// A frameless WinForms window that hosts one WebView2 page (src/ui parts joined into one, embedded),
 // plus everything a browser page cannot do: global hotkeys, focus switching, tray, files.
 // Compiled with the C# 5 compiler that ships with Windows (see build.ps1), so: no newer syntax.
 using System;

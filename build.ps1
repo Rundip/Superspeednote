@@ -67,6 +67,20 @@ if ($running) {
     }
 }
 
+# 3b) The page: src\ui\parts.txt lists its pieces (head, style, the scripts one per part of the app, end), joined in
+#     that order with nothing added between them into obj\index.html - that file goes into the exe
+$parts = Get-Content (Join-Path $root 'src\ui\parts.txt') -Encoding UTF8 | Where-Object { $_ -and -not $_.StartsWith('#') }
+$page = New-Object System.IO.MemoryStream
+foreach ($p in $parts) {
+    $f = Join-Path $root ('src\ui\' + $p.Trim())
+    if (-not (Test-Path $f)) { throw "page part missing: $p" }
+    $b = [IO.File]::ReadAllBytes($f); $page.Write($b, 0, $b.Length)
+}
+$html = [Text.Encoding]::UTF8.GetString($page.ToArray()).Replace("`r`n", "`n")   # one kind of line end, whatever git checked out
+New-Item -ItemType Directory -Force (Join-Path $root 'obj') | Out-Null
+$pageFile = Join-Path $root 'obj\index.html'
+[IO.File]::WriteAllText($pageFile, $html, (New-Object Text.UTF8Encoding $false))
+
 # 4) App, named with its version: dist\SuperSpeedNote_<version>.exe (the version comes from src\Program.cs)
 $m = Select-String -Path (Join-Path $root 'src\Program.cs') -Pattern 'const string Version = "(\d+\.\d+\.\d+)"'
 if (-not $m) { throw 'Version not found in src\Program.cs' }
@@ -82,7 +96,7 @@ $cscArgs = @(
     '/reference:System.dll', '/reference:System.Core.dll',
     '/reference:System.Drawing.dll', '/reference:System.Windows.Forms.dll',
     "/reference:$coreDll",
-    "/resource:$(Join-Path $root 'src\ui\index.html'),SSN.index.html",
+    "/resource:$pageFile,SSN.index.html",
     "/resource:$ico,SSN.app.ico",
     "/resource:$coreDll,SSN.WebView2.Core.dll",
     "/resource:$loaderDll,SSN.WebView2Loader.dll",
