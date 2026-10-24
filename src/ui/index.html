@@ -6451,7 +6451,7 @@ if (HOST) window.chrome.webview.addEventListener('message', e => {
     case 'open': if (noteById(arg)) { closeModal(); closePop(); openNote(arg); } break;
     case 'board': closeModal(); goHome(); break;
     case 'new': closeModal(); newNote(); break;
-    case 'focus': refocus(); break;
+    case 'focus': if (!paletteOn) app.classList.remove('pal-pop'); refocus(); break;   // the app window shown: never its hidden pop-up look
     case 'hidden': flushAll(); closePop(); if (recording || (paletteOn && palMode !== 'pop')) closeModal(); break;
     case 'winState': app.classList.toggle('maxed', arg === '1'); break;
     case 'hotkeyStatus': onHotkeyStatus(arg); break;

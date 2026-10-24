@@ -33,7 +33,7 @@ namespace SuperSpeedNote
 {
     static class Program
     {
-        public const string Version = "1.5.2";
+        public const string Version = "1.5.3";
         public const string WebView2Version = "1.0.4258.31";
         public static string DataDir, LocalDir;
         public static bool Portable;                  // a "data" folder next to the exe holds the notes (test / USB copies)
@@ -389,6 +389,46 @@ namespace SuperSpeedNote
             UpdateTrayText();
         }
 
+        // The page's process crashed (out of memory, a graphics driver reset after sleep...) or the whole engine
+        // closed: WebView2 then shows only its background - the window a blank navy box until the app was restarted.
+        // The notes already saved are read again and the page starts over (what was typed in the last moment before
+        // the crash, still in the dead page, can't be saved). Several crashes in a row: say so instead of looping.
+        int recoveries; long lastRecovery;
+        void RecoverWeb(bool engine)
+        {
+            if (finished || quitting || !webStarted || wv == null) return;   // closed on purpose (standby, quit): nothing to bring back
+            long nowMs = Environment.TickCount;
+            recoveries = nowMs - lastRecovery < 60000 ? recoveries + 1 : 1;
+            lastRecovery = nowMs;
+            if (recoveries > 3)
+            {
+                MessageBox.Show(this, "화면 엔진이 계속 멈춰요. 앱을 다시 시작해 주세요.\n(저장된 메모는 그대로 있어요.)", "Super Speed Note", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+            saver.Flush(3000);
+            // the page comes back in the app window; the find & paste window and the quick memo close
+            popWanted = false;
+            if (pop != null) { pop.Attached = false; if (pop.Visible) pop.Hide(); }
+            DetachQuick(true);
+            if (webIn != this) PutWeb(this);
+            webReady = false;
+            pendingOpen = null; pendingNew = false; pendingPalette = null; pendingQuick = false; paletteOpen = false;
+            Invalidate();                                       // the splash, until the page is back
+            if (engine)
+            {
+                try { if (ctl != null) ctl.Close(); } catch { }
+                ctl = null; wv = null; env = null; envTask = null; bootTask = null;
+                webStarted = false;
+                EnsureWeb();                                    // a new engine, the notes read again
+            }
+            else
+            {
+                bootTask = Task.Run(new Func<string>(BuildBootScript));   // the notes as they are on disk now
+                try { wv.Reload(); }
+                catch (Exception ex) { Program.Log(ex); RecoverWeb(true); }
+            }
+        }
+
         // Active -> standby: close the web engine (frees almost all memory) but keep hotkeys registered.
         void EnterStandby()
         {
@@ -504,9 +544,18 @@ namespace SuperSpeedNote
             }
         }
 
+        // The app window brought back (from the taskbar) while a quick memo holds the page: the memo carries on in the
+        // app window, as the tray / app hotkey already do - else the window shows only its navy background
+        void QuickToMain()
+        {
+            if (quickOpen && quick != null && webIn == quick && Visible && WindowState != FormWindowState.Minimized)
+                BeginInvoke(new Action(() => { if (quickOpen && webIn == quick && Visible && WindowState != FormWindowState.Minimized) EndQuick("main", false); }));
+        }
+
         protected override void OnResize(EventArgs e)
         {
             base.OnResize(e);
+            QuickToMain();
             if (ctl != null && webIn == this && WindowState != FormWindowState.Minimized)
                 ctl.Bounds = new Rectangle(Point.Empty, ClientSize);
             UpdateWebVisibility();
@@ -523,6 +572,7 @@ namespace SuperSpeedNote
         protected override void OnActivated(EventArgs e)
         {
             base.OnActivated(e);
+            QuickToMain();
             if (ctl != null && webIn == this) { try { ctl.MoveFocus(CoreWebView2MoveFocusReason.Programmatic); } catch { } }
         }
 
@@ -1297,7 +1347,14 @@ namespace SuperSpeedNote
                 {
                     if (e.PermissionKind == CoreWebView2PermissionKind.ClipboardRead) e.State = CoreWebView2PermissionState.Allow;
                 };
-                wv.ProcessFailed += (o, e) => { if (e.ProcessFailedKind == CoreWebView2ProcessFailedKind.BrowserProcessExited) Program.Log(new Exception("WebView2 browser process exited")); };
+                wv.ProcessFailed += (o, e) =>
+                {
+                    var kind = e.ProcessFailedKind;
+                    Program.Log(new Exception("WebView2 process failed: " + kind));
+                    // the page's process (or the whole engine) is gone: the window would stay an empty navy box
+                    if (kind == CoreWebView2ProcessFailedKind.RenderProcessExited || kind == CoreWebView2ProcessFailedKind.BrowserProcessExited)
+                        BeginInvoke(new Action(() => RecoverWeb(kind == CoreWebView2ProcessFailedKind.BrowserProcessExited)));
+                };
 
                 wv.Navigate(Origin + "index.html");   // notes arrive as boot.js, requested by the page itself
                 UpdateWebVisibility();
