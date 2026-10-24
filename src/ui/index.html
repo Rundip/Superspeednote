@@ -1678,11 +1678,11 @@ function renameInline(id) {
 }
 
 // ---------------------------------------------------------------- notes
-function newNote(front) {                        // front === true: first in the list (quick memos)
+function newNote(quick) {                        // a new note goes last; quick === true: a quick memo (it drops itself if left empty)
   if (S.notes.length >= MAX_NOTES) { toast(`메모는 ${MAX_NOTES}개까지 만들 수 있어요`); return false; }
   const n = { id: uid(), title: '', color: COLOR_KEYS[S.notes.length % COLOR_KEYS.length], pinned: false, hotkey: null, created: now(), updated: now(), preview: '' };
-  if (front === true) S.notes.unshift(n);
-  else { S.notes.push(n); if (!freshIds.has(selId)) freshPrevSel = selId; freshIds.add(n.id); }
+  S.notes.push(n);
+  if (quick !== true) { if (!freshIds.has(selId)) freshPrevSel = selId; freshIds.add(n.id); }
   bodies[n.id] = '<div><br></div>';
   host.send('saveNote', n.id, bodies[n.id]);
   saveStateSoon();
