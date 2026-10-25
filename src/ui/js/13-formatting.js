@@ -256,6 +256,9 @@ function relist() {
     }
     if (kinds[d] !== null && kinds[d] !== kind) counters[d] = 0;      // another kind at this depth counts again
     kinds[d] = kind;
+    // started by typing its number ("2. ", "다. ", "c. "): it starts right there, whatever came before it
+    const from = L.nodeName === 'OL' ? parseInt(L.dataset.start, 10) : 0;
+    if (from > 0) counters[d] = from - 1;
     if (L.nodeName === 'OL') {
       const first = counters[d] + 1;
       if (first > 1) { if (L.getAttribute('start') !== String(first)) L.setAttribute('start', first); }
@@ -392,6 +395,25 @@ function blockOf(n) {
   return null;
 }
 // "# ", "- ", "1. ", "[] ", "> ", "``` " at the start of a line
+// the number a typed marker stands for: "3" -> 3, "다" -> 3, "c" -> 3
+const KO_ORDER = '가나다라마바사아자차카타파하';
+function markerNum(t) { return /\d/.test(t) ? parseInt(t, 10) : /[a-zA-Z]/.test(t) ? t.toLowerCase().charCodeAt(0) - 96 : KO_ORDER.indexOf(t) + 1; }
+// a numbered list of its own from this line on (the lines before it stay as they were), started at the typed number
+function startListAt(li, kind, num) {
+  let L = li.parentElement;
+  if (L.firstElementChild !== li) {
+    const nl = document.createElement('ol');
+    L.after(nl);
+    while (li.nextSibling) nl.appendChild(li.nextSibling);   // the lines after it (and their sub-items) go along
+    nl.prepend(li);
+    L = nl;
+  }
+  L.dataset.type = kind;
+  L.dataset.start = num;
+}
+// Typing a marker - "1. ", "2. ", "가. ", "다. ", "a. " - at the start of a line makes it a numbered line starting at
+// that number, also several lines (or a picture, a table) after a list: "2. " carries on from a "1." above, "1. "
+// starts again at 1.
 function mdShortcut() {
   const r = selRange();
   if (!r || !r.collapsed) return false;
@@ -406,7 +428,7 @@ function mdShortcut() {
       const r2 = selRange(), p2 = document.createRange(); p2.setStart(blk, 0); p2.setEnd(r2.startContainer, r2.startOffset);
       const s0 = getSelection(); s0.removeAllRanges(); s0.addRange(p2);
       exec('delete');
-      blk.parentElement.dataset.type = k0;
+      startListAt(blk, k0, markerNum(m0[1]));
     });
     return true;
   }
@@ -426,7 +448,7 @@ function mdShortcut() {
     if (kind === 'ul' || kind === 'ol') {
       exec(kind === 'ul' ? 'insertUnorderedList' : 'insertOrderedList'); liftList();
       const li = closestSel('li');
-      if (numKind && li && li.parentElement.nodeName === 'OL') li.parentElement.dataset.type = numKind;   // the pass gives the number
+      if (numKind && li && li.parentElement.nodeName === 'OL') startListAt(li, numKind, markerNum(m[1]));   // the pass gives the numbers
     }
     else if (kind === 'chk') { exec('insertUnorderedList'); const li = closestSel('li'); if (li) li.parentElement.classList.add('checklist'); liftList(); }
     else exec('formatBlock', kind);
