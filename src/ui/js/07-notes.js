@@ -126,6 +126,12 @@ const EXPORT_LIST_CSS = '@counter-style ko-ga{system:alphabetic;symbols:"가" "�
   '@counter-style ko-num-wrap{system:extends decimal;prefix:"(";suffix:") "}@counter-style ko-ga-wrap{system:extends ko-ga;prefix:"(";suffix:") "}' +
   'ol ol{list-style-type:ko-ga}ol ol ol{list-style-type:ko-num-paren}ol ol ol ol{list-style-type:ko-ga-paren}ol ol ol ol ol{list-style-type:ko-num-wrap}ol ol ol ol ol ol{list-style-type:ko-ga-wrap}' +
   'ol[data-type=number]{list-style-type:decimal}ol[data-type=hangul]{list-style-type:ko-ga}ol[data-type=alpha]{list-style-type:lower-alpha}' +
+  '@counter-style ko-az-paren{system:extends lower-alpha;suffix:") "}@counter-style ko-AZ-paren{system:extends upper-alpha;suffix:") "}' +
+  '@counter-style ko-circle{system:fixed;symbols:"①" "②" "③" "④" "⑤" "⑥" "⑦" "⑧" "⑨" "⑩" "⑪" "⑫" "⑬" "⑭" "⑮" "⑯" "⑰" "⑱" "⑲" "⑳";suffix:" ";fallback:ko-num-wrap}' +
+  '@counter-style ko-ga-circle{system:fixed;symbols:"㉮" "㉯" "㉰" "㉱" "㉲" "㉳" "㉴" "㉵" "㉶" "㉷" "㉸" "㉹" "㉺" "㉻";suffix:" ";fallback:ko-ga-wrap}' +
+  'ol[data-type=upper]{list-style-type:upper-alpha}ol[data-type=num-paren]{list-style-type:ko-num-paren}ol[data-type=ga-paren]{list-style-type:ko-ga-paren}' +
+  'ol[data-type=alpha-paren]{list-style-type:ko-az-paren}ol[data-type=upper-paren]{list-style-type:ko-AZ-paren}ol[data-type=num-wrap]{list-style-type:ko-num-wrap}' +
+  'ol[data-type=ga-wrap]{list-style-type:ko-ga-wrap}ol[data-type=circle]{list-style-type:ko-circle}ol[data-type=ga-circle]{list-style-type:ko-ga-circle}' +
   'li.nob{display:block}ul.checklist li.nob::before{content:none}';
 // a Windows file name that reads as the note's name (the same rule as the readable copies in the 메모 folder):
 // refused characters become their full-width twins, at most 80 characters, never a device name

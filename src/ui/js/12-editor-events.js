@@ -13,6 +13,7 @@ editor.addEventListener('beforeinput', e => {
   if (e.inputType.startsWith('insert')) editor.classList.remove('is-empty');   // hide the hint on the first keystroke
 });
 editor.addEventListener('input', e => {
+  autoList = null;                                // something typed after a marker made a list: Backspace is Backspace again
   if (objSel && !objSel.isConnected) clearObj();
   if (!composing && needsRoot()) ensureRoot();
   if (editor.classList.contains('is-empty') && editor.textContent) editor.classList.remove('is-empty');
@@ -120,6 +121,7 @@ editor.addEventListener('keydown', e => {
   }
   if (e.key === ' ' || e.key === 'Enter') linkifyBefore();   // a typed address becomes a link (the key still goes in)
   if (e.key === 'Enter' && !e.shiftKey && boxEnter()) { e.preventDefault(); return; }
+  if (e.key === 'Backspace' && !e.shiftKey && undoAutoList()) { e.preventDefault(); return; }   // just made by a typed marker: back to that text
   if (e.key === 'Backspace' && !e.shiftKey && blockBackspace()) { e.preventDefault(); return; }
   if (e.key === 'Backspace' && !e.shiftKey && listBackspace()) { e.preventDefault(); return; }
   if ((e.key === 'Backspace' || e.key === 'Delete') && !e.shiftKey && besideTable(e.key === 'Backspace')) { e.preventDefault(); return; }

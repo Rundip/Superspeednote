@@ -330,6 +330,17 @@ body.sb-off #sidebar{display:none}
 #editor ol[data-type=number]{list-style-type:decimal}
 #editor ol[data-type=hangul]{list-style-type:ko-ga}
 #editor ol[data-type=alpha]{list-style-type:lower-alpha}
+@counter-style ko-az-paren{system:extends lower-alpha;suffix:') '}
+@counter-style ko-AZ-paren{system:extends upper-alpha;suffix:') '}
+#editor ol[data-type=upper]{list-style-type:upper-alpha}
+#editor ol[data-type=num-paren]{list-style-type:ko-num-paren}
+#editor ol[data-type=ga-paren]{list-style-type:ko-ga-paren}
+#editor ol[data-type=alpha-paren]{list-style-type:ko-az-paren}
+#editor ol[data-type=upper-paren]{list-style-type:ko-AZ-paren}
+#editor ol[data-type=num-wrap]{list-style-type:ko-num-wrap}
+#editor ol[data-type=ga-wrap]{list-style-type:ko-ga-wrap}
+#editor ol[data-type=circle]{list-style-type:ko-circle}
+#editor ol[data-type=ga-circle]{list-style-type:ko-ga-circle}
 /* a line whose bullet was taken off (Backspace at its start): stays in place, no marker, not counted */
 #editor li.nob{display:block}
 #editor ul.checklist>li.nob::before{display:none}

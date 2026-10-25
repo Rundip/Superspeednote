@@ -243,7 +243,21 @@ function listIndent(out) {
 // every deeper counter starts again; a normal line between lists ends the run (all counters start again). A list
 // split in two by edits carries on its numbers (its start), and a list made without a kind takes the kind of the
 // list before it at the same depth - so deleting or adding a line in the middle never jumps back to '1.'.
-const LIST_KINDS = new Set(['number', 'hangul', 'alpha']);
+// The ways a numbered list can show its numbers, chosen by what was typed to start it (see mdShortcut). Each has its
+// CSS counter style (style.css) and the same label as text (olLabel - copying a list as text).
+const KO_ORDER = '가나다라마바사아자차카타파하';
+const koNum = n => { let t = ''; for (n--; n >= 0; n = Math.floor(n / 14) - 1) t = KO_ORDER[n % 14] + t; return t; };
+const azNum = n => { let t = ''; for (n--; n >= 0; n = Math.floor(n / 26) - 1) t = String.fromCharCode(97 + n % 26) + t; return t; };
+const LIST_LOOK = {
+  'number': n => n + '. ', 'hangul': n => koNum(n) + '. ', 'alpha': n => azNum(n) + '. ', 'upper': n => azNum(n).toUpperCase() + '. ',
+  'num-paren': n => n + ') ', 'ga-paren': n => koNum(n) + ') ', 'alpha-paren': n => azNum(n) + ') ', 'upper-paren': n => azNum(n).toUpperCase() + ') ',
+  'num-wrap': n => '(' + n + ') ', 'ga-wrap': n => '(' + koNum(n) + ') ',
+  'circle': n => n <= 20 ? String.fromCharCode(0x2460 + n - 1) + ' ' : '(' + n + ') ',
+  'ga-circle': n => n <= 14 ? String.fromCharCode(0x326E + n - 1) + ' ' : '(' + koNum(n) + ') ',
+};
+const LIST_KINDS = new Set(Object.keys(LIST_LOOK));
+// the kind a list has by its depth alone (1. 가. 1) 가) (1) (가) ① ㉮), when it wasn't started by a typed marker
+const DEPTH_KINDS = ['number', 'hangul', 'num-paren', 'ga-paren', 'num-wrap', 'ga-wrap', 'circle', 'ga-circle'];
 function relist() {
   if (!editor.querySelector('ol')) return;
   const counters = new Array(10).fill(0), kinds = new Array(10).fill(null);
@@ -282,20 +296,8 @@ function olLabel(li) {
   let n = ol.start || 1, depth = 0;
   for (let s = li.previousElementSibling; s; s = s.previousElementSibling) if (s.nodeName === 'LI' && !s.classList.contains('nob')) n++;
   for (let p = ol; p && p !== editor; p = p.parentElement) if (p.nodeName === 'OL') depth++;
-  const ko = i => { let t = ''; for (i--; i >= 0; i = Math.floor(i / 14) - 1) t = '가나다라마바사아자차카타파하'[i % 14] + t; return t; };
-  if (ol.dataset.type === 'number') return n + '. ';
-  if (ol.dataset.type === 'hangul') return ko(n) + '. ';
-  if (ol.dataset.type === 'alpha') { let t = ''; for (let i = n - 1; i >= 0; i = Math.floor(i / 26) - 1) t = String.fromCharCode(97 + i % 26) + t; return t + '. '; }
-  switch ((depth - 1) % 8) {
-    case 1: return ko(n) + '. ';
-    case 2: return n + ') ';
-    case 3: return ko(n) + ') ';
-    case 4: return '(' + n + ') ';
-    case 5: return '(' + ko(n) + ') ';
-    case 6: return n <= 20 ? String.fromCharCode(0x2460 + n - 1) + ' ' : '(' + n + ') ';
-    case 7: return n <= 14 ? String.fromCharCode(0x326E + n - 1) + ' ' : '(' + ko(n) + ') ';
-    default: return n + '. ';
-  }
+  const kind = LIST_KINDS.has(ol.dataset.type) ? ol.dataset.type : DEPTH_KINDS[(depth - 1) % 8];
+  return LIST_LOOK[kind](n);
 }
 // the caret as character offsets inside a block, so it can be put back after the block is rebuilt
 function textOffset(root, node, off) { const r = document.createRange(); r.setStart(root, 0); r.setEnd(node, off); return r.toString().length; }
@@ -395,40 +397,68 @@ function blockOf(n) {
   return null;
 }
 // "# ", "- ", "1. ", "[] ", "> ", "``` " at the start of a line
-// the number a typed marker stands for: "3" -> 3, "다" -> 3, "c" -> 3
-const KO_ORDER = '가나다라마바사아자차카타파하';
-function markerNum(t) { return /\d/.test(t) ? parseInt(t, 10) : /[a-zA-Z]/.test(t) ? t.toLowerCase().charCodeAt(0) - 96 : KO_ORDER.indexOf(t) + 1; }
+// A typed marker: "1." "가." "a." "A." "1)" "가)" "a)" "A)" "(1)" "(가)" "①" "㉮" -> its kind and number, else null
+function parseMarker(t) {
+  let m;
+  const ko = c => KO_ORDER.indexOf(c) + 1, az = c => c.toLowerCase().charCodeAt(0) - 96;
+  if ((m = /^(\d{1,3})([.)])$/.exec(t))) return { kind: m[2] === '.' ? 'number' : 'num-paren', n: +m[1] };
+  if ((m = /^\((\d{1,3})\)$/.exec(t))) return { kind: 'num-wrap', n: +m[1] };
+  if ((m = /^([가나다라마바사아자차카타파하])([.)])$/.exec(t))) return { kind: m[2] === '.' ? 'hangul' : 'ga-paren', n: ko(m[1]) };
+  if ((m = /^\(([가나다라마바사아자차카타파하])\)$/.exec(t))) return { kind: 'ga-wrap', n: ko(m[1]) };
+  if ((m = /^([a-z])([.)])$/.exec(t))) return { kind: m[2] === '.' ? 'alpha' : 'alpha-paren', n: az(m[1]) };
+  if ((m = /^([A-Z])([.)])$/.exec(t))) return { kind: m[2] === '.' ? 'upper' : 'upper-paren', n: az(m[1]) };
+  if (/^[①-⑳]$/.test(t)) return { kind: 'circle', n: t.charCodeAt(0) - 0x2460 + 1 };
+  if (/^[㉮-㉻]$/.test(t)) return { kind: 'ga-circle', n: t.charCodeAt(0) - 0x326E + 1 };
+  return null;
+}
+// the last number a list shows (its top-level lines)
+function lastNum(L) { let n = (L.start || 1) - 1; for (const c of L.children) if (c.nodeName === 'LI' && !c.classList.contains('nob')) n++; return n; }
 // a numbered list of its own from this line on (the lines before it stay as they were), started at the typed number
 function startListAt(li, kind, num) {
   let L = li.parentElement;
   if (L.firstElementChild !== li) {
+    // moving the line out took the caret off it (it stayed at the end of the list above - typing went there): kept
+    const r = selRange(), k = r && li.contains(r.startContainer) ? textOffset(li, r.startContainer, r.startOffset) : null;
     const nl = document.createElement('ol');
     L.after(nl);
     while (li.nextSibling) nl.appendChild(li.nextSibling);   // the lines after it (and their sub-items) go along
     nl.prepend(li);
     L = nl;
+    if (k !== null) setSelOffsets(li, k, k);
   }
   L.dataset.type = kind;
   L.dataset.start = num;
 }
-// Typing a marker - "1. ", "2. ", "가. ", "다. ", "a. " - at the start of a line makes it a numbered line starting at
-// that number, also several lines (or a picture, a table) after a list: "2. " carries on from a "1." above, "1. "
-// starts again at 1.
+// Typing a marker at the start of a line makes a numbered line only where that number belongs - otherwise what was
+// typed stays as text (a "3) 결론" with no list before it is just text):
+//  - the first of its kind ("1.", "1)", "(1)", "①", "가.", "가)", "(가)", "㉮", "a." ...) starts a list (again);
+//  - the number right after the last list of the same kind above carries it on - also several lines, a picture
+//    or a table after it ("2)" after a "1)" list);
+//  - at the start of a line that is already numbered: "1..." starts again from it, its own number in another kind
+//    ("2)" on a "2." line) changes the kind from it on.
+// Backspace right after it turns the line back into the text that was typed (see undoAutoList).
+let autoList = null;                              // { li, text }: the line a typed marker just turned into a list item
 function mdShortcut() {
   const r = selRange();
   if (!r || !r.collapsed) return false;
   const blk = blockOf(r.startContainer);
   if (blk && blk.nodeName === 'LI' && blk.parentElement.nodeName === 'OL' && !blk.closest('td')) {   // "가. " typed in a numbered line
     const pre0 = document.createRange(); pre0.setStart(blk, 0); pre0.setEnd(r.startContainer, r.startOffset);
-    const m0 = /^(\d{1,3}|[가나다라마바사아자차카타파하]|[a-zA-Z])[.)]$/.exec(pre0.toString());
+    const m0 = parseMarker(pre0.toString());
     if (!m0) return false;
-    const k0 = /\d/.test(m0[1]) ? 'number' : /[a-zA-Z]/.test(m0[1]) ? 'alpha' : 'hangul';
+    let depth = 0;
+    for (let q = blk.parentElement; q && q !== editor; q = q.parentElement) if (q.nodeName === 'OL') depth++;
+    const L0 = blk.parentElement, k0 = m0.kind;
+    const nowKind = LIST_KINDS.has(L0.dataset.type) ? L0.dataset.type : DEPTH_KINDS[(depth - 1) % 8];
+    let nowNum = (L0.start || 1) - 1;               // the number this line shows now
+    for (const c of L0.children) { if (c.nodeName === 'LI' && !c.classList.contains('nob')) nowNum++; if (c === blk) break; }
+    if (!(m0.n === 1 || (m0.n === nowNum && k0 !== nowKind))) return false;   // not where that number belongs: text
     exec('insertText', ' '); histCommit();
     edit(() => {
       const r2 = selRange(), p2 = document.createRange(); p2.setStart(blk, 0); p2.setEnd(r2.startContainer, r2.startOffset);
       const s0 = getSelection(); s0.removeAllRanges(); s0.addRange(p2);
       exec('delete');
-      startListAt(blk, k0, markerNum(m0[1]));
+      startListAt(blk, k0, m0.n);
     });
     return true;
   }
@@ -436,14 +466,20 @@ function mdShortcut() {
   const pre = document.createRange();
   pre.setStart(blk, 0); pre.setEnd(r.startContainer, r.startOffset);
   const map = { '#': 'h1', '##': 'h2', '###': 'h3', '-': 'ul', '*': 'ul', '[]': 'chk', '[ ]': 'chk', '>': 'blockquote', '```': 'pre' };
-  const typed = pre.toString(), m = /^(\d{1,3}|[가나다라마바사아자차카타파하]|[a-zA-Z])[.)]$/.exec(typed);
-  const numKind = m ? (/\d/.test(m[1]) ? 'number' : /[a-zA-Z]/.test(m[1]) ? 'alpha' : 'hangul') : null;
+  const typed = pre.toString(), mk = parseMarker(typed);
+  const numKind = mk ? mk.kind : null;
   const kind = numKind ? 'ol' : map[typed];
   if (!kind) return false;
   // Only a 본문 line turns into a list (or a quote / code) by what is typed at its start. A heading, a quote's line
   // keep it as their text: "1. 개요", "- 참고". (In a heading "# ", "## " still change its level.)
   const body = /^(DIV|P)$/.test(blk.nodeName) && !blk.closest('blockquote, pre, td, li');
   if (!body && !(/^H[1-6]$/.test(blk.nodeName) && /^h\d$/.test(kind))) return false;
+  if (mk && mk.n !== 1) {                          // carrying on a list above? the number right after its last one
+    let prev = null;
+    for (let b = topLevel(blk).previousElementSibling; b; b = b.previousElementSibling)
+      if (b.nodeName === 'OL' && (b.dataset.type || 'number') === mk.kind) { prev = b; break; }   // (made by the button: 1. 2. 3.)
+    if (!prev || lastNum(prev) + 1 !== mk.n) return false;   // not where that number belongs: it stays as typed
+  }
   exec('insertText', ' '); histCommit();          // Ctrl+Z brings back what you typed ("# "), not an empty line
   edit(() => {
     const r2 = selRange(), pre2 = document.createRange(); pre2.setStart(blk, 0); pre2.setEnd(r2.startContainer, r2.startOffset);
@@ -452,10 +488,28 @@ function mdShortcut() {
     if (kind === 'ul' || kind === 'ol') {
       exec(kind === 'ul' ? 'insertUnorderedList' : 'insertOrderedList'); liftList();
       const li = closestSel('li');
-      if (numKind && li && li.parentElement.nodeName === 'OL') startListAt(li, numKind, markerNum(m[1]));   // the pass gives the numbers
+      if (numKind && li && li.parentElement.nodeName === 'OL') startListAt(li, numKind, mk.n);   // the pass gives the numbers
+      if (li) autoList = { li, text: typed + ' ' };
     }
-    else if (kind === 'chk') { exec('insertUnorderedList'); const li = closestSel('li'); if (li) li.parentElement.classList.add('checklist'); liftList(); }
+    else if (kind === 'chk') { exec('insertUnorderedList'); const li = closestSel('li'); if (li) { li.parentElement.classList.add('checklist'); autoList = { li, text: typed + ' ' }; } liftList(); }
     else exec('formatBlock', kind);
+  });
+  updateToolbar();
+  if (autoList && !st.tipAutoList) { st.tipAutoList = 1; saveStateSoon(); toast('목록으로 바꿨어요 · 바로 Backspace를 누르면 입력한 글자 그대로'); }
+  return true;
+}
+// Backspace right after a typed marker made a list line (nothing typed in it yet): the line goes back to plain text
+// with what was typed ("1) ", "- ", "[] "), for writing it as it is
+function undoAutoList() {
+  const a = autoList;
+  autoList = null;
+  if (!a || !a.li.isConnected || liAtLineStart() !== a.li || a.li.textContent.trim() || a.li.querySelector('img')) return false;
+  edit(() => {
+    const L = a.li.parentElement, d = document.createElement('div');
+    d.textContent = a.text;
+    if (L.children.length === 1) L.replaceWith(d); else { a.li.remove(); L.before(d); }
+    const r = document.createRange(); r.selectNodeContents(d); r.collapse(false);
+    const g = getSelection(); g.removeAllRanges(); g.addRange(r);
   });
   updateToolbar();
   return true;
