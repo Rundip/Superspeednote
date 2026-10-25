@@ -440,6 +440,10 @@ function mdShortcut() {
   const numKind = m ? (/\d/.test(m[1]) ? 'number' : /[a-zA-Z]/.test(m[1]) ? 'alpha' : 'hangul') : null;
   const kind = numKind ? 'ol' : map[typed];
   if (!kind) return false;
+  // Only a 본문 line turns into a list (or a quote / code) by what is typed at its start. A heading, a quote's line
+  // keep it as their text: "1. 개요", "- 참고". (In a heading "# ", "## " still change its level.)
+  const body = /^(DIV|P)$/.test(blk.nodeName) && !blk.closest('blockquote, pre, td, li');
+  if (!body && !(/^H[1-6]$/.test(blk.nodeName) && /^h\d$/.test(kind))) return false;
   exec('insertText', ' '); histCommit();          // Ctrl+Z brings back what you typed ("# "), not an empty line
   edit(() => {
     const r2 = selRange(), pre2 = document.createRange(); pre2.setStart(blk, 0); pre2.setEnd(r2.startContainer, r2.startOffset);
