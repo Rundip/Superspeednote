@@ -209,6 +209,9 @@ function openPalette(mode) {
     return;
   }
   palMode = mode;
+  // where the app was scrolled: the search (and, from another program, the page moving into its small window)
+  // must leave the note / board exactly where it was
+  const board = $('#board'), keepTop = [scroller.scrollTop, board ? board.scrollTop : 0];
   if (mode === 'pop') app.classList.add('pal-pop');
   closePop();
   if (cur) flushNote();
@@ -219,7 +222,12 @@ function openPalette(mode) {
     (mode === 'quick' ? `<div class="pal-foot"><span><kbd>Enter</kbd>넣기</span><span><kbd>Tab</kbd><kbd>Shift+Tab</kbd>칸·단어 고르기</span><span><kbd>Shift+Enter</kbd>복사만</span><span class="fill"></span><span><kbd>Esc</kbd>닫기</span></div></div>`
       : `<div class="pal-foot">${inNote ? '<span><kbd>Alt+Enter</kbd>이 메모에 넣기</span>' : ''}<span><kbd>Enter</kbd>${isPop ? '붙여넣기' : '이전 창에 붙여넣기'}</span><span><kbd>Tab</kbd><kbd>Shift+Tab</kbd>칸·단어 고르기</span>` +
         `<span><kbd>Shift+Enter</kbd>${isPop ? '복사만' : '복사하고 이전 창으로'}</span><span><kbd>Ctrl+Enter</kbd>메모 열기</span>${inNote ? '' : '<span><kbd>Alt+1~9</kbd>바로 붙여넣기</span>'}<span class="fill"></span><span><kbd>Esc</kbd>${isPop ? '돌아가기' : '닫기'}</span></div></div>`),
-    () => { paletteOn = false; app.classList.remove('pal-pop'); modal.classList.remove('palm'); host.send('palette', '0'); });
+    () => {
+      paletteOn = false; app.classList.remove('pal-pop'); modal.classList.remove('palm');
+      const back = () => { scroller.scrollTop = keepTop[0]; if (board) board.scrollTop = keepTop[1]; };
+      back(); setTimeout(back, 0);                // again once the caret is back (refocus runs right after this)
+      host.send('palette', '0');
+    });
   modal.classList.add('palm');                    // the quick memo shows it over the whole window
   paletteOn = true;
   host.send('palette', '1');

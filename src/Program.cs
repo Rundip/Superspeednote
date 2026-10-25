@@ -33,7 +33,7 @@ namespace SuperSpeedNote
 {
     static class Program
     {
-        public const string Version = "1.5.6";
+        public const string Version = "1.5.7";
         public const string WebView2Version = "1.0.4258.31";
         public static string DataDir, LocalDir;
         public static bool Portable;                  // a "data" folder next to the exe holds the notes (test / USB copies)
@@ -266,6 +266,7 @@ namespace SuperSpeedNote
         Form webIn;
         PopForm pop;
         bool popWanted;
+        bool holdWeb;     // the page is on its way between windows: shown in neither (the app window keeps its picture)
         bool popShown { get { return pop != null && webIn == pop; } }
         // the app window as it was when its page went into the search window: shown in its place meanwhile, so an
         // app window left open behind other programs keeps its look instead of turning into a bare navy box
@@ -407,7 +408,7 @@ namespace SuperSpeedNote
             }
             saver.Flush(3000);
             // the page comes back in the app window; the find & paste window and the quick memo close
-            popWanted = false;
+            popWanted = false; holdWeb = false;
             if (pop != null) { pop.Attached = false; if (pop.Visible) pop.Hide(); }
             DetachQuick(true);
             if (webIn != this) PutWeb(this);
@@ -505,7 +506,7 @@ namespace SuperSpeedNote
         {
             Rectangle rc = ClientRectangle;
             if (rc.Width < 2 || rc.Height < 2) return;
-            if (still != null && webIn != this)
+            if (still != null && (webIn != this || holdWeb))
             {
                 e.Graphics.FillRectangle(Brushes.Black, rc);
                 e.Graphics.DrawImage(still, new Rectangle(0, 0, still.Width, still.Height));
@@ -585,7 +586,7 @@ namespace SuperSpeedNote
         void UpdateWebVisibility()
         {
             if (ctl == null || wv == null) return;
-            bool vis = webIn != this || (Visible && WindowState != FormWindowState.Minimized);
+            bool vis = !holdWeb && (webIn != this || (Visible && WindowState != FormWindowState.Minimized));
             try
             {
                 if (ctl.IsVisible != vis) ctl.IsVisible = vis;
@@ -794,7 +795,7 @@ namespace SuperSpeedNote
             }
             if (key == FindKey)                    // find a line in any note, Enter pastes it back where you were
             {
-                if (popWanted || popShown) { Post("palette", "close"); GoBack(); DetachPop(); return; }   // pressed again
+                if (popWanted || popShown) { GoBack(); ReleasePop(); return; }   // pressed again
                 if (quickShown && Native.GetForegroundWindow() == quick.Handle)
                 {                                  // writing a quick memo: search opens in it, Enter puts the line in the memo
                     Post("palette", paletteOpen ? "close" : "quick");
@@ -865,7 +866,7 @@ namespace SuperSpeedNote
                 {
                     if (finished || e.CloseReason != CloseReason.UserClosing) return;
                     e.Cancel = true;
-                    Post("palette", "close"); GoBack(); DetachPop();
+                    GoBack(); ReleasePop();
                 };
             }
             PlacePop();
@@ -874,7 +875,19 @@ namespace SuperSpeedNote
             pop.Invalidate();
             if (!pop.Visible) pop.Show();
             ForceForeground(pop.Handle);
-            if (webReady) Post("palette", "pop");
+            if (webReady)
+            {
+                // The page goes into the search window at once, unseen: the app window keeps its picture of the page
+                // instead of showing it turn into the search box and then vanish (it used to twitch twice)
+                if (webIn == this && ctl != null)
+                {
+                    holdWeb = true; PutWeb(pop); Invalidate();
+                    var t = new System.Windows.Forms.Timer { Interval = 1500 };   // the page never answered: show it anyway
+                    t.Tick += (s, e) => { t.Stop(); t.Dispose(); if (holdWeb && popWanted && webIn == pop) AttachPop(); };
+                    t.Start();
+                }
+                Post("palette", "pop");
+            }
             else { pendingPalette = "pop"; EnsureWeb(); }   // from standby: the engine starts now (~1 s)
         }
 
@@ -890,7 +903,7 @@ namespace SuperSpeedNote
                 IntPtr fg = Native.GetForegroundWindow();
                 if (fg == pop.Handle || Native.GetAncestor(fg, 3 /*GA_ROOTOWNER*/) == pop.Handle) return;
                 if (fg == IntPtr.Zero) { if (tries < 5) CheckPopFocus(tries + 1); return; }
-                if (popShown) Post("palette", "close"); else { pendingPalette = null; DetachPop(); }
+                if (popShown) ReleasePop(); else { pendingPalette = null; DetachPop(); }
             };
             t.Start();
         }
@@ -916,6 +929,7 @@ namespace SuperSpeedNote
             if (ctl == null || pop == null) return;
             if (quick != null && quick.Visible) quick.Hide();   // a quick memo waits until the search is done
             pop.Attached = true;
+            holdWeb = false;
             PutWeb(pop);
             if (!pop.Visible) pop.Show();
             ForceForeground(pop.Handle);
@@ -923,10 +937,25 @@ namespace SuperSpeedNote
             Post("palette", "focus");
         }
 
+        // Closed from here (the hotkey again, Alt+F4, the app opened): the search window goes at once, but the page
+        // comes back to the app window only once it has closed its search box (it reports "palette 0"), so the app
+        // window never shows the search box over its notes; after a moment it comes back anyway
+        void ReleasePop()
+        {
+            popWanted = false;
+            if (pop != null) { pop.Attached = false; if (pop.Visible) pop.Hide(); }
+            if (!popShown) { DetachPop(); return; }
+            Post("palette", "close");
+            var t = new System.Windows.Forms.Timer { Interval = 500 };
+            t.Tick += (s, e) => { t.Stop(); t.Dispose(); if (popShown && !popWanted) DetachPop(); };
+            t.Start();
+        }
+
         // back into the quick memo if one is open, else the main window (still hidden / where it was)
         void DetachPop()
         {
             popWanted = false;
+            holdWeb = false;
             // hide it first: moving the page out first would leave a bare window on screen for a moment
             if (pop != null) { pop.Attached = false; if (pop.Visible) pop.Hide(); }
             if (popShown)
@@ -937,6 +966,7 @@ namespace SuperSpeedNote
                     Native.ShowWindow(quick.Handle, 8 /*SW_SHOWNA: back on top without taking the keyboard*/);
                 }
                 else PutWeb(this);
+                if (webIn == this && ctl != null && IsFront()) { try { ctl.MoveFocus(CoreWebView2MoveFocusReason.Programmatic); } catch { } }
             }
         }
 
@@ -1583,7 +1613,7 @@ namespace SuperSpeedNote
                 case "active": activeNote = a; break;
                 case "palette":                                  // page reports its search window open / closed
                     paletteOpen = a == "1";
-                    if (paletteOpen) { if (popWanted && !popShown) AttachPop(); }
+                    if (paletteOpen) { if (popWanted && (!popShown || holdWeb)) AttachPop(); }
                     else if (popWanted || popShown) DetachPop();
                     break;
                 case "quick":                                    // quick memo: page ready / closed by its X / "open in app"
