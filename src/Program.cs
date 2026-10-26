@@ -33,11 +33,12 @@ namespace SuperSpeedNote
 {
     static class Program
     {
-        public const string Version = "1.5.7";
+        public const string Version = "1.5.8";
         public const string WebView2Version = "1.0.4258.31";
         public static string DataDir, LocalDir;
         public static bool Portable;                  // a "data" folder next to the exe holds the notes (test / USB copies)
         public static bool Imported;                  // Store version: the exe version's notes were copied in on this start
+        public static int Restored = -1;              // notes brought back from the outside backup on this start (-1: none)
 
         // Installed from the Microsoft Store (MSIX package) rather than run as a plain exe
         public static readonly bool Packaged = IsPackaged();
@@ -68,7 +69,7 @@ namespace SuperSpeedNote
         [STAThread]
         static void Main(string[] args)
         {
-            bool tray = false, standby = false, dev = false, quit = false;
+            bool tray = false, standby = false, dev = false, quit = false, restart = false;
             string ui = null;
             for (int i = 0; i < args.Length; i++)
             {
@@ -76,11 +77,13 @@ namespace SuperSpeedNote
                 else if (args[i] == "--standby") standby = true;    // hotkeys only, no window, no web engine
                 else if (args[i] == "--quit") quit = true;          // ask a running copy to save and exit (used by build/install)
                 else if (args[i] == "--dev") dev = true;
+                else if (args[i] == "--restart") restart = true;   // started by the app itself as it closes (restore from a backup)
                 else if (args[i] == "--ui" && i + 1 < args.Length) { ui = args[++i]; dev = true; }
             }
 
             bool created;
             mutex = new Mutex(true, "SuperSpeedNote.SingleInstance." + Environment.UserName, out created);
+            if (!created && restart) { try { created = mutex.WaitOne(15000); } catch (AbandonedMutexException) { created = true; } }   // the old one is closing
             if (!created && !quit && OlderRunning())
             {
                 // A newer version was started while an older one runs (in the tray, in standby, started with Windows):
@@ -105,25 +108,25 @@ namespace SuperSpeedNote
             DataDir = Portable ? portable
                 : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "SuperSpeedNote");
             LocalDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SuperSpeedNote");
-            string pkg = Packaged ? PackageDataRoot() : null;
+            string pkg = Packaged ? PackageDataRoot() : null, legacy = DataDir;
             if (pkg != null)
             {
-                // Store version: the package's own folders (real paths, so "open data folder" shows them), and the
-                // notes of the exe version on this PC copied in once when there are none yet
-                string legacy = DataDir;
+                // Store version: the package's own folders (real paths, so "open data folder" shows them)
                 DataDir = Path.Combine(pkg, "LocalState");
                 LocalDir = Path.Combine(pkg, "LocalCache");
-                ImportOnce(legacy, DataDir);
             }
             Directory.CreateDirectory(DataDir);
             Directory.CreateDirectory(LocalDir);
+            Application.EnableVisualStyles();                   // (before any message box below)
+            Application.SetCompatibleTextRenderingDefault(false);
+            RestorePending();                                   // "백업에서 복원" in settings: done now, before anything reads the notes
+            if (!standby && !tray) OfferRestore();             // a fresh install with notes in the outside backup: bring them back?
+            if (pkg != null) ImportOnce(legacy, DataDir);      // ...else the exe version's notes on this PC, copied in once
             BackupOnVersionChange();
 
             AppDomain.CurrentDomain.AssemblyResolve += ResolveEmbedded;
             Application.ThreadException += (s, e) => Log(e.Exception);
             AppDomain.CurrentDomain.UnhandledException += (s, e) => Log(e.ExceptionObject as Exception);
-            Application.EnableVisualStyles();
-            Application.SetCompatibleTextRenderingDefault(false);
             Run(tray, standby, dev, ui);
             GC.KeepAlive(mutex);
         }
@@ -150,6 +153,48 @@ namespace SuperSpeedNote
             }
             catch (Exception) { }
             return false;
+        }
+
+        // No notes here yet (a new install, the Store version installed again) but the outside backup has some: asked
+        // once whether to bring them back - "아니요" leaves the backup as it is and starts empty
+        static void OfferRestore()
+        {
+            try
+            {
+                if (File.Exists(Path.Combine(DataDir, "state.json")) || !OuterBackup.On) return;
+                string latest = Path.Combine(OuterBackup.Dir, OuterBackup.Latest);
+                int n = OuterBackup.CountNotes(latest);
+                if (n == 0 || !File.Exists(Path.Combine(latest, "state.json"))) return;
+                DateTime when = File.GetLastWriteTime(Path.Combine(latest, "state.json"));
+                if (MessageBox.Show("전에 쓰던 메모의 백업이 있어요.\n\n" + OuterBackup.Dir + "\n메모 " + n + "개 · 마지막 백업 " + when.ToString("yyyy-MM-dd HH:mm") +
+                    "\n\n이 메모를 가져올까요?", "Super Speed Note", MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button1) != DialogResult.Yes)
+                {
+                    // starting over: that backup is kept aside, as it is, and a new one begins for the new notes
+                    try { Directory.Move(latest, latest + "-보관-" + DateTime.Now.ToString("yyyyMMdd-HHmm")); } catch (Exception ex) { Log(ex); }
+                    return;
+                }
+                string why = OuterBackup.RestoreFrom(latest);
+                if (why != null) MessageBox.Show("백업에서 가져오지 못했어요: " + why + "\n백업 폴더는 그대로 있어요.", "Super Speed Note", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                else Restored = n;
+            }
+            catch (Exception ex) { Log(ex); }
+        }
+
+        // settings › 백업에서 복원: the app wrote which backup and started itself again (--restart) as it closed
+        static void RestorePending()
+        {
+            string f = Path.Combine(LocalDir, "restore-pending.txt");
+            try
+            {
+                if (!File.Exists(f)) return;
+                string from = File.ReadAllText(f, Encoding.UTF8).Trim();
+                File.Delete(f);
+                if (from.Length == 0) return;
+                string why = OuterBackup.RestoreFrom(from);
+                if (why != null) MessageBox.Show("백업에서 복원하지 못했어요: " + why + "\n메모는 복원 전 그대로예요.", "Super Speed Note", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                else Restored = OuterBackup.CountNotes(from);
+            }
+            catch (Exception ex) { Log(ex); }
         }
 
         // First start of the Store version on a PC that had the exe version: its notes (not its backups) are copied in;
@@ -1293,7 +1338,7 @@ namespace SuperSpeedNote
             backupTimer = new System.Windows.Forms.Timer { Interval = 60 * 60 * 1000 };
             backupTimer.Tick += (s, e) => Task.Run(() => DataBackup.Run(null));
             backupTimer.Start();
-            Task.Run(() => { Thread.Sleep(8000); DataBackup.Run(null); SweepTrash(); });
+            Task.Run(() => { Thread.Sleep(8000); DataBackup.Run(null); SweepTrash(); OuterBackup.Sync(); });
         }
 
         void BuildTrayMenu()
@@ -1512,6 +1557,7 @@ namespace SuperSpeedNote
             string cmd = Cut(ref a);
             try { Dispatch(cmd, a); }
             catch (Exception ex) { Program.Log(ex); Post("toast", "오류: " + ex.Message); }
+            if (OuterChanges.Contains(cmd)) OuterSoon();
         }
 
         void Dispatch(string cmd, string a)
@@ -1532,6 +1578,7 @@ namespace SuperSpeedNote
                     }
                     catch { }
                     if (pendingOpen != null) { Post("open", pendingOpen); pendingOpen = null; }
+                    if (Program.Restored >= 0) { Post("toast", "백업에서 메모 " + Program.Restored + "개를 가져왔어요"); Program.Restored = -1; }
                     if (Program.Imported) { Program.Imported = false; Post("toast", "이 PC의 기존 메모를 Store 버전으로 가져왔어요 · 이제부터는 Store 버전에 따로 저장돼요"); }
                     if (pendingNew) { Post("new"); pendingNew = false; }
                     if (pendingPalette != null) { if (pendingPalette != "pop" || popWanted) Post("palette", pendingPalette); pendingPalette = null; }
@@ -1698,7 +1745,75 @@ namespace SuperSpeedNote
                     Task.Run(() => DataBackup.Manual()).ContinueWith(t => { try { BeginInvoke(new Action(() => Post("backupDone", t.Result))); } catch { } });
                     break;
                 case "flushed": AfterFlush(quitSeq); break;
+                case "outerInfo": Post("outerInfo", OuterInfo()); break;
+                case "outerSet":                                 // "on" | "off"
+                    if (a == "off") OuterBackup.TurnOff(); else { OuterBackup.TurnOn(); outerDirty = true; OuterNow(ok => Post("outerInfo", OuterInfo())); }
+                    Post("outerInfo", OuterInfo());
+                    break;
+                case "outerPick":
+                    BeginInvoke(new Action(() =>
+                    {
+                        using (var dlg = new FolderBrowserDialog { Description = "메모를 백업할 폴더 (앱을 지워도 남는 곳 · OneDrive 폴더면 클라우드에도)", SelectedPath = OuterBackup.Dir, ShowNewFolderButton = true })
+                        {
+                            if (dlg.ShowDialog(this) != DialogResult.OK) return;
+                            string d = dlg.SelectedPath;
+                            if (!d.EndsWith("Super Speed Note 백업", StringComparison.OrdinalIgnoreCase)) d = Path.Combine(d, "Super Speed Note 백업");
+                            OuterBackup.Set(d.Equals(OuterBackup.DefaultDir, StringComparison.OrdinalIgnoreCase) ? "" : d);
+                            outerDirty = true;
+                            OuterNow(ok => Post("outerInfo", OuterInfo()));
+                            Post("outerInfo", OuterInfo());
+                        }
+                    }));
+                    break;
+                case "outerOpen":
+                    try { Directory.CreateDirectory(OuterBackup.Dir); Process.Start("explorer.exe", "\"" + OuterBackup.Dir + "\""); } catch (Exception ex) { Post("toast", "폴더를 열지 못했어요: " + ex.Message); }
+                    break;
+                case "outerNow": OuterNow(ok => { Post("outerDone", ok ? "" : "!" + (OuterBackup.LastError ?? "")); Post("outerInfo", OuterInfo()); }); break;
+                case "outerRestore":                             // the page asked first; done on the next start, before the notes load
+                    {
+                        string from = Path.Combine(OuterBackup.Dir, OuterBackup.Latest);
+                        if (!File.Exists(Path.Combine(from, "state.json"))) { Post("toast", "백업 폴더에 메모가 없어요"); break; }
+                        saver.Flush(3000);
+                        File.WriteAllText(Path.Combine(Program.LocalDir, "restore-pending.txt"), from, new UTF8Encoding(false));
+                        restartAfter = true;
+                        Quit(true);
+                        break;
+                    }
             }
+        }
+
+        // ---------- the outside backup (see OuterBackup) ----------
+        static readonly HashSet<string> OuterChanges = new HashSet<string> { "saveNote", "saveState", "saveMeta", "saveImg", "delNote", "trashPurge", "trashEmpty", "trashRestore" };
+        System.Windows.Forms.Timer outerTimer;
+        bool outerDirty;
+        void OuterSoon()                                  // a minute after the last change
+        {
+            outerDirty = true;
+            if (outerTimer == null)
+            {
+                outerTimer = new System.Windows.Forms.Timer { Interval = 60 * 1000 };
+                outerTimer.Tick += (s, e) => { outerTimer.Stop(); OuterNow(null); };
+            }
+            outerTimer.Stop(); outerTimer.Start();
+        }
+        void OuterNow(Action<bool> done)                  // in the background; done (if given) back on this thread
+        {
+            if (!outerDirty && done == null) return;
+            outerDirty = false;
+            Task.Run(() =>
+            {
+                saver.Flush(3000);
+                bool ok = OuterBackup.Sync();
+                if (done != null) { try { BeginInvoke(new Action(() => done(ok))); } catch { } }
+            });
+        }
+        string OuterInfo()
+        {
+            string latest = Path.Combine(OuterBackup.Dir, OuterBackup.Latest);
+            bool has = File.Exists(Path.Combine(latest, "state.json"));
+            return "{\"on\":" + (OuterBackup.On ? "true" : "false") + ",\"dir\":" + Json(OuterBackup.Dir) + ",\"def\":" + (OuterBackup.IsDefault ? "true" : "false") +
+                ",\"last\":" + Json(has ? File.GetLastWriteTime(Path.Combine(latest, "state.json")).ToString("yyyy-MM-dd HH:mm") : "") +
+                ",\"notes\":" + (has ? OuterBackup.CountNotes(latest) : 0) + ",\"error\":" + Json(OuterBackup.LastError ?? "") + "}";
         }
 
         void Post(string cmd, string arg = null)
@@ -1733,12 +1848,15 @@ namespace SuperSpeedNote
             if (quitFull) FinishQuit(); else EnterStandby();
         }
 
+        bool restartAfter;
         void FinishQuit()
         {
             if (finished) return;
             finished = true;
             SaveBounds();
             saver.Flush(4000);
+            if (outerDirty && !restartAfter) { outerDirty = false; try { Task.Run(() => OuterBackup.Sync()).Wait(8000); } catch { } }   // the last changes too
+            if (restartAfter) { try { Process.Start(Application.ExecutablePath, "--restart"); } catch (Exception ex) { Program.Log(ex); } }
             foreach (int id in hotkeys.Keys) Native.UnregisterHotKey(Handle, id);
             if (tray != null) { tray.Visible = false; tray.Dispose(); }
             if (ctl != null) { try { ctl.Close(); } catch { } }
@@ -2154,6 +2272,211 @@ namespace SuperSpeedNote
             Array.Sort(daily, StringComparer.Ordinal);
             for (int i = 0; i < daily.Length - 14; i++) { try { Directory.Delete(daily[i], true); } catch { } }
             return dir;
+        }
+    }
+
+    // A copy of the notes outside the app's own folders - by default Documents\Super Speed Note 백업 - so the notes
+    // outlive the app: uninstalling the Store version deletes its folders, notes and daily backups with them.
+    //  - 최신\      the notes, list, pictures and trash as they are: a minute after a change and when the app closes,
+    //               copying only what changed (in the background - the app never waits for it)
+    //  - 날짜별\yyyy-MM-dd\  the day's first state (notes, list, trash - pictures stay in 최신\images), kept 14 days
+    // Files are the app's own, unchanged, so any version reads them back. When the notes suddenly drop to less than
+    // half, nothing is deleted from the backup (a fault, not someone's deletions); the days kept are a second line.
+    static class OuterBackup
+    {
+        public const string Latest = "최신", Daily = "날짜별";
+        static readonly object gate = new object();
+        public static string LastError;
+        public static DateTime LastDone;
+        static readonly UTF8Encoding Utf8 = new UTF8Encoding(false);
+        static string SettingFile { get { return Path.Combine(Program.DataDir, "outer-backup.txt"); } }
+        public static string DefaultDir { get { return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "Super Speed Note 백업"); } }
+
+        // the setting: "" = the default folder, "off", or a folder; a portable (test / USB) copy is off unless set
+        static string Setting()
+        {
+            try { if (File.Exists(SettingFile)) return File.ReadAllText(SettingFile, Encoding.UTF8).Trim(); } catch { }
+            return Program.Portable ? "off" : "";
+        }
+        public static void Set(string v) { File.WriteAllText(SettingFile, v ?? "", Utf8); }
+        public static bool On { get { return Setting() != "off"; } }
+        public static bool IsDefault { get { return Setting() == ""; } }
+        // where it goes (also when switched off: where it would go)
+        public static string Dir
+        {
+            get
+            {
+                string s = Setting();
+                if (s == "off") { s = ""; try { string k = Path.Combine(Program.DataDir, "outer-backup-dir.txt"); if (File.Exists(k)) s = File.ReadAllText(k, Encoding.UTF8).Trim(); } catch { } }
+                return s.Length > 0 ? s : DefaultDir;
+            }
+        }
+        public static void TurnOff() { try { if (!IsDefault) File.WriteAllText(Path.Combine(Program.DataDir, "outer-backup-dir.txt"), Dir, Utf8); } catch { } Set("off"); }
+        public static void TurnOn() { string k = Path.Combine(Program.DataDir, "outer-backup-dir.txt"); string d = File.Exists(k) ? File.ReadAllText(k, Encoding.UTF8).Trim() : ""; Set(d); }
+
+        // what is copied: everything in the data folder but its own backups, the old readable copies and settings of
+        // this install
+        static List<string> Collect(string src)
+        {
+            var list = new List<string>();
+            foreach (string f in Directory.GetFiles(src, "*", SearchOption.AllDirectories))
+            {
+                string rel = f.Substring(src.Length + 1);
+                string top = rel.Contains("\\") ? rel.Substring(0, rel.IndexOf('\\')) : null;
+                if (top != null && (top.Equals("backups", StringComparison.OrdinalIgnoreCase) || top == "메모")) continue;
+                if (top == null && (rel.Equals("version.txt", StringComparison.OrdinalIgnoreCase) || rel.StartsWith("outer-backup", StringComparison.OrdinalIgnoreCase)
+                    || rel.Equals("memo-index.txt", StringComparison.OrdinalIgnoreCase))) continue;
+                if (rel.EndsWith(".tmp", StringComparison.OrdinalIgnoreCase)) continue;
+                list.Add(rel);
+            }
+            return list;
+        }
+
+        static bool CopyIfChanged(string src, string dst, string rel)
+        {
+            string s = Path.Combine(src, rel), d = Path.Combine(dst, rel);
+            var a = new FileInfo(s);
+            if (!a.Exists) return false;
+            if (File.Exists(d))
+            {
+                var b = new FileInfo(d);
+                if (a.Length == b.Length && a.LastWriteTimeUtc <= b.LastWriteTimeUtc) return false;
+            }
+            Directory.CreateDirectory(Path.GetDirectoryName(d));
+            string tmp = d + ".tmp";
+            File.Copy(s, tmp, true);                        // whole first, then in place: never half a file in the backup
+            if (File.Exists(d)) { try { File.Replace(tmp, d, null, true); } catch (Exception) { File.Copy(tmp, d, true); File.Delete(tmp); } }
+            else File.Move(tmp, d);
+            return true;
+        }
+
+        static int Listed(string dir)                    // notes in a folder's list (state.json)
+        {
+            try { string f = Path.Combine(dir, "state.json"); return File.Exists(f) ? Regex.Matches(File.ReadAllText(f, Encoding.UTF8), @"""id""\s*:\s*""").Count : 0; } catch { return 0; }
+        }
+        static int Trashed(string dir)
+        {
+            try { string t = Path.Combine(dir, "trash"); return Directory.Exists(t) ? Directory.GetFiles(t, "*.html").Length : 0; } catch { return 0; }
+        }
+        public static int CountNotes(string dir)
+        {
+            try { string n = Path.Combine(dir, "notes"); return Directory.Exists(n) ? Directory.GetFiles(n, "*.html").Length : 0; } catch { return 0; }
+        }
+
+        // brings 최신 in step with the notes; false when it could not (LastError says why)
+        public static bool Sync()
+        {
+            if (!On) return true;
+            lock (gate)
+            {
+                try
+                {
+                    string src = Program.DataDir, dir = Dir, dst = Path.Combine(dir, Latest);
+                    if (!File.Exists(Path.Combine(src, "state.json"))) return true;   // nothing saved yet
+                    Directory.CreateDirectory(dst);
+                    List<string> files = Collect(src);
+                    // A fault, not your deletions, when the list drops below half AND so do the list and the trash
+                    // together (a deleted note goes to the trash; emptying the trash leaves the list as it was)
+                    int srcList = Listed(src), dstList = Listed(dst), srcTrash = Trashed(src), dstTrash = Trashed(dst);
+                    bool shrunk = dstList >= 4 && srcList * 2 < dstList && (srcList + srcTrash) * 2 < dstList + dstTrash;
+                    int failed = 0;
+                    foreach (string rel in files)
+                    {
+                        if (rel.Equals("state.json", StringComparison.OrdinalIgnoreCase)) continue;
+                        if (shrunk && (rel.Equals("notes-meta.json", StringComparison.OrdinalIgnoreCase) || rel.Equals("state.json.bak", StringComparison.OrdinalIgnoreCase))) continue;
+                        try { CopyIfChanged(src, dst, rel); } catch (IOException) { failed++; }   // being written right now: next time
+                    }
+                    if (shrunk) Program.Log(new Exception("outer backup: the list dropped from " + dstList + " to " + srcList + " notes - the backup keeps its copy"));
+                    else
+                    {
+                        // gone from the app (a deleted note goes to its trash, copied too): gone here; pictures stay
+                        var have = new HashSet<string>(files, StringComparer.OrdinalIgnoreCase);
+                        foreach (string sub in new[] { "notes", "trash" })
+                        {
+                            string dd = Path.Combine(dst, sub);
+                            if (!Directory.Exists(dd)) continue;
+                            foreach (string f in Directory.GetFiles(dd))
+                                if (!f.EndsWith(".tmp", StringComparison.OrdinalIgnoreCase) && !have.Contains(sub + "\\" + Path.GetFileName(f))) { try { File.Delete(f); } catch { failed++; } }
+                        }
+                        try { CopyIfChanged(src, dst, "state.json"); } catch (IOException) { failed++; }   // last: an interrupted copy keeps the list it had
+                    }
+                    DailyCopy(dir, dst);
+                    WriteReadme(dir);
+                    LastDone = DateTime.Now;
+                    LastError = failed > 0 ? "파일 " + failed + "개는 다음 백업 때 복사해요" : null;
+                    return true;
+                }
+                catch (Exception ex) { LastError = ex.Message; Program.Log(ex); return false; }
+            }
+        }
+
+        static void DailyCopy(string dir, string latest)
+        {
+            string root = Path.Combine(dir, Daily), day = Path.Combine(root, DateTime.Now.ToString("yyyy-MM-dd"));
+            if (Directory.Exists(day) || !File.Exists(Path.Combine(latest, "state.json"))) return;
+            string tmp = day + ".tmp";
+            if (Directory.Exists(tmp)) Directory.Delete(tmp, true);
+            foreach (string sub in new[] { "notes", "trash" })
+            {
+                string s = Path.Combine(latest, sub);
+                if (!Directory.Exists(s)) continue;
+                Directory.CreateDirectory(Path.Combine(tmp, sub));
+                foreach (string f in Directory.GetFiles(s)) if (!f.EndsWith(".tmp", StringComparison.OrdinalIgnoreCase)) File.Copy(f, Path.Combine(tmp, sub, Path.GetFileName(f)), true);
+            }
+            foreach (string f in new[] { "notes-meta.json", "hotkeys.txt", "state.json" })
+                if (File.Exists(Path.Combine(latest, f))) { Directory.CreateDirectory(tmp); File.Copy(Path.Combine(latest, f), Path.Combine(tmp, f), true); }
+            Directory.Move(tmp, day);
+            string[] days = Directory.GetDirectories(root).Where(d => Regex.IsMatch(Path.GetFileName(d), @"^\d{4}-\d{2}-\d{2}$")).ToArray();
+            Array.Sort(days, StringComparer.Ordinal);
+            for (int i = 0; i < days.Length - 14; i++) { try { Directory.Delete(days[i], true); } catch { } }
+        }
+
+        static void WriteReadme(string dir)
+        {
+            string f = Path.Combine(dir, "읽어 주세요.txt");
+            if (File.Exists(f)) return;
+            File.WriteAllText(f,
+                "Super Speed Note 메모 백업\r\n\r\n" +
+                "- 최신: 지금의 메모·목록·이미지·휴지통 (메모를 고치면 1분 뒤, 앱을 끌 때 맞춰짐)\r\n" +
+                "- 날짜별: 날마다 그날의 메모·목록 (최근 14일)\r\n\r\n" +
+                "앱을 지웠다가 다시 깔면 처음 켤 때 이 백업에서 메모를 가져올지 물어봐요.\r\n" +
+                "앱 설정 › 데이터 › 백업에서 복원 으로도 가져올 수 있어요.\r\n" +
+                "notes 폴더의 .html 파일은 브라우저로도 열려요.\r\n", new UTF8Encoding(true));
+        }
+
+        // a backup (최신, or a day) into the data folder: the notes as they are now go to backups\before-restore
+        // first; pictures a day's copy doesn't hold come from 최신. null when done, else why not.
+        public static string RestoreFrom(string from)
+        {
+            try
+            {
+                string data = Program.DataDir;
+                if (!File.Exists(Path.Combine(from, "state.json"))) return "백업에 메모 목록(state.json)이 없어요";
+                if (File.Exists(Path.Combine(data, "state.json"))) DataBackup.Run("before-restore");
+                string notes = Path.Combine(data, "notes");
+                if (Directory.Exists(notes))                     // notes not in the backup would come back as extra ones
+                {
+                    var keep = new HashSet<string>(Directory.Exists(Path.Combine(from, "notes")) ? Directory.GetFiles(Path.Combine(from, "notes")).Select(Path.GetFileName) : new string[0], StringComparer.OrdinalIgnoreCase);
+                    foreach (string f in Directory.GetFiles(notes, "*.html")) if (!keep.Contains(Path.GetFileName(f))) File.Delete(f);
+                }
+                foreach (string f in Directory.GetFiles(from, "*", SearchOption.AllDirectories))
+                {
+                    string rel = f.Substring(from.Length + 1);
+                    if (rel.Equals("state.json", StringComparison.OrdinalIgnoreCase) || rel.EndsWith(".tmp", StringComparison.OrdinalIgnoreCase)) continue;
+                    string d = Path.Combine(data, rel);
+                    Directory.CreateDirectory(Path.GetDirectoryName(d));
+                    File.Copy(f, d, true);
+                }
+                string imgs = Path.Combine(Path.GetDirectoryName(Path.GetDirectoryName(from)) ?? "", Latest, "images");
+                if (!Directory.Exists(Path.Combine(from, "images")) && Directory.Exists(imgs))
+                {
+                    Directory.CreateDirectory(Path.Combine(data, "images"));
+                    foreach (string f in Directory.GetFiles(imgs)) { string d = Path.Combine(data, "images", Path.GetFileName(f)); if (!File.Exists(d)) File.Copy(f, d); }
+                }
+                File.Copy(Path.Combine(from, "state.json"), Path.Combine(data, "state.json"), true);   // last
+                return null;
+            }
+            catch (Exception ex) { Program.Log(ex); return ex.Message; }
         }
     }
 

@@ -21,6 +21,14 @@ if (HOST) window.chrome.webview.addEventListener('message', e => {
       else toast('백업했어요', '폴더 열기', () => host.send('openData'));
       break;
     }
+    case 'outerInfo': try { paintOuter(JSON.parse(arg)); } catch (e) { /* settings closed */ } break;
+    case 'outerDone': {
+      const b = $('#outerNow');
+      if (b) { b.disabled = false; b.textContent = '지금 백업'; }
+      if (arg.startsWith('!')) toast('백업하지 못했어요 · ' + arg.slice(1));
+      else toast('백업했어요', '폴더 열기', () => host.send('outerOpen'));
+      break;
+    }
     case 'trash': onTrash(arg); break;
     case 'trashRestored': onTrashRestored(arg); break;
     case 'dragOutDone': if (noteDrag) { dragDone(); if (view === 'board') boardSearch.focus({ preventScroll: true }); } break;

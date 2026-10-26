@@ -62,7 +62,8 @@ function openSettings(tab, keep) {               // keep: back from the key reco
       ? row('Windows 시작 시', '<span class="wrap">로그인하면 <b>단축키 대기</b>로 켜져서 꺼져 있어도 단축키가 동작해요.<br>끄려면 작업 관리자 › 시작 앱(또는 설정 › 앱 › 시작 프로그램)에서 Super Speed Note를 끄세요.</span>', '')
       : row('Windows 시작 시', '<span class="wrap"><b>단축키 대기</b> 꺼져 있어도 단축키로 열림 · 메모리 거의 안 씀 · 첫 호출 약 1초<br><b>트레이 상주</b> 언제나 바로 열림 · 메모리 더 사용 · <b>창 열기</b> 로그인하면 앱 창이 바로 열려요<br><b>끔</b> 자동으로 켜지지 않아요 · 앱을 끄면 메모 단축키도 함께 꺼져요<br>exe 파일을 옮기거나 이름을 바꿔도 Windows 시작 때 계속 켜져요</span>', `<div class="seg" id="setStart"><button data-v="standby">단축키 대기 (권장)</button><button data-v="tray">트레이 상주</button><button data-v="open">창 열기</button><button data-v="off">끔</button></div>`).replace('<div class="row">', '<div class="row col">')}
     <h4 class="kh">데이터</h4>
-    ${row('데이터 폴더 · 백업', `메모 · 이미지 · 백업이 있는 곳 · 매일 자동 백업(최근 14일)<br>${esc(boot.dataDir || '')}${startMode() === 'package' ? '<br>Store 버전은 앱을 제거하면 이 폴더도 함께 지워져요 · 보관하려면 폴더를 열어 복사해 두세요' : ''}`, `<div class="row-btns"><button class="btn" id="setOpen"${HOST ? '' : ' disabled'}>폴더 열기</button><button class="btn" id="setBackup">지금 백업</button></div>`)}
+    ${row('데이터 폴더 · 백업', `메모 · 이미지 · 백업이 있는 곳 · 매일 자동 백업(최근 14일)<br>${esc(boot.dataDir || '')}${startMode() === 'package' ? '<br>Store 버전은 앱을 제거하면 이 폴더도 함께 지워져요 · 아래 <b>앱을 지워도 남는 백업</b>이 따로 보관해요' : ''}`, `<div class="row-btns"><button class="btn" id="setOpen"${HOST ? '' : ' disabled'}>폴더 열기</button><button class="btn" id="setBackup">지금 백업</button></div>`)}
+    ${row('앱을 지워도 남는 백업', `<span class="wrap" id="outerDesc">${HOST ? '확인 중…' : '브라우저 미리보기에서는 쓰지 않아요'}</span>`, `<div class="row-btns"><div class="seg" id="outerOn"><button data-v="on">켜기</button><button data-v="off">끄기</button></div><button class="btn" id="outerOpen">폴더 열기</button><button class="btn" id="outerPick">폴더 바꾸기</button><button class="btn" id="outerNow">지금 백업</button><button class="btn" id="outerRestore">백업에서 복원</button></div>`)}
     ${row('끌어서 꺼내기', '메모를 바탕화면·폴더로 끌어다 놓으면 메모 이름으로 된 파일이 돼요 · 텍스트·HTML 파일을 앱에 끌어 넣으면 메모가 돼요', `<div class="seg" id="setDrag"><button data-v="html">HTML (서식 그대로)</button><button data-v="txt">텍스트 (.txt)</button></div>`)}
     ${row('휴지통', '삭제한 메모는 휴지통을 비우기 전까지 보관해요 · 빈 메모는 바로 없어져요', `<button class="btn" id="setTrash">휴지통 열기</button>`)}`;
   }
@@ -147,6 +148,23 @@ function openSettings(tab, keep) {               // keep: back from the key reco
     const b = e.currentTarget; b.disabled = true; b.textContent = '백업 중…';
     flushAll(); host.send('backup');               // the host answers with backupDone (folder, or "!" + why not)
   };
+  // the outside backup: what it is now comes from the host (outerInfo -> paintOuter)
+  if (HOST && $('#outerDesc')) {
+    host.send('outerInfo');
+    for (const b of $$('#outerOn button')) b.onclick = () => host.send('outerSet', b.dataset.v);
+    $('#outerOpen').onclick = () => host.send('outerOpen');
+    $('#outerPick').onclick = () => host.send('outerPick');
+    $('#outerNow').onclick = e => { const b = e.currentTarget; b.disabled = true; b.textContent = '백업 중…'; flushAll(); host.send('outerNow'); };
+    $('#outerRestore').onclick = e => {           // asked twice: the notes now are put aside, the backup's come in
+      const b = e.currentTarget;
+      if (!b.classList.contains('arm')) {
+        b.classList.add('arm'); b.textContent = '한 번 더 누르면 복원 · 앱이 다시 시작돼요';
+        setTimeout(() => { if (b.isConnected) { b.classList.remove('arm'); b.textContent = '백업에서 복원'; } }, 5000);
+        return;
+      }
+      flushAll(); host.send('outerRestore');
+    };
+  }
   $('#setGoKeys').onclick = () => openSettings('keys');
   $('#setTrash').onclick = () => openTrash(() => openSettings('general'));
 }
@@ -196,3 +214,15 @@ function showHelp() {
   });
 }
 
+// the outside backup's line in settings › 데이터
+function paintOuter(o) {
+  const d = $('#outerDesc');
+  if (!d) return;
+  for (const b of $$('#outerOn button')) b.classList.toggle('on', (b.dataset.v === 'on') === !!o.on);
+  const now = $('#outerNow'), r = $('#outerRestore');
+  if (now) now.disabled = !o.on;
+  if (r) r.disabled = !o.notes;
+  d.innerHTML = o.on
+    ? `메모를 고치면 1분 뒤 · 앱을 끌 때 자동으로 · 날짜별 14일 · 앱을 지워도 남아요<br>${esc(o.dir)}${o.def ? ' (기본)' : ''}<br>마지막 백업 ${o.last ? esc(o.last) + ' · 메모 ' + o.notes + '개' : '아직 없음'}${o.error ? ' · <b>' + esc(o.error) + '</b>' : ''}`
+    : `꺼져 있어요 · 켜 두면 앱을 지워도 메모가 남아요<br>${esc(o.dir)}`;
+}

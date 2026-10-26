@@ -155,6 +155,7 @@ dist\SuperSpeedNote_<버전>.exe      (예: SuperSpeedNote_1.4.7.exe · 빌드�
 
 - 메모: `%APPDATA%\SuperSpeedNote\` (`state.json`, `notes\*.html`, `notes-meta.json`(메모 이름·색·순서 보관용), `images\`, `backups\`, `trash\`)
 - 메모 파일: 앱이 쓰는 원본은 예전 그대로 `notes\<id>.html`(파일 이름은 바뀌지 않는 고유 id)이라 **이전 버전으로 되돌려도 그대로 열립니다**. 1.4.8부터 `메모\` 읽기용 사본 폴더는 더 쓰지 않습니다(예전 버전이 만든 폴더는 남아 있어도 되고 지워도 됨). 여러 버전을 번갈아 써도 목록에서 빠진 메모는 다음 실행 때 이름·색·순서 그대로 돌아오고, 다른 버전이 휴지통에 넣은 메모는 빈 메모로 되살아나지 않습니다. 긴 메모가 한 번에 크게 줄어들면 줄기 전 내용을 `backups\overwritten`에 보관합니다. 파일을 읽지 못한 메모는 읽기 전용으로 열려 덮어쓰지 않습니다
+- **앱을 지워도 남는 백업**(기본 켜짐): `문서\Super Speed Note 백업`에 자동으로 복사. 메모를 고치면 1분 뒤 · 앱을 끌 때 바뀐 파일만(뒤에서, 화면은 기다리지 않음). `최신\`(메모·목록·이미지·휴지통)과 `날짜별\yyyy-MM-dd\`(최근 14일). 문서 폴더가 OneDrive와 동기화돼 있으면 클라우드에도 남음. 메모가 한꺼번에 절반 아래로 줄고 휴지통에도 없으면(오류) 백업에서 지우지 않음. **새로 깔았는데 메모가 없으면** 처음 켤 때 백업에서 가져올지 물어봄(아니요 = 그 백업은 `최신-보관-…`으로 옆에 남김). 설정 › 데이터에서 켜기/끄기 · 폴더 바꾸기 · 지금 백업 · **백업에서 복원**(지금 메모는 `backupsefore-restore`에 남기고 앱이 다시 시작). 휴대용(data 폴더) 복사본은 기본 꺼짐
 - **업데이트해도 메모는 그대로입니다.** 메모는 exe와 다른 폴더에 있고, 새 버전이 처음 실행될 때 `backups\before-<버전>`에 전체 사본을 먼저 만듭니다. `build.ps1`/`install.ps1`은 실행 중인 앱에 저장 후 종료를 요청한 뒤 exe를 바꿉니다.
 - 메모 목록(`state.json`)은 저장할 때마다 직전 사본(`state.json.bak`)을 남기고, 손상되면 자동으로 복구합니다.
 - 삭제한 메모는 `trash\`로 옮겨질 뿐 지워지지 않습니다.
@@ -179,7 +180,7 @@ powershell -ExecutionPolicy Bypass -File package.ps1
 
 - `dist\store\SuperSpeedNote_<버전>_x64.msix`를 만듭니다. Partner Center에 이 파일을 올리면 **Store가 무료로 서명**합니다(인증서 구입 필요 없음).
 - 첫 실행 때 nuget.org에서 Microsoft Windows SDK 빌드 도구(약 21MB, makeappx·makepri)를 한 번 받아 `packages\`에 둡니다.
-- Store 버전은 메모를 앱 전용 폴더(`%LOCALAPPDATA%\Packages\Mukhodeveloper.Superspeednote_…\LocalState`)에 저장합니다(제한된 기능은 runFullTrust뿐). 처음 실행할 때 이 PC에 exe 버전 메모가 있으면 한 번 복사해 오고, 그 뒤로는 따로 저장됩니다. 앱을 제거하면 메모도 지워지니 옮길 때는 설정 › 데이터 폴더에서 복사해 두세요.
+- Store 버전은 메모를 앱 전용 폴더(`%LOCALAPPDATA%\Packages\Mukhodeveloper.Superspeednote_…\LocalState`)에 저장합니다(제한된 기능은 runFullTrust뿐). 처음 실행할 때 이 PC에 exe 버전 메모가 있으면 한 번 복사해 오고, 그 뒤로는 따로 저장됩니다. 앱을 제거하면 메모도 지워지니 옮길 때는 설정 › 데이터 폴더에서 복사해 두세요. 그래서 위의 **앱을 지워도 남는 백업**이 Store 버전에서 특히 중요하고, 다시 깔면 거기서 가져올 수 있습니다.
 - Windows 시작 시 '단축키 대기'로 켜지는 것은 Store의 시작 작업이 맡습니다(작업 관리자 › 시작 앱에서 켜고 끄기). Store 버전이 처음 실행되면 exe 버전이 등록해 둔 시작 항목은 지웁니다(둘 다 켜지지 않게).
 - 로컬 테스트: `package.ps1 -Register`(개발자 모드 필요) → 시작 메뉴에서 실행, 끝나면 `package.ps1 -Unregister`.
 
