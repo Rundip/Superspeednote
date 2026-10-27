@@ -38,7 +38,14 @@ if (HOST) window.chrome.webview.addEventListener('message', e => {
       else if (arg === 'focus') refocus();
       break;
     case 'ping': host.send('pong'); break;        // the app checks the page still answers
-    case 'paint': requestAnimationFrame(() => requestAnimationFrame(() => host.send('painted'))); break;   // drawn at the window's size now
+    case 'paint': {                               // the app window lifts its picture once the page is drawn at its size (arg: "w h scale")
+      const [w, h, sc] = arg.split(' ').map(Number);
+      const fits = () => !w || (Math.abs(innerWidth * devicePixelRatio - w) < 3 && Math.abs(innerHeight * devicePixelRatio - h) < 3 && (!sc || Math.abs(devicePixelRatio - sc) < 0.02));
+      let n = 0;
+      const wait = () => fits() || ++n > 30 ? requestAnimationFrame(() => requestAnimationFrame(() => host.send('painted'))) : requestAnimationFrame(wait);
+      requestAnimationFrame(wait);
+      break;
+    }
     case 'settle':                                // the app window came to the front: no left-over pop-up / memo-window look
       if (!paletteOn) app.classList.remove('pal-pop');
       if (!quickOn && arg !== 'quick') app.classList.remove('quick');

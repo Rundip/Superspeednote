@@ -33,7 +33,7 @@ namespace SuperSpeedNote
 {
     static class Program
     {
-        public const string Version = "1.6.0";
+        public const string Version = "1.6.1";
         public const string WebView2Version = "1.0.4258.31";
         public static string DataDir, LocalDir;
         public static bool Portable;                  // a "data" folder next to the exe holds the notes (test / USB copies)
@@ -629,7 +629,7 @@ namespace SuperSpeedNote
         protected override void OnResize(EventArgs e)
         {
             base.OnResize(e);
-            if (Covered && cover.Size != ClientSize) { if (webIn == this) HideCover(); else cover.Bounds = new Rectangle(Point.Empty, ClientSize); }
+            if (Covered && (WindowState == FormWindowState.Minimized || still == null || still.Size != ClientSize)) HideCover();   // the picture no longer fits
             QuickToMain();
             if (ctl != null && webIn == this && WindowState != FormWindowState.Minimized)
                 ctl.Bounds = new Rectangle(Point.Empty, ClientSize);
@@ -638,9 +638,16 @@ namespace SuperSpeedNote
             if (max != maxState) { maxState = max; Post("winState", max ? "1" : "0"); }
         }
 
+        protected override void OnMove(EventArgs e)
+        {
+            base.OnMove(e);
+            if (Covered) { Rectangle r = RectangleToScreen(ClientRectangle); Native.SetWindowPos(cover.Handle, IntPtr.Zero, r.X, r.Y, r.Width, r.Height, 0x4 /*NOZORDER*/ | 0x10 /*NOACTIVATE*/ | 0x200); }
+        }
+
         protected override void OnVisibleChanged(EventArgs e)
         {
             base.OnVisibleChanged(e);
+            if (!Visible) HideCover();                  // an owned window stays on screen when its owner is hidden
             UpdateWebVisibility();
             if (Visible) BeginInvoke(new Action(SettleWeb));
         }
@@ -1102,6 +1109,7 @@ namespace SuperSpeedNote
         // a picture of the app window with its page, taken before the page leaves it (see still)
         void KeepStill()
         {
+            if (Covered && webIn == this && still != null && still.Size == ClientSize) return;   // opened again while the page comes back: the picture from before still holds
             DropStill();
             if (!Visible || WindowState == FormWindowState.Minimized || webIn != this || ctl == null) return;
             Size cs = ClientSize;
@@ -1109,7 +1117,7 @@ namespace SuperSpeedNote
             Bitmap b = null;
             try
             {
-                b = new Bitmap(cs.Width, cs.Height);
+                b = new Bitmap(cs.Width, cs.Height, System.Drawing.Imaging.PixelFormat.Format32bppRgb);   // opaque: GDI leaves no alpha
                 bool ok;
                 using (Graphics g = Graphics.FromImage(b))
                 {
@@ -1117,38 +1125,53 @@ namespace SuperSpeedNote
                     try { ok = Native.PrintWindow(Handle, hdc, 3 /*PW_CLIENTONLY | PW_RENDERFULLCONTENT: the page too*/); }
                     finally { g.ReleaseHdc(hdc); }
                 }
-                if (ok) { still = b; b = null; }
+                if (ok && !AllBlack(b)) { still = b; b = null; }   // a page the capture missed (black): no picture beats a wrong one
             }
             catch (Exception ex) { Program.Log(ex); }
             finally { if (b != null) b.Dispose(); }
         }
         void DropStill() { if (still != null) { still.Dispose(); still = null; } }
-
-        // A picture of the app window laid over it, above the page, while the page is away in the search window
-        // and while it comes back: back at the app window's size (and, from another monitor, its scale) the page
-        // takes a few frames to lay itself out again - under the picture. It goes once the page says it has drawn.
-        sealed class Cover : Control
+        static bool AllBlack(Bitmap b)
         {
-            public Bitmap Pic;
-            public Cover() { SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint | ControlStyles.Opaque, true); }
-            protected override void OnPaint(PaintEventArgs e) { if (Pic != null) e.Graphics.DrawImageUnscaled(Pic, 0, 0); }
+            for (int i = 1; i < 8; i++)
+                for (int j = 1; j < 8; j++)
+                    if ((b.GetPixel(b.Width * i / 8, b.Height * j / 8).ToArgb() & 0xFFFFFF) != 0) return false;
+            return true;
         }
-        Cover cover;
-        bool Covered { get { return cover != null && cover.Visible; } }
+
+        // A picture of the app window laid over it while the page is away in the search window and while it comes
+        // back: back at the app window's size (and, from another monitor, its scale) the page takes a few frames to
+        // lay itself out again - under the picture. A window of its own, right above the app window: the page draws
+        // straight to the screen with the GPU, over any control inside the app window, so a control can't hide it.
+        // It goes once the page says it has drawn itself at the app window's size.
+        StillForm cover;
+        int coverGen;                                   // which showing a late "drawn" / time-out belongs to
+        bool Covered { get { return cover != null && cover.Pic != null; } }   // (Windows hides it by itself while the app window is minimized)
         void ShowCover()
         {
             if (still == null || !Visible || WindowState == FormWindowState.Minimized || still.Size != ClientSize) return;
-            if (cover == null) { cover = new Cover(); Controls.Add(cover); }
-            cover.Pic = still;
-            cover.Bounds = new Rectangle(Point.Empty, ClientSize);
-            cover.Visible = true;
-            cover.BringToFront();
-            cover.Update();
+            try
+            {
+                if (cover == null) cover = new StillForm(Handle);   // owned: always just above the app window
+                coverGen++;
+                cover.Pic = still;
+                Rectangle r = RectangleToScreen(ClientRectangle);
+                // right above the app window, not above the program you are in (the app window may be behind it)
+                IntPtr prev = Native.GetWindow(Handle, 3 /*GW_HWNDPREV*/);
+                if (prev == cover.Handle) prev = Native.GetWindow(prev, 3);
+                if (prev != IntPtr.Zero && (Native.GetWindowLong(prev, -20 /*GWL_EXSTYLE*/) & 0x8 /*WS_EX_TOPMOST*/) != 0) prev = IntPtr.Zero;
+                Native.SetWindowPos(cover.Handle, prev, r.X, r.Y, r.Width, r.Height, 0x10 /*NOACTIVATE*/ | 0x40 /*SHOWWINDOW*/ | 0x200 /*NOOWNERZORDER: the app window stays where it is*/);
+                cover.Invalidate();
+                cover.Update();                         // drawn now,
+                Native.DwmFlush();                      // and on screen, before the page leaves
+            }
+            catch (Exception ex) { Program.Log(ex); HideCover(); }
         }
         void HideCover()
         {
             if (!Covered) return;
-            cover.Visible = false;
+            coverGen++;
+            Native.ShowWindow(cover.Handle, 0 /*SW_HIDE: also kept hidden when a minimized app window comes back*/);
             cover.Pic = null;
             if (webIn == this) DropStill();
         }
@@ -1156,10 +1179,24 @@ namespace SuperSpeedNote
         void UncoverWhenDrawn()
         {
             if (!Covered) return;
-            cover.BringToFront();                       // the page's window came back on top of it
-            if (webReady) Post("paint");
-            var t = new System.Windows.Forms.Timer { Interval = 700 };
-            t.Tick += (s, e) => { t.Stop(); t.Dispose(); if (webIn == this) HideCover(); };
+            if (webReady)                               // its size in pixels and its scale here (from another monitor it changes too)
+            {
+                double scale = 1;
+                try { scale = Native.GetDpiForWindow(Handle) / 96.0 * ctl.ZoomFactor; } catch { }
+                Post("paint", ClientSize.Width + " " + ClientSize.Height + " " + scale.ToString("0.####", System.Globalization.CultureInfo.InvariantCulture));
+            }
+            int gen = coverGen;
+            var t = new System.Windows.Forms.Timer { Interval = 1500 };
+            t.Tick += (s, e) => { t.Stop(); t.Dispose(); if (gen == coverGen && webIn == this) HideCover(); };
+            t.Start();
+        }
+        // "painted": the frame is made; give the screen a couple of frames to show it, then lift the picture
+        void PaintedUnderCover()
+        {
+            if (!Covered || webIn != this) return;
+            int gen = coverGen;
+            var t = new System.Windows.Forms.Timer { Interval = 50 };
+            t.Tick += (s, e) => { t.Stop(); t.Dispose(); if (gen == coverGen && webIn == this) HideCover(); };
             t.Start();
         }
 
@@ -1690,7 +1727,7 @@ namespace SuperSpeedNote
             switch (cmd)
             {
                 case "pong": pingAt = 0; break;
-                case "painted": HideCover(); break;     // the page is drawn again in the app window
+                case "painted": PaintedUnderCover(); break;     // the page is drawn again in the app window
                 case "ready":
                     webReady = true; pingAt = 0;
                     StartPulse();
@@ -3194,6 +3231,10 @@ namespace SuperSpeedNote
         [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr hWnd, int cmd);
         [DllImport("user32.dll")] public static extern bool IsWindow(IntPtr hWnd);
         [DllImport("user32.dll")] public static extern bool PrintWindow(IntPtr hWnd, IntPtr hdc, uint flags);
+        [DllImport("user32.dll")] public static extern IntPtr GetWindow(IntPtr hWnd, uint cmd);
+        [DllImport("user32.dll")] public static extern int GetWindowLong(IntPtr hWnd, int index);
+        [DllImport("user32.dll")] public static extern bool SetLayeredWindowAttributes(IntPtr hWnd, uint key, byte alpha, uint flags);
+        [DllImport("dwmapi.dll")] public static extern int DwmFlush();
         [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr hWnd);
         [DllImport("user32.dll")] public static extern bool IsIconic(IntPtr hWnd);
         [DllImport("user32.dll")] public static extern bool IsZoomed(IntPtr hWnd);
@@ -3222,6 +3263,62 @@ namespace SuperSpeedNote
         [DllImport("user32.dll")] public static extern IntPtr MonitorFromPoint(POINT pt, uint flags);
         [DllImport("shcore.dll")] public static extern int GetDpiForMonitor(IntPtr mon, int type, out uint x, out uint y);
         [DllImport("kernel32.dll")] public static extern uint GetCurrentProcessId();
+    }
+
+    // The app window's picture, laid over it as a window of its own (see ShowCover). Owned by the app window, so it
+    // stays right above it; it never takes the keyboard and clicks go through it to the app window. A shade under
+    // fully opaque, so the page doesn't count it as covering it (and stop drawing).
+    sealed class StillForm : Form
+    {
+        public Bitmap Pic;
+        readonly IntPtr owner;
+
+        public StillForm(IntPtr owner)
+        {
+            this.owner = owner;
+            FormBorderStyle = FormBorderStyle.None;
+            ShowInTaskbar = false;
+            StartPosition = FormStartPosition.Manual;
+            AutoScaleMode = AutoScaleMode.None;
+            Text = "Super Speed Note";
+        }
+
+        protected override bool ShowWithoutActivation { get { return true; } }
+
+        protected override CreateParams CreateParams
+        {
+            get
+            {
+                CreateParams cp = base.CreateParams;
+                cp.Parent = owner;
+                cp.ExStyle |= 0x80 /*TOOLWINDOW*/ | 0x08000000 /*NOACTIVATE*/ | 0x80000 /*LAYERED*/ | 0x20 /*TRANSPARENT: clicks pass*/;
+                return cp;
+            }
+        }
+
+        protected override void OnHandleCreated(EventArgs e)
+        {
+            base.OnHandleCreated(e);
+            Native.SetLayeredWindowAttributes(Handle, 0, 254, 2 /*LWA_ALPHA*/);
+            Native.NoFade(Handle, true);
+        }
+
+        protected override void WndProc(ref Message m)
+        {
+            if (m.Msg == 0x02E0) { m.Result = IntPtr.Zero; return; }   // WM_DPICHANGED: sized by the app window
+            if (m.Msg == 0x0021) { m.Result = (IntPtr)3; return; }     // WM_MOUSEACTIVATE: MA_NOACTIVATE
+            base.WndProc(ref m);
+        }
+
+        protected override void OnPaintBackground(PaintEventArgs e)
+        {
+            if (Pic == null) { e.Graphics.Clear(Color.Black); return; }
+            e.Graphics.CompositingMode = CompositingMode.SourceCopy;
+            try { e.Graphics.DrawImage(Pic, new Rectangle(0, 0, Pic.Width, Pic.Height)); }
+            catch (ArgumentException) { e.Graphics.Clear(Color.Black); }   // a picture already let go
+        }
+
+        protected override void OnPaint(PaintEventArgs e) { }
     }
 
     // The "find & paste" window. It has no page of its own: the app's WebView is moved into it while open.
