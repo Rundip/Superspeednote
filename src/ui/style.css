@@ -301,7 +301,8 @@ body.sb-off #sidebar{display:none}
 #findbar .tb{height:26px;min-width:26px;padding:0}
 #scroller{flex:1;min-height:0;overflow:auto;position:relative}
 #sheet{position:relative;min-height:100%;overflow-x:clip}
-#editor{position:relative;outline:none;min-height:100%;padding:30px 52px 42vh;font-family:var(--ef);font-size:var(--fs);line-height:1.75;color:var(--ink);white-space:pre-wrap;overflow-wrap:break-word;word-break:normal;tab-size:4;user-select:text;caret-color:var(--accent);cursor:text}
+/* "calt" off: Pretendard lifts → : - × when a capital, a digit or Hangul follows, so they jumped while typing */
+#editor{position:relative;outline:none;min-height:100%;padding:30px 52px 42vh;font-family:var(--ef);font-size:var(--fs);line-height:1.75;font-feature-settings:"calt" 0;color:var(--ink);white-space:pre-wrap;overflow-wrap:break-word;word-break:normal;tab-size:4;user-select:text;caret-color:var(--accent);cursor:text}
 #editor.is-empty::before{content:attr(data-ph);position:absolute;left:52px;top:30px;color:var(--ink-3);opacity:.85;pointer-events:none;white-space:pre-line}
 #editor div,#editor p{margin:0}
 #editor>:first-child{margin-top:0}
