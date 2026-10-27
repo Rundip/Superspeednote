@@ -33,7 +33,7 @@ namespace SuperSpeedNote
 {
     static class Program
     {
-        public const string Version = "1.5.8";
+        public const string Version = "1.5.9";
         public const string WebView2Version = "1.0.4258.31";
         public static string DataDir, LocalDir;
         public static bool Portable;                  // a "data" folder next to the exe holds the notes (test / USB copies)
@@ -381,6 +381,17 @@ namespace SuperSpeedNote
             webIn = this;
             LoadBounds();
             saver.OnError = msg => { try { BeginInvoke(new Action(() => Post("toast", "저장 실패: " + msg))); } catch { } };
+            // waking from sleep, a monitor plugged in or out: the page is drawn again (it could stay a blank surface)
+            SystemEvents.PowerModeChanged += OnPowerOrDisplay;
+            SystemEvents.DisplaySettingsChanged += OnPowerOrDisplay;
+            FormClosed += (s, e) => { SystemEvents.PowerModeChanged -= OnPowerOrDisplay; SystemEvents.DisplaySettingsChanged -= OnPowerOrDisplay; };
+        }
+
+        void OnPowerOrDisplay(object sender, EventArgs e)
+        {
+            var pm = e as PowerModeChangedEventArgs;
+            if (pm != null && pm.Mode != PowerModes.Resume) return;
+            try { BeginInvoke(new Action(() => { RedrawWeb(); pingAt = 0; })); } catch { }
         }
 
         static Icon LoadIcon(int size)
@@ -473,6 +484,21 @@ namespace SuperSpeedNote
                 try { wv.Reload(); }
                 catch (Exception ex) { Program.Log(ex); RecoverWeb(true); }
             }
+        }
+
+        // after a graphics restart, sleep or a display change the page can keep a blank surface: hide and show it again
+        void RedrawWeb()
+        {
+            if (ctl == null) return;
+            try
+            {
+                ctl.IsVisible = false;
+                UpdateWebVisibility();
+                Form f = webIn ?? this;
+                if (f.WindowState != FormWindowState.Minimized) ctl.Bounds = new Rectangle(Point.Empty, f.ClientSize);
+                ctl.NotifyParentWindowPositionChanged();
+            }
+            catch (Exception ex) { Program.Log(ex); }
         }
 
         // Active -> standby: close the web engine (frees almost all memory) but keep hotkeys registered.
@@ -613,13 +639,65 @@ namespace SuperSpeedNote
         {
             base.OnVisibleChanged(e);
             UpdateWebVisibility();
+            if (Visible) BeginInvoke(new Action(SettleWeb));
         }
 
         protected override void OnActivated(EventArgs e)
         {
             base.OnActivated(e);
             QuickToMain();
+            SettleWeb();
             if (ctl != null && webIn == this) { try { ctl.MoveFocus(CoreWebView2MoveFocusReason.Programmatic); } catch { } }
+        }
+
+        // The app window in front: the page must be in it, shown, at its size. Any left-over state (the page still in
+        // a search / quick memo window that is gone, held hidden on its way between windows, a drawing surface lost
+        // after sleep or a display change) is put right here, and the page drops any left-over pop-up / memo-window
+        // look - so the window can never stay a bare navy box that takes no clicks.
+        void SettleWeb()
+        {
+            if (ctl == null || !Visible || WindowState == FormWindowState.Minimized) return;
+            bool popUp = pop != null && pop.Visible, quickUp = quick != null && quick.Visible;
+            if (holdWeb && !popUp) holdWeb = false;
+            if ((webIn == pop && !popUp) || (webIn == quick && !quickUp && !quickOpen)) { popWanted = false; PutWeb(this); }
+            if (webIn != this) return;
+            try
+            {
+                if (ctl.Bounds.Size != ClientSize) ctl.Bounds = new Rectangle(Point.Empty, ClientSize);
+                ctl.NotifyParentWindowPositionChanged();
+            }
+            catch { }
+            UpdateWebVisibility();
+            if (webReady) Post("settle", quickOpen ? "quick" : "");
+        }
+
+        // The page stopped answering (an endless loop, a hung renderer): its process is ended, which brings the
+        // usual recovery (the notes read again, the page reloaded). Asked every few seconds while a window shows it.
+        System.Windows.Forms.Timer pulse;
+        int pingAt, lastPulse;                          // when the unanswered ping went out (0: none out); the last tick
+        void StartPulse()
+        {
+            if (pulse != null) return;
+            pulse = new System.Windows.Forms.Timer { Interval = 4000 };
+            pulse.Tick += (s, e) =>
+            {
+                int nowT = Environment.TickCount, gap = unchecked(nowT - lastPulse);
+                lastPulse = nowT;
+                bool shown = (Visible && WindowState != FormWindowState.Minimized) || (pop != null && pop.Visible) || (quick != null && quick.Visible);
+                // not shown, or the PC was asleep since the last tick (no time to answer): start over
+                if (!webReady || wv == null || !shown || gap > 12000) { pingAt = 0; return; }
+                if (pingAt == 0) { pingAt = Environment.TickCount | 1; Post("ping", ""); return; }
+                if (unchecked(Environment.TickCount - pingAt) < 15000) return;
+                pingAt = 0;
+                Program.Log(new Exception("page not answering for 15 s: restarting it"));
+                try
+                {
+                    foreach (var pi in env.GetProcessInfos())
+                        if (pi.Kind == CoreWebView2ProcessKind.Renderer) { try { Process.GetProcessById(pi.ProcessId).Kill(); } catch { } }
+                }
+                catch (Exception ex) { Program.Log(ex); RecoverWeb(false); }
+            };
+            pulse.Start();
         }
 
         protected override void OnDeactivate(EventArgs e)
@@ -1429,6 +1507,8 @@ namespace SuperSpeedNote
                     // the page's process (or the whole engine) is gone: the window would stay an empty navy box
                     if (kind == CoreWebView2ProcessFailedKind.RenderProcessExited || kind == CoreWebView2ProcessFailedKind.BrowserProcessExited)
                         BeginInvoke(new Action(() => RecoverWeb(kind == CoreWebView2ProcessFailedKind.BrowserProcessExited)));
+                    // the graphics process restarts by itself; the page is drawn again once its window is touched
+                    else if (kind == CoreWebView2ProcessFailedKind.GpuProcessExited) BeginInvoke(new Action(RedrawWeb));
                 };
 
                 wv.Navigate(Origin + "index.html");   // notes arrive as boot.js, requested by the page itself
@@ -1564,8 +1644,10 @@ namespace SuperSpeedNote
         {
             switch (cmd)
             {
+                case "pong": pingAt = 0; break;
                 case "ready":
-                    webReady = true;
+                    webReady = true; pingAt = 0;
+                    StartPulse();
                     Invalidate();
                     Post("winState", maxState ? "1" : "0");
                     Program.Mark("ready");

@@ -37,6 +37,12 @@ if (HOST) window.chrome.webview.addEventListener('message', e => {
       else if (arg === 'close' || arg === 'main') quickEnd(arg);
       else if (arg === 'focus') refocus();
       break;
+    case 'ping': host.send('pong'); break;        // the app checks the page still answers
+    case 'settle':                                // the app window came to the front: no left-over pop-up / memo-window look
+      if (!paletteOn) app.classList.remove('pal-pop');
+      if (!quickOn && arg !== 'quick') app.classList.remove('quick');
+      if (modalOpen() && !modal.querySelector('.dlg')) closeModal();
+      break;
     case 'palette':                               // global "find & paste" hotkey
       if (arg === 'close') { if (paletteOn) closeModal(); }
       else if (arg === 'focus') { const i = $('#palIn'); if (i) i.focus(); }
