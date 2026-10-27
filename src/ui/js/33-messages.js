@@ -38,6 +38,7 @@ if (HOST) window.chrome.webview.addEventListener('message', e => {
       else if (arg === 'focus') refocus();
       break;
     case 'ping': host.send('pong'); break;        // the app checks the page still answers
+    case 'paint': requestAnimationFrame(() => requestAnimationFrame(() => host.send('painted'))); break;   // drawn at the window's size now
     case 'settle':                                // the app window came to the front: no left-over pop-up / memo-window look
       if (!paletteOn) app.classList.remove('pal-pop');
       if (!quickOn && arg !== 'quick') app.classList.remove('quick');

@@ -33,7 +33,7 @@ namespace SuperSpeedNote
 {
     static class Program
     {
-        public const string Version = "1.5.9";
+        public const string Version = "1.6.0";
         public const string WebView2Version = "1.0.4258.31";
         public static string DataDir, LocalDir;
         public static bool Portable;                  // a "data" folder next to the exe holds the notes (test / USB copies)
@@ -470,6 +470,7 @@ namespace SuperSpeedNote
             if (webIn != this) PutWeb(this);
             webReady = false;
             pendingOpen = null; pendingNew = false; pendingPalette = null; pendingQuick = false; paletteOpen = false;
+            HideCover();
             Invalidate();                                       // the splash, until the page is back
             if (engine)
             {
@@ -513,6 +514,7 @@ namespace SuperSpeedNote
             webStarted = false;
             try { if (ctl != null) ctl.Close(); } catch { }
             ctl = null; wv = null; env = null; envTask = null; bootTask = null;
+            HideCover();
             activeNote = ""; hasReturn = false; pendingOpen = null; pendingNew = false; pendingPalette = null; paletteOpen = false;
             GC.Collect(); GC.WaitForPendingFinalizers(); GC.Collect();
             UpdateTrayText();
@@ -627,6 +629,7 @@ namespace SuperSpeedNote
         protected override void OnResize(EventArgs e)
         {
             base.OnResize(e);
+            if (Covered && cover.Size != ClientSize) { if (webIn == this) HideCover(); else cover.Bounds = new Rectangle(Point.Empty, ClientSize); }
             QuickToMain();
             if (ctl != null && webIn == this && WindowState != FormWindowState.Minimized)
                 ctl.Bounds = new Rectangle(Point.Empty, ClientSize);
@@ -661,6 +664,7 @@ namespace SuperSpeedNote
             if (holdWeb && !popUp) holdWeb = false;
             if ((webIn == pop && !popUp) || (webIn == quick && !quickUp && !quickOpen)) { popWanted = false; PutWeb(this); }
             if (webIn != this) return;
+            if (Covered && !popUp) UncoverWhenDrawn();
             try
             {
                 if (ctl.Bounds.Size != ClientSize) ctl.Bounds = new Rectangle(Point.Empty, ClientSize);
@@ -978,6 +982,7 @@ namespace SuperSpeedNote
         {
             RememberReturn();
             KeepStill();
+            ShowCover();                               // the app window shows its picture until the page is back
             if (pop == null)
             {
                 pop = new PopForm();
@@ -1079,6 +1084,7 @@ namespace SuperSpeedNote
         {
             popWanted = false;
             holdWeb = false;
+            if (!popShown && webIn == this) HideCover();     // the page never left: nothing to wait for
             // hide it first: moving the page out first would leave a bare window on screen for a moment
             if (pop != null) { pop.Attached = false; if (pop.Visible) pop.Hide(); }
             if (popShown)
@@ -1088,7 +1094,7 @@ namespace SuperSpeedNote
                     PutWeb(quick);
                     Native.ShowWindow(quick.Handle, 8 /*SW_SHOWNA: back on top without taking the keyboard*/);
                 }
-                else PutWeb(this);
+                else { PutWeb(this); UncoverWhenDrawn(); }
                 if (webIn == this && ctl != null && IsFront()) { try { ctl.MoveFocus(CoreWebView2MoveFocusReason.Programmatic); } catch { } }
             }
         }
@@ -1118,11 +1124,50 @@ namespace SuperSpeedNote
         }
         void DropStill() { if (still != null) { still.Dispose(); still = null; } }
 
+        // A picture of the app window laid over it, above the page, while the page is away in the search window
+        // and while it comes back: back at the app window's size (and, from another monitor, its scale) the page
+        // takes a few frames to lay itself out again - under the picture. It goes once the page says it has drawn.
+        sealed class Cover : Control
+        {
+            public Bitmap Pic;
+            public Cover() { SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint | ControlStyles.Opaque, true); }
+            protected override void OnPaint(PaintEventArgs e) { if (Pic != null) e.Graphics.DrawImageUnscaled(Pic, 0, 0); }
+        }
+        Cover cover;
+        bool Covered { get { return cover != null && cover.Visible; } }
+        void ShowCover()
+        {
+            if (still == null || !Visible || WindowState == FormWindowState.Minimized || still.Size != ClientSize) return;
+            if (cover == null) { cover = new Cover(); Controls.Add(cover); }
+            cover.Pic = still;
+            cover.Bounds = new Rectangle(Point.Empty, ClientSize);
+            cover.Visible = true;
+            cover.BringToFront();
+            cover.Update();
+        }
+        void HideCover()
+        {
+            if (!Covered) return;
+            cover.Visible = false;
+            cover.Pic = null;
+            if (webIn == this) DropStill();
+        }
+        // the page is back: once it has drawn itself at this window's size the picture goes (at the latest after a moment)
+        void UncoverWhenDrawn()
+        {
+            if (!Covered) return;
+            cover.BringToFront();                       // the page's window came back on top of it
+            if (webReady) Post("paint");
+            var t = new System.Windows.Forms.Timer { Interval = 700 };
+            t.Tick += (s, e) => { t.Stop(); t.Dispose(); if (webIn == this) HideCover(); };
+            t.Start();
+        }
+
         // Move the page into one of our windows (main / search / quick memo).
         void PutWeb(Form f)
         {
             webIn = f;
-            if (f == this) DropStill();
+            if (f == this && !Covered) DropStill();
             if (ctl == null) return;
             try
             {
@@ -1259,7 +1304,7 @@ namespace SuperSpeedNote
                 quick.Hide();
             }
             quick.Attached = false;
-            if (webIn == quick) PutWeb(this);
+            if (webIn == quick) { PutWeb(this); UncoverWhenDrawn(); }
             if (quickHidMain)
             {
                 quickHidMain = false;
@@ -1645,6 +1690,7 @@ namespace SuperSpeedNote
             switch (cmd)
             {
                 case "pong": pingAt = 0; break;
+                case "painted": HideCover(); break;     // the page is drawn again in the app window
                 case "ready":
                     webReady = true; pingAt = 0;
                     StartPulse();
