@@ -41,8 +41,8 @@ if (HOST) window.chrome.webview.addEventListener('message', e => {
     case 'paint': {                               // the app window lifts its picture once the page is drawn at its size (arg: "w h scale")
       const [w, h, sc] = arg.split(' ').map(Number);
       const fits = () => !w || (Math.abs(innerWidth * devicePixelRatio - w) < 3 && Math.abs(innerHeight * devicePixelRatio - h) < 3 && (!sc || Math.abs(devicePixelRatio - sc) < 0.02));
-      let n = 0;
-      const wait = () => fits() || ++n > 30 ? requestAnimationFrame(() => requestAnimationFrame(() => host.send('painted'))) : requestAnimationFrame(wait);
+      const t0 = performance.now();               // a size that never comes: answer anyway after a moment
+      const wait = () => fits() || performance.now() - t0 > 400 ? requestAnimationFrame(() => requestAnimationFrame(() => host.send('painted'))) : requestAnimationFrame(wait);
       requestAnimationFrame(wait);
       break;
     }

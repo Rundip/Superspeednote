@@ -33,7 +33,7 @@ namespace SuperSpeedNote
 {
     static class Program
     {
-        public const string Version = "1.6.2";
+        public const string Version = "1.6.3";
         public const string WebView2Version = "1.0.4258.31";
         public static string DataDir, LocalDir;
         public static bool Portable;                  // a "data" folder next to the exe holds the notes (test / USB copies)
@@ -658,7 +658,50 @@ namespace SuperSpeedNote
             QuickToMain();
             SettleWeb();
             if (ctl != null && webIn == this) { try { ctl.MoveFocus(CoreWebView2MoveFocusReason.Programmatic); } catch { } }
+            if (!Covered) CheckDrawn(0);
         }
+
+        // A click that reaches the app window itself means its page isn't over it (the bare navy background, where
+        // even the title bar and its buttons are missing, as they are part of the page): put it right
+        protected override void OnMouseDown(MouseEventArgs e)
+        {
+            base.OnMouseDown(e);
+            if (ctl == null || !webReady || webIn != this) return;
+            Program.Log(new Exception("click on the bare app window: page shown again"));
+            holdWeb = false;
+            SettleWeb();
+            RedrawWeb();
+            CheckDrawn(1);
+        }
+
+        // Is the page drawing in the app window? It is asked to draw a frame and say so; no answer while the window is
+        // in front: it is shown again, and if that doesn't help either, reloaded (the notes are saved and read again).
+        int drawWait;                                   // the check still waiting for its answer (0: none)
+        void CheckDrawn(int stage)
+        {
+            if (ctl == null || !webReady || webIn != this || (stage == 0 && drawWait != 0)) return;
+            int id = drawWait = Environment.TickCount | 1;
+            Post("paint", PaintArg());
+            var t = new System.Windows.Forms.Timer { Interval = 2000 };
+            t.Tick += (s, e) =>
+            {
+                t.Stop(); t.Dispose();
+                if (drawWait != id) return;             // answered (or a newer check runs)
+                drawWait = 0;
+                if (ctl == null || !webReady || webIn != this || !IsFront()) return;   // asked again once you look at it
+                if (stage == 0) { Program.Log(new Exception("page not drawing: shown again")); holdWeb = false; SettleWeb(); RedrawWeb(); CheckDrawn(1); }
+                else { Program.Log(new Exception("page still not drawing: reloaded")); RecoverWeb(false); }
+            };
+            t.Start();
+        }
+        string PaintArg()                               // the app window's size in pixels and the page's scale there
+        {
+            double scale = 1;
+            try { scale = Native.GetDpiForWindow(Handle) / 96.0 * ctl.ZoomFactor; } catch { }
+            return ClientSize.Width + " " + ClientSize.Height + " " + scale.ToString("0.####", System.Globalization.CultureInfo.InvariantCulture);
+        }
+        // shown on screen and not minimized, as Windows sees it (the form's own flag can lag behind a native show)
+        bool ShownNow() { return (Visible || Native.IsWindowVisible(Handle)) && !Native.IsIconic(Handle); }
 
         // The app window in front: the page must be in it, shown, at its size. Any left-over state (the page still in
         // a search / quick memo window that is gone, held hidden on its way between windows, a drawing surface lost
@@ -666,7 +709,7 @@ namespace SuperSpeedNote
         // look - so the window can never stay a bare navy box that takes no clicks.
         void SettleWeb()
         {
-            if (ctl == null || !Visible || WindowState == FormWindowState.Minimized) return;
+            if (ctl == null || !ShownNow()) return;
             bool popUp = pop != null && pop.Visible, quickUp = quick != null && quick.Visible;
             if (holdWeb && !popUp) holdWeb = false;
             if ((webIn == pop && !popUp) || (webIn == quick && !quickUp && !quickOpen)) { popWanted = false; PutWeb(this); }
@@ -674,11 +717,12 @@ namespace SuperSpeedNote
             if (Covered && !popUp) UncoverWhenDrawn();
             try
             {
-                if (ctl.Bounds.Size != ClientSize) ctl.Bounds = new Rectangle(Point.Empty, ClientSize);
+                if (ctl.ParentWindow != Handle) PutWeb(this);
+                if (ctl.Bounds != new Rectangle(Point.Empty, ClientSize)) ctl.Bounds = new Rectangle(Point.Empty, ClientSize);
                 ctl.NotifyParentWindowPositionChanged();
             }
             catch { }
-            UpdateWebVisibility();
+            UpdateWebVisibility(true);
             if (webReady) Post("settle", quickOpen ? "quick" : "");
         }
 
@@ -695,6 +739,13 @@ namespace SuperSpeedNote
                 int nowT = Environment.TickCount, gap = unchecked(nowT - lastPulse);
                 lastPulse = nowT;
                 bool shown = (Visible && WindowState != FormWindowState.Minimized) || (pop != null && pop.Visible) || (quick != null && quick.Visible);
+                // the page at home but hidden in an app window that is on screen (a left-over hold / a missed show): shown
+                try
+                {
+                    if (ctl != null && webIn == this && !Covered && ShownNow() && (holdWeb || !ctl.IsVisible) && !(pop != null && pop.Visible))
+                    { Program.Log(new Exception("page hidden in a shown app window: shown")); holdWeb = false; UpdateWebVisibility(true); }
+                }
+                catch { }
                 // not shown, or the PC was asleep since the last tick (no time to answer): start over
                 if (!webReady || wv == null || !shown || gap > 12000) { pingAt = 0; return; }
                 if (pingAt == 0) { pingAt = Environment.TickCount | 1; Post("ping", ""); return; }
@@ -717,10 +768,10 @@ namespace SuperSpeedNote
             lastDeactivate = Environment.TickCount;
         }
 
-        void UpdateWebVisibility()
+        void UpdateWebVisibility(bool shown = false)    // shown: the app window is known to be on screen
         {
             if (ctl == null || wv == null) return;
-            bool vis = !holdWeb && (webIn != this || (Visible && WindowState != FormWindowState.Minimized));
+            bool vis = !holdWeb && (webIn != this || shown || (Visible && WindowState != FormWindowState.Minimized));
             try
             {
                 if (ctl.IsVisible != vis) ctl.IsVisible = vis;
@@ -1180,15 +1231,10 @@ namespace SuperSpeedNote
         void UncoverWhenDrawn()
         {
             if (!Covered) return;
-            if (webReady)                               // its size in pixels and its scale here (from another monitor it changes too)
-            {
-                double scale = 1;
-                try { scale = Native.GetDpiForWindow(Handle) / 96.0 * ctl.ZoomFactor; } catch { }
-                Post("paint", ClientSize.Width + " " + ClientSize.Height + " " + scale.ToString("0.####", System.Globalization.CultureInfo.InvariantCulture));
-            }
+            if (webReady) Post("paint", PaintArg());    // its size and scale here (from another monitor the scale changes too)
             int gen = coverGen;
             var t = new System.Windows.Forms.Timer { Interval = 1500 };
-            t.Tick += (s, e) => { t.Stop(); t.Dispose(); if (gen == coverGen && webIn == this) { RedrawWeb(); HideCover(); } };   // never answered: a nudge to draw
+            t.Tick += (s, e) => { t.Stop(); t.Dispose(); if (gen == coverGen && webIn == this) { RedrawWeb(); HideCover(); CheckDrawn(1); } };   // never answered: a nudge to draw, then a check
             t.Start();
         }
         // "painted": the frame is made; give the screen a couple of frames to show it, then lift the picture
@@ -1747,7 +1793,7 @@ namespace SuperSpeedNote
             switch (cmd)
             {
                 case "pong": pingAt = 0; break;
-                case "painted": PaintedUnderCover(); break;     // the page is drawn again in the app window
+                case "painted": drawWait = 0; PaintedUnderCover(); break;     // the page is drawn again in the app window
                 case "ready":
                     webReady = true; pingAt = 0;
                     StartPulse();
