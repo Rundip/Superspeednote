@@ -301,7 +301,8 @@ body.sb-off #sidebar{display:none}
 #findbar .tb{height:26px;min-width:26px;padding:0}
 #scroller{flex:1;min-height:0;overflow:auto;position:relative}
 #sheet{position:relative;min-height:100%;overflow-x:clip}
-/* "calt" off: Pretendard lifts → : - × when a capital, a digit or Hangul follows, so they jumped while typing */
+/* "calt" off: Pretendard lifts → : - × when a capital, a digit or Hangul follows, so they jumped while typing
+   (code blocks keep it: Cascadia Code's -> => != ligatures) */
 #editor{position:relative;outline:none;min-height:100%;padding:30px 52px 42vh;font-family:var(--ef);font-size:var(--fs);line-height:1.75;font-feature-settings:"calt" 0;color:var(--ink);white-space:pre-wrap;overflow-wrap:break-word;word-break:normal;tab-size:4;user-select:text;caret-color:var(--accent);cursor:text}
 #editor.is-empty::before{content:attr(data-ph);position:absolute;left:52px;top:30px;color:var(--ink-3);opacity:.85;pointer-events:none;white-space:pre-line}
 #editor div,#editor p{margin:0}
@@ -352,7 +353,7 @@ body.sb-off #sidebar{display:none}
 #editor ul.checklist>li[data-checked=true]::before{border-color:var(--accent);background:var(--accent) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E") center/80% no-repeat}
 #editor ul.checklist>li[data-checked=true]{color:var(--ink-3);text-decoration:line-through}
 #editor blockquote{margin:.5em 0;padding:.35em 1em;border-left:3px solid var(--accent);background:var(--accent-soft);border-radius:0 10px 10px 0;color:var(--ink-2)}
-#editor pre{margin:.5em 0;padding:.8em 1em;border-radius:10px;background:#0d1a36;color:#dbe6ff;font:.9em/1.6 var(--mono);white-space:pre-wrap}
+#editor pre{margin:.5em 0;padding:.8em 1em;border-radius:10px;background:#0d1a36;color:#dbe6ff;font:.9em/1.6 var(--mono);font-feature-settings:normal;white-space:pre-wrap}
 [data-theme=dark] #editor pre{background:#060d20}
 #editor pre+pre,#editor blockquote+blockquote{margin-top:-.5em;padding-top:0;border-top-left-radius:0;border-top-right-radius:0}
 #editor hr{border:0;height:14px;margin:.6em 0;background:linear-gradient(90deg,var(--accent),transparent) center/100% 2px no-repeat}   /* 14px tall: easy to click and select */

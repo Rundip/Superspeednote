@@ -40,7 +40,8 @@ editor.addEventListener('input', e => {
 // "->" typed in a note becomes "→" (not in code). Backspace right after it, or Ctrl+Z, gives "->" back.
 let autoArrow = null;                             // { node, at }: the caret right after an arrow just made
 function arrowAfterTyping(e) {
-  if (composing || e.inputType !== 'insertText' || e.data !== '>') return false;
+  // (the event's own isComposing: a note opened in the middle of a Korean syllable can leave `composing` set)
+  if (e.isComposing || e.inputType !== 'insertText' || e.data !== '>') return false;
   const r = selRange();
   if (!r || !r.collapsed || r.startContainer.nodeType !== 3) return false;
   const n = r.startContainer, k = r.startOffset;
