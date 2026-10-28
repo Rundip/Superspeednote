@@ -33,7 +33,7 @@ namespace SuperSpeedNote
 {
     static class Program
     {
-        public const string Version = "1.6.1";
+        public const string Version = "1.6.2";
         public const string WebView2Version = "1.0.4258.31";
         public static string DataDir, LocalDir;
         public static bool Portable;                  // a "data" folder next to the exe holds the notes (test / USB copies)
@@ -1110,6 +1110,7 @@ namespace SuperSpeedNote
         void KeepStill()
         {
             if (Covered && webIn == this && still != null && still.Size == ClientSize) return;   // opened again while the page comes back: the picture from before still holds
+            if (quickOpen && webIn != this) return;     // the page is in the quick memo: keep the app window's picture for its return
             DropStill();
             if (!Visible || WindowState == FormWindowState.Minimized || webIn != this || ctl == null) return;
             Size cs = ClientSize;
@@ -1173,7 +1174,7 @@ namespace SuperSpeedNote
             coverGen++;
             Native.ShowWindow(cover.Handle, 0 /*SW_HIDE: also kept hidden when a minimized app window comes back*/);
             cover.Pic = null;
-            if (webIn == this) DropStill();
+            if (webIn == this && !quickOpen) DropStill();
         }
         // the page is back: once it has drawn itself at this window's size the picture goes (at the latest after a moment)
         void UncoverWhenDrawn()
@@ -1187,13 +1188,13 @@ namespace SuperSpeedNote
             }
             int gen = coverGen;
             var t = new System.Windows.Forms.Timer { Interval = 1500 };
-            t.Tick += (s, e) => { t.Stop(); t.Dispose(); if (gen == coverGen && webIn == this) HideCover(); };
+            t.Tick += (s, e) => { t.Stop(); t.Dispose(); if (gen == coverGen && webIn == this) { RedrawWeb(); HideCover(); } };   // never answered: a nudge to draw
             t.Start();
         }
         // "painted": the frame is made; give the screen a couple of frames to show it, then lift the picture
         void PaintedUnderCover()
         {
-            if (!Covered || webIn != this) return;
+            if (!Covered || webIn != this || quickOpen) return;   // (a memo on its way: the page is turning into it under the picture)
             int gen = coverGen;
             var t = new System.Windows.Forms.Timer { Interval = 50 };
             t.Tick += (s, e) => { t.Stop(); t.Dispose(); if (gen == coverGen && webIn == this) HideCover(); };
@@ -1204,7 +1205,7 @@ namespace SuperSpeedNote
         void PutWeb(Form f)
         {
             webIn = f;
-            if (f == this && !Covered) DropStill();
+            if (f == this && !Covered && !holdWeb) DropStill();
             if (ctl == null) return;
             try
             {
@@ -1223,6 +1224,7 @@ namespace SuperSpeedNote
         void OpenQuick()
         {
             ClosePop();
+            if (!quickOpen) { KeepStill(); ShowCover(); }   // the app window keeps its picture while the page turns into the memo (and for when it comes back)
             IntPtr fg = Native.GetForegroundWindow();
             quickRet = IsExternalWindow(fg) ? fg : IsExternalWindow(lastExternal) ? lastExternal : IntPtr.Zero;
             if (quick == null)
@@ -1341,12 +1343,30 @@ namespace SuperSpeedNote
                 quick.Hide();
             }
             quick.Attached = false;
-            if (webIn == quick) { PutWeb(this); UncoverWhenDrawn(); }
+            // The app window was hidden while the memo was open: it comes back showing its picture from before, and the
+            // page (hidden until then, so laid out for the memo) is shown under it and drawn before the picture goes -
+            // else the window shows its bare navy background until the page has drawn itself again
+            bool held = quickHidMain && restoreMain && !Visible && webIn == quick && still != null;
+            if (webIn == quick) { holdWeb = held; PutWeb(this); if (!held) UncoverWhenDrawn(); }
             if (quickHidMain)
             {
                 quickHidMain = false;
-                if (restoreMain && !Visible) Native.ShowWindow(Handle, 4 /*SW_SHOWNOACTIVATE: back where it was, behind*/);
+                if (restoreMain && !Visible)
+                {
+                    if (held) Native.Cloak(Handle, true);       // not on screen until the picture is over it
+                    Native.ShowWindow(Handle, 4 /*SW_SHOWNOACTIVATE: back where it was, behind*/);
+                    if (held)
+                    {
+                        ShowCover();
+                        holdWeb = false;
+                        UpdateWebVisibility();
+                        Native.Cloak(Handle, false);
+                        if (Covered) UncoverWhenDrawn(); else DropStill();
+                    }
+                }
             }
+            if (held) holdWeb = false;
+            if (!Covered && webIn == this) DropStill();
         }
 
         void ClosePop()
@@ -3259,6 +3279,8 @@ namespace SuperSpeedNote
         [DllImport("dwmapi.dll")] public static extern int DwmSetWindowAttribute(IntPtr hWnd, int attr, ref int value, int size);
         // DWMWA_TRANSITIONS_FORCEDISABLED: show / hide at once, no fade (a window that lends out its page must never fade empty)
         public static void NoFade(IntPtr h, bool off) { int v = off ? 1 : 0; try { DwmSetWindowAttribute(h, 3, ref v, 4); } catch { } }
+        // DWMWA_CLOAK: kept off the screen (while it is being made ready) though shown
+        public static void Cloak(IntPtr h, bool on) { int v = on ? 1 : 0; try { DwmSetWindowAttribute(h, 13 /*DWMWA_CLOAK*/, ref v, 4); } catch { } }
         [DllImport("user32.dll")] public static extern IntPtr MonitorFromWindow(IntPtr hWnd, uint flags);
         [DllImport("user32.dll")] public static extern IntPtr MonitorFromPoint(POINT pt, uint flags);
         [DllImport("shcore.dll")] public static extern int GetDpiForMonitor(IntPtr mon, int type, out uint x, out uint y);
