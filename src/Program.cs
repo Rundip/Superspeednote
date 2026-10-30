@@ -33,7 +33,7 @@ namespace SuperSpeedNote
 {
     static class Program
     {
-        public const string Version = "1.6.3";
+        public const string Version = "1.6.4";
         public const string WebView2Version = "1.0.4258.31";
         public static string DataDir, LocalDir;
         public static bool Portable;                  // a "data" folder next to the exe holds the notes (test / USB copies)
@@ -1039,8 +1039,6 @@ namespace SuperSpeedNote
         void OpenPop()
         {
             RememberReturn();
-            KeepStill();
-            ShowCover();                               // the app window shows its picture until the page is back
             if (pop == null)
             {
                 pop = new PopForm();
@@ -1061,8 +1059,11 @@ namespace SuperSpeedNote
             pop.Invalidate();
             if (!pop.Visible) pop.Show();
             ForceForeground(pop.Handle);
-            if (webReady)
+            if (!webReady) { pendingPalette = "pop"; EnsureWeb(); return; }   // from standby: the engine starts now (~1 s)
+            StillThen(() =>
             {
+                if (!popWanted) { if (!Covered && webIn == this) DropStill(); return; }   // closed meanwhile
+                ShowCover();                           // the app window shows its picture until the page is back
                 // The page goes into the search window at once, unseen: the app window keeps its picture of the page
                 // instead of showing it turn into the search box and then vanish (it used to twitch twice)
                 if (webIn == this && ctl != null)
@@ -1073,8 +1074,7 @@ namespace SuperSpeedNote
                     t.Start();
                 }
                 Post("palette", "pop");
-            }
-            else { pendingPalette = "pop"; EnsureWeb(); }   // from standby: the engine starts now (~1 s)
+            });
         }
 
         // Taking the foreground and moving the WebView in make Windows send passing "deactivated" messages
@@ -1177,18 +1177,71 @@ namespace SuperSpeedNote
                     try { ok = Native.PrintWindow(Handle, hdc, 3 /*PW_CLIENTONLY | PW_RENDERFULLCONTENT: the page too*/); }
                     finally { g.ReleaseHdc(hdc); }
                 }
-                if (ok && !AllBlack(b)) { still = b; b = null; }   // a page the capture missed (black): no picture beats a wrong one
+                if (ok && !LooksBare(b)) { still = b; b = null; }   // a capture that missed the page: no picture beats a wrong one
             }
             catch (Exception ex) { Program.Log(ex); }
             finally { if (b != null) b.Dispose(); }
         }
         void DropStill() { if (still != null) { still.Dispose(); still = null; } }
-        static bool AllBlack(Bitmap b)
+        // A capture that missed the page: all one colour (black, white), or only the app window's own navy background
+        // (the gradient OnPaintBackground draws under the page) - a picture of that would show a navy window.
+        bool LooksBare(Bitmap b)
         {
+            Color end = Color.FromArgb(0x16, 0x30, 0x6A);
+            int first = b.GetPixel(b.Width / 8, b.Height / 8).ToArgb();
+            bool same = true, navy = true;
             for (int i = 1; i < 8; i++)
                 for (int j = 1; j < 8; j++)
-                    if ((b.GetPixel(b.Width * i / 8, b.Height * j / 8).ToArgb() & 0xFFFFFF) != 0) return false;
-            return true;
+                {
+                    int y = b.Height * j / 8;
+                    Color c = b.GetPixel(b.Width * i / 8, y);
+                    if (c.ToArgb() != first) same = false;
+                    if ((c.ToArgb() & 0xFFFFFF) == 0) continue;
+                    float f = (y + 0.5f) / b.Height;
+                    if (Math.Abs(c.R - (bg.R + (end.R - bg.R) * f)) > 10 || Math.Abs(c.G - (bg.G + (end.G - bg.G) * f)) > 10 || Math.Abs(c.B - (bg.B + (end.B - bg.B) * f)) > 10) navy = false;
+                }
+            return same || navy;
+        }
+
+        // The app window's picture taken, then then() runs. The window capture can miss the page (on some PCs it comes
+        // back black or as the bare navy background); then the page is asked for its own picture, which takes a moment
+        // (the search window / memo shows its "getting ready" text meanwhile; at most half a second).
+        int stillSeq;
+        bool toldCapture;
+        async void StillThen(Action then)
+        {
+            int seq = ++stillSeq;
+            KeepStill();
+            if (still == null && wv != null && webIn == this && Visible && WindowState != FormWindowState.Minimized && !Covered)
+            {
+                Size cs = ClientSize;
+                Bitmap got = null;
+                try
+                {
+                    var ms = new MemoryStream();               // not disposed on a time-out: the capture may still write to it
+                    Task cap = wv.CapturePreviewAsync(CoreWebView2CapturePreviewImageFormat.Png, ms);
+                    if (await Task.WhenAny(cap, Task.Delay(500)) == cap && cap.Status == TaskStatus.RanToCompletion && ms.Length > 0)
+                    {
+                        ms.Position = 0;
+                        using (Image img = Image.FromStream(ms))
+                        {
+                            got = new Bitmap(cs.Width, cs.Height, System.Drawing.Imaging.PixelFormat.Format32bppRgb);
+                            using (Graphics g = Graphics.FromImage(got)) g.DrawImage(img, new Rectangle(Point.Empty, cs));
+                        }
+                        ms.Dispose();
+                    }
+                }
+                catch (Exception ex) { Program.Log(ex); }
+                if (seq != stillSeq) { if (got != null) got.Dispose(); return; }   // asked again meanwhile: that one carries on
+                if (got != null && still == null && webIn == this && ClientSize == cs && !LooksBare(got))
+                {
+                    still = got; got = null;
+                    if (!toldCapture) { toldCapture = true; Program.Log(new Exception("window capture missed the page: the page's own picture is used")); }
+                }
+                if (got != null) got.Dispose();
+            }
+            if (seq != stillSeq) return;
+            try { then(); } catch (Exception ex) { Program.Log(ex); }
         }
 
         // A picture of the app window laid over it while the page is away in the search window and while it comes
@@ -1242,7 +1295,7 @@ namespace SuperSpeedNote
         {
             if (!Covered || webIn != this || quickOpen) return;   // (a memo on its way: the page is turning into it under the picture)
             int gen = coverGen;
-            var t = new System.Windows.Forms.Timer { Interval = 50 };
+            var t = new System.Windows.Forms.Timer { Interval = 80 };
             t.Tick += (s, e) => { t.Stop(); t.Dispose(); if (gen == coverGen && webIn == this) HideCover(); };
             t.Start();
         }
@@ -1270,7 +1323,6 @@ namespace SuperSpeedNote
         void OpenQuick()
         {
             ClosePop();
-            if (!quickOpen) { KeepStill(); ShowCover(); }   // the app window keeps its picture while the page turns into the memo (and for when it comes back)
             IntPtr fg = Native.GetForegroundWindow();
             quickRet = IsExternalWindow(fg) ? fg : IsExternalWindow(lastExternal) ? lastExternal : IntPtr.Zero;
             if (quick == null)
@@ -1294,8 +1346,14 @@ namespace SuperSpeedNote
             if (!quick.Visible) quick.Show();
             SettleQuick();
             ForceForeground(quick.Handle);
-            if (webReady) Post("quick", "open");
-            else { pendingQuick = true; EnsureWeb(); }   // from standby: the engine starts now (~1 s)
+            if (!webReady) { pendingQuick = true; EnsureWeb(); return; }   // from standby: the engine starts now (~1 s)
+            // The app window stays where it is (on any screen), showing its picture while the page is in the memo
+            StillThen(() =>
+            {
+                if (!quickOpen) { if (!Covered && webIn == this) DropStill(); return; }   // put away meanwhile
+                ShowCover();
+                Post("quick", "open");
+            });
         }
 
         // The corner the quick memo opens in (Settings: tl / tr / bl / br), kept here so it works from standby too.
@@ -1347,9 +1405,11 @@ namespace SuperSpeedNote
         {
             if (ctl == null || quick == null || !quickOpen) return;
             quick.Attached = true;
-            // the app window goes first, at once: emptied of its page it would fade out as a bare navy box
-            if (Visible && WindowState != FormWindowState.Minimized) { quickHidMain = true; SaveBounds(); Native.NoFade(Handle, true); Hide(); Native.NoFade(Handle, false); }
+            // The app window keeps showing its picture while the memo has the page. Only without one (no picture could
+            // be taken) does it go, at once: emptied of its page it would stay a bare navy box
+            if (Visible && WindowState != FormWindowState.Minimized && still == null) { quickHidMain = true; SaveBounds(); Native.NoFade(Handle, true); Hide(); Native.NoFade(Handle, false); }
             PutWeb(quick);
+            Invalidate();
             if (!quick.Visible) quick.Show();
             ForceForeground(quick.Handle);
             try { ctl.MoveFocus(CoreWebView2MoveFocusReason.Programmatic); } catch { }
@@ -1389,29 +1449,13 @@ namespace SuperSpeedNote
                 quick.Hide();
             }
             quick.Attached = false;
-            // The app window was hidden while the memo was open: it comes back showing its picture from before, and the
-            // page (hidden until then, so laid out for the memo) is shown under it and drawn before the picture goes -
-            // else the window shows its bare navy background until the page has drawn itself again
-            bool held = quickHidMain && restoreMain && !Visible && webIn == quick && still != null;
-            if (webIn == quick) { holdWeb = held; PutWeb(this); if (!held) UncoverWhenDrawn(); }
-            if (quickHidMain)
+            // back into the app window, under its picture (it stayed on screen), which goes once the page has drawn there
+            if (webIn == quick) { PutWeb(this); UncoverWhenDrawn(); }
+            if (quickHidMain)                           // (no picture could be taken: it was hidden instead)
             {
                 quickHidMain = false;
-                if (restoreMain && !Visible)
-                {
-                    if (held) Native.Cloak(Handle, true);       // not on screen until the picture is over it
-                    Native.ShowWindow(Handle, 4 /*SW_SHOWNOACTIVATE: back where it was, behind*/);
-                    if (held)
-                    {
-                        ShowCover();
-                        holdWeb = false;
-                        UpdateWebVisibility();
-                        Native.Cloak(Handle, false);
-                        if (Covered) UncoverWhenDrawn(); else DropStill();
-                    }
-                }
+                if (restoreMain && !Visible) Native.ShowWindow(Handle, 4 /*SW_SHOWNOACTIVATE: back where it was, behind*/);
             }
-            if (held) holdWeb = false;
             if (!Covered && webIn == this) DropStill();
         }
 
@@ -3325,8 +3369,6 @@ namespace SuperSpeedNote
         [DllImport("dwmapi.dll")] public static extern int DwmSetWindowAttribute(IntPtr hWnd, int attr, ref int value, int size);
         // DWMWA_TRANSITIONS_FORCEDISABLED: show / hide at once, no fade (a window that lends out its page must never fade empty)
         public static void NoFade(IntPtr h, bool off) { int v = off ? 1 : 0; try { DwmSetWindowAttribute(h, 3, ref v, 4); } catch { } }
-        // DWMWA_CLOAK: kept off the screen (while it is being made ready) though shown
-        public static void Cloak(IntPtr h, bool on) { int v = on ? 1 : 0; try { DwmSetWindowAttribute(h, 13 /*DWMWA_CLOAK*/, ref v, 4); } catch { } }
         [DllImport("user32.dll")] public static extern IntPtr MonitorFromWindow(IntPtr hWnd, uint flags);
         [DllImport("user32.dll")] public static extern IntPtr MonitorFromPoint(POINT pt, uint flags);
         [DllImport("shcore.dll")] public static extern int GetDpiForMonitor(IntPtr mon, int type, out uint x, out uint y);
