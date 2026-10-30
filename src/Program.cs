@@ -33,7 +33,7 @@ namespace SuperSpeedNote
 {
     static class Program
     {
-        public const string Version = "1.6.4";
+        public const string Version = "1.6.5";
         public const string WebView2Version = "1.0.4258.31";
         public static string DataDir, LocalDir;
         public static bool Portable;                  // a "data" folder next to the exe holds the notes (test / USB copies)
@@ -1574,25 +1574,93 @@ namespace SuperSpeedNote
             if (paste) PasteWhenKeysUp(target);
         }
 
-        // The user is still holding Ctrl+Shift(+Enter): wait until they let go, then send Ctrl+V.
+        // Ctrl+V into the program you went back to, once it can take it. Done off the UI thread (it waits on the other
+        // program). Slow programs (Outlook, Word) take a while to come to the front and put their caret back; keys sent
+        // before that are lost, which is why pasting into Outlook used to do nothing.
         void PasteWhenKeysUp(IntPtr target)
         {
-            int tries = 0;
-            var t = new System.Windows.Forms.Timer { Interval = 15 };
-            t.Tick += (s, e) =>
+            uint pid;
+            Native.GetWindowThreadProcessId(target, out pid);
+            if (RunsAboveUs(pid) && tray != null)        // Windows doesn't let a normal program type into one run as administrator
+                tray.ShowBalloonTip(4000, "Super Speed Note", "관리자 권한으로 실행 중인 프로그램에는 Windows가 자동 붙여넣기를 막아요. 복사는 됐으니 Ctrl+V로 붙여넣어 주세요.", ToolTipIcon.None);
+            Task.Run(() =>
             {
-                bool held = false;
-                foreach (int vk in new[] { 0x10, 0x11, 0x12, 0x5B, 0x5C, 0x0D }) if ((Native.GetAsyncKeyState(vk) & 0x8000) != 0) held = true;
-                if (held && ++tries < 80) return;
-                t.Stop(); t.Dispose();
-                IntPtr fg = Native.GetForegroundWindow();
-                if (fg != target && Native.GetAncestor(fg, 3) != Native.GetAncestor(target, 3)) return;   // user went elsewhere: don't paste there
-                Native.keybd_event(0x11, 0, 0, UIntPtr.Zero);
-                Native.keybd_event(0x56, 0, 0, UIntPtr.Zero);
-                Native.keybd_event(0x56, 0, 2, UIntPtr.Zero);
-                Native.keybd_event(0x11, 0, 2, UIntPtr.Zero);
-            };
-            t.Start();
+                try
+                {
+                    int start = Environment.TickCount;
+                    Func<int> ms = () => unchecked(Environment.TickCount - start);
+                    // 1. the keys you pressed (Ctrl / Shift / Alt / Win / Enter) let go: they'd mix with the Ctrl+V
+                    while (ms() < 1200 && KeysHeld()) Thread.Sleep(10);
+                    // 2. that program in front (any of its windows: some hand the front to another window of theirs)
+                    IntPtr fg = IntPtr.Zero;
+                    uint fpid = 0;
+                    while (ms() < 1500)
+                    {
+                        fg = Native.GetForegroundWindow();
+                        uint ft = Native.GetWindowThreadProcessId(fg, out fpid);
+                        if (fg != IntPtr.Zero && fpid == pid)
+                        {
+                            // 3. done with coming to the front (it has handled everything sent before this), and a
+                            //    place for the keys (a focused control), or a moment for it
+                            IntPtr r;
+                            Native.SendMessageTimeout(fg, 0 /*WM_NULL*/, IntPtr.Zero, IntPtr.Zero, 0x0002 /*SMTO_ABORTIFHUNG*/, 500, out r);
+                            int seen = ms();
+                            while (ms() - seen < 300)
+                            {
+                                var gi = new Native.GUITHREADINFO { cbSize = Marshal.SizeOf(typeof(Native.GUITHREADINFO)) };
+                                if (Native.GetGUIThreadInfo(ft, ref gi) && gi.hwndFocus != IntPtr.Zero) break;
+                                Thread.Sleep(15);
+                            }
+                            break;
+                        }
+                        Thread.Sleep(15);
+                    }
+                    if (fpid != pid) return;                // you went to another program meanwhile: not pasted there
+                    if (ms() < 150) Thread.Sleep(150 - ms());   // and a breath more: its caret may settle a little later
+                    while (ms() < 1800 && KeysHeld()) Thread.Sleep(10);
+                    Native.GetWindowThreadProcessId(Native.GetForegroundWindow(), out fpid);
+                    if (fpid != pid) return;
+                    // with the keys' scan codes too (some programs read those), a moment between them
+                    byte ctrlSc = (byte)Native.MapVirtualKey(0x11, 0), vSc = (byte)Native.MapVirtualKey(0x56, 0);
+                    Native.keybd_event(0x11, ctrlSc, 0, UIntPtr.Zero); Thread.Sleep(8);
+                    Native.keybd_event(0x56, vSc, 0, UIntPtr.Zero); Thread.Sleep(8);
+                    Native.keybd_event(0x56, vSc, 2 /*KEYUP*/, UIntPtr.Zero); Thread.Sleep(8);
+                    Native.keybd_event(0x11, ctrlSc, 2, UIntPtr.Zero);
+                }
+                catch (Exception ex) { Program.Log(ex); }
+            });
+        }
+
+        static bool KeysHeld()
+        {
+            foreach (int vk in new[] { 0x10, 0x11, 0x12, 0x5B, 0x5C, 0x0D }) if ((Native.GetAsyncKeyState(vk) & 0x8000) != 0) return true;
+            return false;
+        }
+
+        // Is that program run as administrator while we are not? (Windows then drops the keys we send it.)
+        static bool RunsAboveUs(uint pid)
+        {
+            if (SelfElevated) return false;
+            try
+            {
+                IntPtr p = Native.OpenProcess(0x1000 /*PROCESS_QUERY_LIMITED_INFORMATION*/, false, pid);
+                if (p == IntPtr.Zero) return false;     // can't tell
+                try
+                {
+                    IntPtr tok;
+                    if (!Native.OpenProcessToken(p, 0x0008 /*TOKEN_QUERY*/, out tok)) return Marshal.GetLastWin32Error() == 5;   // denied: it runs above us
+                    try { int elev, len; return Native.GetTokenInformation(tok, 20 /*TokenElevation*/, out elev, 4, out len) && elev != 0; }
+                    finally { Native.CloseHandle(tok); }
+                }
+                finally { Native.CloseHandle(p); }
+            }
+            catch { return false; }
+        }
+        static readonly bool SelfElevated = IsSelfElevated();
+        static bool IsSelfElevated()
+        {
+            try { return new System.Security.Principal.WindowsPrincipal(System.Security.Principal.WindowsIdentity.GetCurrent()).IsInRole(System.Security.Principal.WindowsBuiltInRole.Administrator); }
+            catch { return false; }
         }
 
         // ---------- tray ----------
@@ -3366,6 +3434,14 @@ namespace SuperSpeedNote
         [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern int GetClassName(IntPtr hWnd, StringBuilder name, int max);
         [DllImport("user32.dll")] public static extern short GetAsyncKeyState(int vk);
         [DllImport("user32.dll")] public static extern void keybd_event(byte vk, byte scan, uint flags, UIntPtr extra);
+        [DllImport("user32.dll")] public static extern uint MapVirtualKey(uint code, uint mapType);
+        [DllImport("user32.dll")] public static extern IntPtr SendMessageTimeout(IntPtr hWnd, int msg, IntPtr w, IntPtr l, uint flags, uint timeout, out IntPtr result);
+        [DllImport("user32.dll")] public static extern bool GetGUIThreadInfo(uint thread, ref GUITHREADINFO info);
+        [StructLayout(LayoutKind.Sequential)] public struct GUITHREADINFO { public int cbSize; public uint flags; public IntPtr hwndActive, hwndFocus, hwndCapture, hwndMenuOwner, hwndMoveSize, hwndCaret; public RECT rcCaret; }
+        [DllImport("kernel32.dll", SetLastError = true)] public static extern IntPtr OpenProcess(uint access, bool inherit, uint pid);
+        [DllImport("advapi32.dll", SetLastError = true)] public static extern bool OpenProcessToken(IntPtr process, uint access, out IntPtr token);
+        [DllImport("advapi32.dll", SetLastError = true)] public static extern bool GetTokenInformation(IntPtr token, int cls, out int info, int len, out int retLen);
+        [DllImport("kernel32.dll")] public static extern bool CloseHandle(IntPtr h);
         [DllImport("dwmapi.dll")] public static extern int DwmSetWindowAttribute(IntPtr hWnd, int attr, ref int value, int size);
         // DWMWA_TRANSITIONS_FORCEDISABLED: show / hide at once, no fade (a window that lends out its page must never fade empty)
         public static void NoFade(IntPtr h, bool off) { int v = off ? 1 : 0; try { DwmSetWindowAttribute(h, 3, ref v, 4); } catch { } }
