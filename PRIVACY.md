@@ -1,6 +1,6 @@
 # 개인정보 처리방침 · Privacy Policy
 
-**Super Speed Note** · 최종 수정 2026-10-15
+**Super Speed Note** · 최종 수정 2026-11-01
 
 ## 한국어
 
@@ -10,6 +10,7 @@ Super Speed Note는 사용자의 정보를 **수집하지 않습니다**.
 - **모든 메모는 사용자 PC에만 저장됩니다** (메모, 설정, 자동 백업, 휴지통).
   - Microsoft Store 버전: 앱 전용 폴더 `%LOCALAPPDATA%\Packages\Mukhodeveloper.Superspeednote_…\LocalState`. 앱을 제거하면 함께 지워집니다.
   - 실행 파일(exe) 버전: `%APPDATA%\SuperSpeedNote`. 앱을 지워도 남으며, 사용자가 직접 지울 수 있습니다.
+  - 두 버전 모두 메모를 `문서\Super Speed Note 백업` 폴더에도 백업합니다. 앱을 지워도 남아 다시 설치할 때 메모를 가져올 수 있고, 설정에서 폴더를 바꾸거나 끌 수 있습니다. 그 폴더가 OneDrive 같은 동기화 폴더 안에 있으면(Windows가 문서 폴더를 OneDrive에 백업하도록 설정된 경우 포함) 그 서비스가 백업을 동기화할 수 있지만, 앱이 직접 보내는 것은 없습니다.
 - **계정·로그인이 없습니다.** 이름, 이메일, 기기 정보 등 개인 정보를 요구하거나 저장하지 않습니다.
 - **키보드:** 사용자가 설정한 단축키 조합만 Windows에 등록해 받습니다. 그 밖의 키 입력은 기록하거나 저장하지 않습니다. '붙여넣기' 기능을 실행했을 때만 원래 쓰던 창에 Ctrl+V를 한 번 보냅니다.
 - **클립보드:** 사용자가 복사·붙여넣기 기능을 실행할 때만 클립보드를 사용합니다.
@@ -24,6 +25,7 @@ Super Speed Note does **not collect any information**.
 - **All notes stay on your PC** (notes, settings, automatic backups, trash).
   - Microsoft Store version: the app's own folder `%LOCALAPPDATA%\Packages\Mukhodeveloper.Superspeednote_…\LocalState`, removed when the app is uninstalled.
   - Standalone (exe) version: `%APPDATA%\SuperSpeedNote`, left in place on removal; you can delete it yourself.
+  - Both versions also back up the notes to `Documents\Super Speed Note 백업`. It stays after removal so a reinstall can bring the notes back; you can change the folder or turn it off in Settings. If that folder is inside a synced folder such as OneDrive (including when Windows backs up Documents to OneDrive), that service may sync the backup; the app itself sends nothing.
 - **No accounts or sign-in.** No personal data (name, e-mail, device info) is requested or stored.
 - **Keyboard:** only the hotkey combinations you set are registered with Windows. No other keystrokes are recorded or stored. When you use the "paste" feature, the app sends a single Ctrl+V to the window you came from.
 - **Clipboard:** used only when you run a copy or paste feature.

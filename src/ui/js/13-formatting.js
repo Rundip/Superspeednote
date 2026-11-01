@@ -91,7 +91,8 @@ function liAtLineStart() {
 //  - a sub-item goes up one level at once, bullet and all (like Shift+Tab): it becomes the next item of the
 //    level above - numbered on from it - and the lines below it become its sub-items
 //  - a top-level line: the 1st press takes its bullet off (the text stays where it is, the numbers below carry
-//    on), the next press makes it a normal line; an empty top-level line leaves the list at once
+//    on), the next press makes it a normal line; an empty top-level line leaves the list at once (under a line
+//    without its bullet it takes the bullet off first)
 function listBackspace() {
   const li = liAtLineStart();
   if (!li) return false;
@@ -104,7 +105,9 @@ function listBackspace() {
       const L = li.parentElement;
       if (L && !L.classList.contains('checklist')) delete li.dataset.checked;
       else if (L && !li.dataset.checked) li.dataset.checked = 'false';
-    } else if (!li.classList.contains('nob') && !emptyHtml(li.innerHTML)) {
+    } else if (!li.classList.contains('nob') && (!emptyHtml(li.innerHTML) || (li.previousElementSibling && li.previousElementSibling.classList.contains('nob')))) {
+      // (an empty line under a line without its number too: Enter gave it the number back, Backspace takes it off
+      // for one more line of that text)
       li.classList.add('nob'); delete li.dataset.checked;
       placeCaret(li, false);
     } else liftItem(li);
@@ -196,6 +199,23 @@ function sinkItem(li) {
   let T = null;
   if (prev && isList(prev)) T = prev;                                            // Chrome's shape: a list after its item
   else if (prev && prev.nodeName === 'LI' && isList(prev.lastElementChild)) T = prev.lastElementChild;   // pasted shape
+  // the first line of a list right after another list (one a typed "1) " split off): the line above is that list's
+  // last line - it goes under it, in the kind it was typed with. (Indented inside its own list it stood under no
+  // line, and Shift+Tab later took the lines below it into that list: "라. 마." showed "1) 2)".)
+  const P = !prev && L.previousElementSibling;
+  const up = isList(P) && [...P.children].reverse().find(c => c.nodeName === 'LI');
+  if (!T && up) {
+    if (isList(up.nextElementSibling)) T = up.nextElementSibling;
+    else if (isList(up.lastElementChild)) T = up.lastElementChild;
+    else {
+      T = document.createElement(L.nodeName);
+      if (L.classList.contains('checklist')) T.className = 'checklist';
+      if (L.dataset.type) T.dataset.type = L.dataset.type;
+      if (L.dataset.start) T.dataset.start = L.dataset.start;
+      up.after(T);
+    }
+    delete L.dataset.start;                         // what stays behind carries on its numbers
+  }
   if (!T) {
     T = document.createElement(L.nodeName === 'OL' ? 'OL' : 'UL');
     if (L.classList.contains('checklist')) T.className = 'checklist';
@@ -203,6 +223,7 @@ function sinkItem(li) {
   }
   T.appendChild(li);
   if (kids) li.after(kids);
+  if (up && !L.children.length) L.remove();
   const nx = T.nextElementSibling;                // the rest of a sub-list that was split off: one list again
   if (nx && nx !== kids && isList(nx) && nx.nodeName === T.nodeName) { while (nx.firstChild) T.appendChild(nx.firstChild); nx.remove(); }
   if (T.classList.contains('checklist')) { if (!li.dataset.checked) li.dataset.checked = 'false'; } else delete li.dataset.checked;
@@ -413,6 +434,28 @@ function parseMarker(t) {
 }
 // the last number a list shows (its top-level lines)
 function lastNum(L) { let n = (L.start || 1) - 1; for (const c of L.children) if (c.nodeName === 'LI' && !c.classList.contains('nob')) n++; return n; }
+// the kind a numbered list shows: its own, or its depth's (1. 가. 1) ...)
+function olKind(L) {
+  if (LIST_KINDS.has(L.dataset.type)) return L.dataset.type;
+  let depth = 0;
+  for (let p = L; p && p !== editor; p = p.parentElement) if (p.nodeName === 'OL') depth++;
+  return DEPTH_KINDS[(depth - 1) % 8];
+}
+// the numbered lists still open at the end of list B: the one its last line is in, then each one around it, up to
+// B (deepest first) - after "3. / 가.~마." both the 가나다 list and the 1. 2. 3. list are open
+function openLists(B) {
+  const lis = B.querySelectorAll('li'), td = B.closest('td'), out = [];
+  let last = null;
+  for (let i = lis.length - 1; i >= 0 && !last; i--) if (lis[i].closest('td') === td) last = lis[i];
+  for (let L = last && last.parentElement; L && L !== B.parentElement; L = L.parentElement) if (L.nodeName === 'OL') out.push(L);
+  return out;
+}
+// a typed marker after list B: B's open lists of that kind (none: undefined), and the one it carries on (the number
+// right after its last one) or null
+function carryOn(B, mk) {
+  const same = openLists(B).filter(L => olKind(L) === mk.kind);
+  return same.length ? same.find(L => lastNum(L) + 1 === mk.n) || null : undefined;
+}
 // a numbered list of its own from this line on (the lines before it stay as they were), started at the typed number
 function startListAt(li, kind, num) {
   let L = li.parentElement;
@@ -432,12 +475,14 @@ function startListAt(li, kind, num) {
 // Typing a marker at the start of a line makes a numbered line only where that number belongs - otherwise what was
 // typed stays as text (a "3) 결론" with no list before it is just text):
 //  - the first of its kind ("1.", "1)", "(1)", "①", "가.", "가)", "(가)", "㉮", "a." ...) starts a list (again);
-//  - the number right after the last list of the same kind above carries it on - also several lines, a picture
-//    or a table after it ("2)" after a "1)" list);
-//  - at the start of a line that is already numbered: "1..." starts again from it, its own number in another kind
-//    ("2)" on a "2." line) changes the kind from it on.
+//  - the number right after the last one of a list of that kind still open above carries it on, at that list's
+//    depth ("바." under a "3." with 가.~마. under it) - also several lines, a picture or a table after it ("2)"
+//    after a "1)" list);
+//  - at the start of a line that is already numbered: the next number of a deeper list ending right above it goes
+//    on that list ("바." on the "4." line after 가.~마.); "1..." starts again from it; its own number in another
+//    kind ("2)" on a "2." line) changes the kind from it on.
 // Backspace right after it turns the line back into the text that was typed (see undoAutoList).
-let autoList = null;                              // { li, text }: the line a typed marker just turned into a list item
+let autoList = null;                              // { li, text, after? | wrap? }: the line a typed marker just turned into a list item
 function mdShortcut() {
   const r = selRange();
   if (!r || !r.collapsed) return false;
@@ -452,13 +497,24 @@ function mdShortcut() {
     const nowKind = LIST_KINDS.has(L0.dataset.type) ? L0.dataset.type : DEPTH_KINDS[(depth - 1) % 8];
     let nowNum = (L0.start || 1) - 1;               // the number this line shows now
     for (const c of L0.children) { if (c.nodeName === 'LI' && !c.classList.contains('nob')) nowNum++; if (c === blk) break; }
-    if (!(m0.n === 1 || (m0.n === nowNum && k0 !== nowKind))) return false;   // not where that number belongs: text
+    // the next number of a deeper list that ends right above it ("바. " typed on the "4." line after 가.~마.): the
+    // line goes on that list - before this line's own rules ("다." on a "3." line under 가. 나. carries them on)
+    const above = blk.previousElementSibling;
+    const sub = above && (isList(above) ? above : above.nodeName === 'LI' && isList(above.lastElementChild) ? above.lastElementChild : null);
+    const into = sub && carryOn(sub, m0);
+    if (!into && !(m0.n === 1 || (m0.n === nowNum && k0 !== nowKind))) return false;   // not where that number belongs: text
     exec('insertText', ' '); histCommit();
     edit(() => {
       const r2 = selRange(), p2 = document.createRange(); p2.setStart(blk, 0); p2.setEnd(r2.startContainer, r2.startOffset);
       const s0 = getSelection(); s0.removeAllRanges(); s0.addRange(p2);
       exec('delete');
-      startListAt(blk, k0, m0.n);
+      if (into) {
+        const kids = isList(blk.nextElementSibling) ? blk.nextElementSibling : null;   // its own sub-items go along
+        into.appendChild(blk);
+        if (kids) blk.after(kids);
+        if (!L0.querySelector('li')) L0.remove();
+        placeCaret(blk, false);
+      } else startListAt(blk, k0, m0.n);
     });
     return true;
   }
@@ -474,18 +530,46 @@ function mdShortcut() {
   // keep it as their text: "1. 개요", "- 참고". (In a heading "# ", "## " still change its level.)
   const body = /^(DIV|P)$/.test(blk.nodeName) && !blk.closest('blockquote, pre, td, li');
   if (!body && !(/^H[1-6]$/.test(blk.nodeName) && /^h\d$/.test(kind))) return false;
+  let into = null, deep = null;
   if (mk && mk.n !== 1) {                          // carrying on a list above? the number right after its last one
-    let prev = null;
-    for (let b = topLevel(blk).previousElementSibling; b; b = b.previousElementSibling)
-      if (b.nodeName === 'OL' && (b.dataset.type || 'number') === mk.kind) { prev = b; break; }   // (made by the button: 1. 2. 3.)
-    if (!prev || lastNum(prev) + 1 !== mk.n) return false;   // not where that number belongs: it stays as typed
+    const top = topLevel(blk), above = top.previousElementSibling;
+    let prev;
+    // the nearest list above with a list of that kind still open at its end - also one inside it ("바. " after a
+    // "3." with 가.~마. under it), not only the outermost one (made by the button: 1. 2. 3.)
+    for (let b = above; b && prev === undefined; b = b.previousElementSibling) if (isList(b)) prev = carryOn(b, mk);
+    if (!prev) return false;                       // not where that number belongs: it stays as typed
+    // a list inside a list above: the line stands at its depth, where 마. stands - right under that list it joins
+    // it as its next line, after other lines it starts a list of its own there
+    if (prev.parentElement !== editor && top === blk) { if (above.contains(prev)) into = prev; else deep = prev; }
   }
   exec('insertText', ' '); histCommit();          // Ctrl+Z brings back what you typed ("# "), not an empty line
   edit(() => {
     const r2 = selRange(), pre2 = document.createRange(); pre2.setStart(blk, 0); pre2.setEnd(r2.startContainer, r2.startOffset);
     const s = getSelection(); s.removeAllRanges(); s.addRange(pre2);
     exec('delete');
-    if (kind === 'ul' || kind === 'ol') {
+    if (into || deep) {
+      const li = document.createElement('li');
+      while (blk.firstChild) li.appendChild(blk.firstChild);
+      if (!li.textContent && !li.querySelector('img,br')) li.innerHTML = '<br>';
+      if (into) { into.appendChild(li); blk.remove(); autoList = { li, text: typed + ' ', after: topLevel(into) }; }
+      else {
+        // the lists around that one again, with no lines of their own: each level numbers on from where it stopped
+        // (a line moved out of it later with Shift+Tab is "4." after "3.")
+        const chain = [];
+        for (let L = deep; L && L !== editor; L = L.parentElement) if (isList(L)) chain.unshift(L);
+        let wrap = null, at = null;
+        for (const L of chain) {
+          const w = document.createElement(L.nodeName);
+          if (L.classList.contains('checklist')) w.className = 'checklist';
+          if (L.nodeName === 'OL') { w.dataset.type = L === deep ? mk.kind : olKind(L); w.dataset.start = L === deep ? mk.n : lastNum(L) + 1; }
+          if (at) at.appendChild(w); else wrap = w;
+          at = w;
+        }
+        at.appendChild(li); blk.replaceWith(wrap);
+        autoList = { li, text: typed + ' ', wrap };
+      }
+      placeCaret(li, false);
+    } else if (kind === 'ul' || kind === 'ol') {
       exec(kind === 'ul' ? 'insertUnorderedList' : 'insertOrderedList'); liftList();
       const li = closestSel('li');
       if (numKind && li && li.parentElement.nodeName === 'OL') startListAt(li, numKind, mk.n);   // the pass gives the numbers
@@ -507,7 +591,9 @@ function undoAutoList() {
   edit(() => {
     const L = a.li.parentElement, d = document.createElement('div');
     d.textContent = a.text;
-    if (L.children.length === 1) L.replaceWith(d); else { a.li.remove(); L.before(d); }
+    if (a.wrap) a.wrap.replaceWith(d);              // a list of its own at a list's depth: the line again
+    else if (a.after) { a.li.remove(); a.after.after(d); }   // it had joined a list inside the one above: back under it
+    else if (L.children.length === 1) L.replaceWith(d); else { a.li.remove(); L.before(d); }
     const r = document.createRange(); r.selectNodeContents(d); r.collapse(false);
     const g = getSelection(); g.removeAllRanges(); g.addRange(r);
   });

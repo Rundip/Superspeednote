@@ -20,6 +20,14 @@ editor.addEventListener('input', e => {
   if (e.inputType === 'insertParagraph') {
     const li = closestSel('ul.checklist > li');
     if (li && li.dataset.checked === 'true' && !li.textContent) li.dataset.checked = 'false';
+    // Enter at the end of a line whose number was taken off (Backspace): the new line gets its number back - the
+    // number was off for that line only. (Splitting such a line in the middle keeps both halves without it.)
+    const nl = closestSel('li.nob'), up = nl && nl.previousElementSibling;
+    if (nl && !nl.textContent && !nl.querySelector('img') && up && up.classList.contains('nob') && up.textContent) {
+      nl.classList.remove('nob');
+      if (!nl.className) nl.removeAttribute('class');
+      if (nl.parentElement.classList.contains('checklist')) nl.dataset.checked = 'false';
+    }
   }
   if (!/^insert(Text|CompositionText|ReplacementText)$/.test(e.inputType)) relist();   // Enter, deleting, a drop: numbers again
   markDirty();
