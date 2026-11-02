@@ -253,7 +253,8 @@ function pasteGrid(rows, src, lines, sure) {
     if (add > 50) { askBigPaste(orig, src, add); return; }
   }
   // written in a cell that has text: the first line goes in at the caret (the cell's own text stays), the rest below
-  const r = selRange(), atCaret = !!(lines && td && !rc && !navLive() && r && td.contains(r.startContainer) && td.textContent.trim());
+  const has = c => !!(c.textContent.trim() || c.querySelector('img'));
+  const r = selRange(), atCaret = !!(lines && td && !rc && !navLive() && r && td.contains(r.startContainer) && has(td));
   let grew = false, over = 0;
   edit(() => {
     if (td) {                      // fill the existing table from the caret cell, growing it as needed
@@ -268,7 +269,7 @@ function pasteGrid(rows, src, lines, sure) {
           while (tr.cells.length <= c0 + j) newCell(tr, -1);
           const c = tr.cells[c0 + j];
           if (atCaret && !i && !j) { const sr = selRange(); sr.deleteContents(); if (v) sr.insertNode(document.createTextNode(v)); return; }
-          if (c.textContent.trim() && toPlain(c).replace(/\n+$/, '') !== v) over++;
+          if (has(c) && (c.querySelector('img') || toPlain(c).replace(/\n+$/, '') !== v)) over++;
           c.innerHTML = cellHTML(v);
         });
       });
@@ -290,11 +291,19 @@ function pasteGrid(rows, src, lines, sure) {
     back();
     if (!n || n.i >= i) return;                   // not undone (something else was edited since)
     const t = $$('table', editor)[tIdx];
-    if (keepNav && t) { nav = Object.assign(keepNav, { t }); editCell = null; editor.classList.add('cellnav'); const c = cellAt(t, nav.ar, nav.ac); if (c) parkNav(c); posOv(); }
-    doPaste(src, '', [], true);                   // as text: all of it in the cell (each selected cell)
+    if (keepNav && t) oneCell(t, keepNav);
+    doPaste(src, '', [], true);                   // as text: all of it in the one cell
   });
   else if (td) toast(`${rows.length}행 × ${w}열을 붙여넣었어요${more}`, '되돌리기', back);
   else toast(`표로 붙여넣었어요 · ${rows.length}행 × ${w}열`, '텍스트로', () => { const n = H.get(cur), i = n && n.i; back(); if (n && n.i < i) doPaste(src || rowsText(rows), '', [], true); });
+}
+// the top-left cell of a cell selection, chosen alone (where "한 칸에" puts all the lines)
+function oneCell(t, n) {
+  const r = Math.min(n.ar, n.fr), c = Math.min(n.ac, n.fc);
+  nav = { t, ar: r, ac: c, fr: r, fc: c }; editCell = null; tabFrom = -1;
+  editor.classList.add('cellnav');
+  const td = cellAt(t, r, c); if (td) parkNav(td);
+  posOv();
 }
 // Many lines onto a table: rows (as asked), the lines in one cell, or nothing. The cell(s) chosen come back after.
 function askBigPaste(rows, src, add) {
@@ -303,6 +312,7 @@ function askBigPaste(rows, src, add) {
     if (kn && kn.t.isConnected) { nav = kn; editCell = null; editor.classList.add('cellnav'); const c = cellAt(kn.t, kn.ar, kn.ac); if (c) parkNav(c); posOv(); }
     else if (sv) { editor.focus({ preventScroll: true }); selRestore(sv); }
   };
+  const one = () => { if (kn && kn.t.isConnected) oneCell(kn.t, kn); else again(); };
   openModal(`<div class="dlg confirm"><div class="dlg-head">${ic('i-plus')}<h3>표에 행을 ${add}개 더 만들어 붙여넣을까요?</h3></div>` +
     `<div class="dlg-body"><div class="khint">${rows.length}줄이라 한 줄씩 행으로 넣으면 표가 아래로 길게 늘어나요.</div></div>` +
     `<div class="dlg-foot"><span class="ver">Enter = 행으로 · Esc = 취소</span><span style="flex:1"></span><button class="btn" id="bpNo">취소</button>` +
@@ -310,7 +320,7 @@ function askBigPaste(rows, src, add) {
     () => setTimeout(again, 0));
   const go = f => () => { closeModal(); setTimeout(f, 0); };
   $('#bpNo').onclick = closeModal;
-  $('#bpOne').onclick = go(() => { again(); doPaste(src, '', [], true); });
+  $('#bpOne').onclick = go(() => { one(); doPaste(src, '', [], true); });
   $('#bpYes').onclick = go(() => { again(); pasteGrid(rows, src, true, true); });
   $('#bpYes').focus();
 }
