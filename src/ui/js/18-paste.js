@@ -18,6 +18,13 @@ function doPaste(text, html, files, plain) {
   const g = plain ? null : (html && gridFromHtml(html)) || gridFromTSV(text);
   if (g && (g.length > 1 || g[0].length > 1)) { pasteGrid(g, text); return; }
   if (g) { text = g[0][0]; html = ''; }          // a single cell pastes as its text
+  // Lines into a table (a cell, or cells, selected or being written in): one row each, like Excel does with a
+  // column. They used to land all in one cell (or the whole lot in every selected cell). Ctrl+Shift+V keeps them in one.
+  if (!plain && !g && (navLive() || closestSel('td') || domCellRect())) {
+    const L = linesForCells(text, html);
+    // (lines with tabs that don't line up as a table: still split at the tabs)
+    if (L.length > 1) { pasteGrid(L.map(v => v.includes('\t') ? v.split('\t') : [v]), text, true); return; }
+  }
   if (navLive()) {                                // cell(s) selected: the value replaces them, like Excel
     const val = text.replace(/\r\n?/g, '\n').replace(/\n+$/, '');
     const keep = Object.assign({}, nav), cells = rectCells(navRect());
@@ -28,6 +35,7 @@ function doPaste(text, html, files, plain) {
   edit(() => {
     const t = text.trim();
     if (/^https?:\/\/\S+$/i.test(t)) exec('insertHTML', `<a href="${esc(t)}">${esc(t)}</a>`);
+    else if (closestSel('td') && /\n/.test(text.replace(/\r?\n$/, ''))) exec('insertHTML', esc(text.replace(/\r\n?/g, '\n').replace(/\n+$/, '')).replace(/\n/g, '<br>'));   // lines kept in one cell: as line breaks there
     else if (plain || !html) exec('insertText', text);
     else {
       const d = document.createElement('div');
@@ -41,6 +49,13 @@ function doPaste(text, html, files, plain) {
       if (d.innerHTML) exec('insertHTML', d.innerHTML); else exec('insertText', text);
     }
   });
+}
+// The lines of a paste, as cell values: no trailing empty line, no empty line between paragraphs from a rich source
+// (a web page or Word put one there), no bullet or check box from a list copied out of a note
+function linesForCells(text, html) {
+  let L = (text || '').replace(/\r\n?/g, '\n').replace(/\n+$/, '').split('\n');
+  if (html) L = L.filter(v => v.trim());
+  return L.map(v => v.replace(/^[ \t\u00a0]*(?:[•◦▪‣☐☑] ?)?/, '').replace(/[ \t\u00a0]+$/, ''));
 }
 function gridFromHtml(html) {
   const doc = new DOMParser().parseFromString(html, 'text/html');
@@ -222,9 +237,11 @@ editor.addEventListener('cut', e => {
   edit(() => { for (const c of rectCells(rc)) c.innerHTML = '<br>'; });
   setNav(rc.t, rc.r0, rc.c0);
 });
-function pasteGrid(rows, src) {
+function pasteGrid(rows, src, lines) {
   const rc = selCellRect();                           // pasting over a multi-cell selection starts at its top-left cell
   const td = rc ? rc.t.rows[rc.r0].cells[rc.c0] : closestSel('td');
+  const count = rows.length, keepNav = navLive() ? Object.assign({}, nav) : null, tIdx = td ? $$('table', editor).indexOf(td.closest('table')) : -1;
+  if (rc && (rc.r1 > rc.r0 || rc.c1 > rc.c0)) rows = fitToCells(rows, rc.r1 - rc.r0 + 1, rc.c1 - rc.c0 + 1);
   const w = Math.max(...rows.map(r => r.length));
   let grew = false;
   edit(() => {
@@ -254,8 +271,29 @@ function pasteGrid(rows, src) {
     }
   });
   const back = undoThis();
-  if (td) toast(`${rows.length}행 × ${w}열을 붙여넣었어요${grew ? ' · 표를 늘렸어요' : ''}`, '되돌리기', back);
+  if (td && lines) toast(`${count}줄을 ${w === 1 ? '한 줄씩 행으로' : '칸마다'} 나눠 붙여넣었어요${grew ? ' · 표를 늘렸어요' : ''}`, '한 칸에', () => {
+    const n = H.get(cur), i = n && n.i;
+    back();
+    if (!n || n.i >= i) return;                   // not undone (something else was edited since)
+    const t = $$('table', editor)[tIdx];
+    if (keepNav && t) { nav = Object.assign(keepNav, { t }); editCell = null; editor.classList.add('cellnav'); const c = cellAt(t, nav.ar, nav.ac); if (c) parkNav(c); posOv(); }
+    doPaste(src, '', [], true);                   // as text: all of it in the cell (each selected cell)
+  });
+  else if (td) toast(`${rows.length}행 × ${w}열을 붙여넣었어요${grew ? ' · 표를 늘렸어요' : ''}`, '되돌리기', back);
   else toast(`표로 붙여넣었어요 · ${rows.length}행 × ${w}열`, '텍스트로', () => { const n = H.get(cur), i = n && n.i; back(); if (n && n.i < i) doPaste(src || rowsText(rows), '', [], true); });
+}
+// Copied cells put on selected cells of another shape: a column of values onto a row of cells (or the other way)
+// goes across it; a block that fits the selection a whole number of times fills it (like Excel). Else as it is.
+function fitToCells(rows, R, C) {
+  const h = rows.length, w = Math.max(...rows.map(r => r.length));
+  if (w === 1 && R === 1 && C === h && h > 1) return [rows.map(r => r[0])];
+  if (h === 1 && C === 1 && R === w && w > 1) return rows[0].map(v => [v]);
+  if (R % h === 0 && C % w === 0 && (R > h || C > w)) {
+    const out = [];
+    for (let i = 0; i < R; i++) { const row = []; for (let j = 0; j < C; j++) row.push((rows[i % h][j % w]) || ''); out.push(row); }
+    return out;
+  }
+  return rows;
 }
 const KEEP = new Set(['B', 'I', 'U', 'S', 'BR', 'P', 'DIV', 'H1', 'H2', 'H3', 'UL', 'OL', 'LI', 'A', 'BLOCKQUOTE', 'PRE', 'CODE', 'HR', 'TABLE', 'TBODY', 'TR', 'TD', 'IMG', 'SUB', 'SUP']);
 const DROP = new Set(['SCRIPT', 'STYLE', 'META', 'LINK', 'TITLE', 'HEAD', 'IFRAME', 'OBJECT', 'EMBED', 'NOSCRIPT', 'TEMPLATE', 'SVG', 'BUTTON', 'INPUT', 'SELECT', 'TEXTAREA', 'FORM', 'CANVAS', 'VIDEO', 'AUDIO', 'COLGROUP', 'COL']);
