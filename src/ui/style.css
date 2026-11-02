@@ -545,15 +545,16 @@ select.sel{height:32px;border-radius:9px;border:1px solid var(--line-2);backgrou
 .pal{width:min(920px,calc(100vw - 32px))}
 .pal-body{display:flex;min-height:0}
 .pal .pal-body{height:min(58vh,420px)}             /* steady while typing: the footer doesn't jump */
-.pal-count{flex:none;font-size:12px;color:var(--ink-3)}
-.pal-body .qs-list{flex:1;min-width:0;max-height:58vh}
+.pal-count{flex:none;min-width:40px;text-align:right;font-size:12px;color:var(--ink-3)}   /* the box keeps its width as the count changes */
+.pal-body .qs-list{flex:1;min-width:0;max-height:58vh;scrollbar-gutter:stable}   /* a scroll bar coming / going doesn't narrow the rows */
 .pal .qs-item{padding:8px 10px}
 .pal .qs-txt b{font-weight:550}
 .pal .qs-txt small em{font-style:normal}
 .pal-col{color:var(--accent-ink);font-weight:650}
 .pal-pos{margin-left:6px;font-size:11px;color:var(--ink-3)}
-.pal-n{flex:none;margin-left:6px;min-width:16px;text-align:center;color:var(--ink-3);opacity:.8;font-weight:600}
-.qs-item.on .pal-n::before{content:'Alt+'}
+.pal-n{flex:none;margin-left:6px;min-width:16px;text-align:center;font-variant-numeric:tabular-nums;color:var(--ink-3);opacity:.8;font-weight:600}
+.pal-n::before{content:'Alt+';visibility:hidden}            /* room for it on every row: the picked one doesn't narrow */
+.qs-item.on .pal-n::before{visibility:visible}
 .pal .qs-txt small{color:var(--ink-2)}
 .qs-item.on .pal-n{opacity:1}
 .pal-sec{padding:8px 12px 4px;font-size:11.5px;font-weight:650;color:var(--ink-3)}
@@ -582,7 +583,6 @@ select.sel{height:32px;border-radius:9px;border:1px solid var(--line-2);backgrou
 .pv-tip{color:var(--ink-2);font-size:12.5px}
 .pv-tip p{margin:8px 0 0;line-height:1.6}
 .pv-tip i{font-style:normal;padding:0 5px;border-radius:5px;background:var(--hover);color:var(--ink)}
-.pal-tip{padding:0 12px 10px;max-width:520px}
 .qs-empty b{color:var(--ink-2);line-height:2}
 .pal-foot{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;padding:9px 16px;border-top:1px solid var(--line);font-size:11.5px;color:var(--ink-2)}
 .pal-foot .fill{flex:1}

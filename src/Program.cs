@@ -33,7 +33,7 @@ namespace SuperSpeedNote
 {
     static class Program
     {
-        public const string Version = "1.6.9";
+        public const string Version = "1.7.0";
         public const string WebView2Version = "1.0.4258.31";
         public static string DataDir, LocalDir;
         public static bool Portable;                  // a "data" folder next to the exe holds the notes (test / USB copies)
@@ -465,7 +465,7 @@ namespace SuperSpeedNote
             saver.Flush(3000);
             // the page comes back in the app window; the find & paste window and the quick memo close
             popWanted = false; holdWeb = false;
-            if (pop != null) { pop.Attached = false; if (pop.Visible) pop.Hide(); }
+            if (pop != null) { pop.Attached = false; HidePopVeil(); if (pop.Visible) pop.Hide(); }
             DetachQuick(true);
             if (webIn != this) PutWeb(this);
             webReady = false;
@@ -694,11 +694,12 @@ namespace SuperSpeedNote
             };
             t.Start();
         }
-        string PaintArg()                               // the app window's size in pixels and the page's scale there
+        string PaintArg(Form f = null)                  // that window's size in pixels and the page's scale there
         {
+            f = f ?? this;
             double scale = 1;
-            try { scale = Native.GetDpiForWindow(Handle) / 96.0 * ctl.ZoomFactor; } catch { }
-            return ClientSize.Width + " " + ClientSize.Height + " " + scale.ToString("0.####", System.Globalization.CultureInfo.InvariantCulture);
+            try { scale = Native.GetDpiForWindow(f.Handle) / 96.0 * ctl.ZoomFactor; } catch { }
+            return f.ClientSize.Width + " " + f.ClientSize.Height + " " + scale.ToString("0.####", System.Globalization.CultureInfo.InvariantCulture);
         }
         // shown on screen and not minimized, as Windows sees it (the form's own flag can lag behind a native show)
         bool ShownNow() { return (Visible || Native.IsWindowVisible(Handle)) && !Native.IsIconic(Handle); }
@@ -1056,6 +1057,7 @@ namespace SuperSpeedNote
             PlacePop();
             popWanted = true;
             pop.Attached = false;
+            pop.Starting = !webReady;
             pop.Invalidate();
             if (!pop.Visible) pop.Show();
             ForceForeground(pop.Handle);
@@ -1115,12 +1117,57 @@ namespace SuperSpeedNote
             if (ctl == null || pop == null) return;
             if (quick != null && quick.Visible) quick.Hide();   // a quick memo waits until the search is done
             pop.Attached = true;
+            if (!pop.Visible) pop.Show();
+            ShowPopVeil();
             holdWeb = false;
             PutWeb(pop);
-            if (!pop.Visible) pop.Show();
             ForceForeground(pop.Handle);
             try { ctl.MoveFocus(CoreWebView2MoveFocusReason.Programmatic); } catch { }
             Post("palette", "focus");
+            if (popVeil == null || !Native.IsWindowVisible(popVeil.Handle)) return;
+            int gen = popVeilGen;
+            Post("paint", PaintArg(pop) + " v" + gen);
+            After(700, () => { if (gen == popVeilGen) HidePopVeil(); });   // never answered: shown anyway
+        }
+
+        // Shown again in the search window, the page puts up for a few frames what it last showed (the app window's
+        // page, cropped) and only then the search box at this window's size (and, on another monitor, scale). A plain
+        // window of the search window's colour lies over it meanwhile, right above it, and goes once the box is drawn.
+        StillForm popVeil;
+        int popVeilGen;
+        void ShowPopVeil()
+        {
+            try
+            {
+                Size cs = pop.ClientSize;
+                if (cs.Width < 2 || cs.Height < 2) return;
+                if (popVeil == null) { popVeil = new StillForm(pop.Handle); int round = 2; Native.DwmSetWindowAttribute(popVeil.Handle, 33 /*rounded, as the search window*/, ref round, 4); }
+                if (popVeil.Pic == null || popVeil.Pic.Size != cs || popVeil.Tint != pop.BackColor)
+                {
+                    var b = new Bitmap(cs.Width, cs.Height, System.Drawing.Imaging.PixelFormat.Format32bppRgb);
+                    using (Graphics g = Graphics.FromImage(b)) g.Clear(pop.BackColor);
+                    if (popVeil.Pic != null) popVeil.Pic.Dispose();
+                    popVeil.Pic = b; popVeil.Tint = pop.BackColor;
+                }
+                popVeilGen++;
+                Rectangle r = pop.RectangleToScreen(pop.ClientRectangle);
+                Native.SetWindowPos(popVeil.Handle, (IntPtr)(-1) /*TOPMOST: over the search window*/, r.X, r.Y, r.Width, r.Height, 0x10 /*NOACTIVATE*/ | 0x40 /*SHOWWINDOW*/ | 0x200 /*NOOWNERZORDER*/);
+                popVeil.Invalidate();
+                popVeil.Update();
+            }
+            catch (Exception ex) { Program.Log(ex); HidePopVeil(); }
+        }
+        void HidePopVeil()
+        {
+            if (popVeil == null) return;
+            popVeilGen++;
+            if (popVeil.IsHandleCreated && Native.IsWindowVisible(popVeil.Handle)) Native.ShowWindow(popVeil.Handle, 0 /*SW_HIDE*/);
+        }
+        void After(int ms, Action a)
+        {
+            var t = new System.Windows.Forms.Timer { Interval = ms };
+            t.Tick += (s, e) => { t.Stop(); t.Dispose(); try { a(); } catch (Exception ex) { Program.Log(ex); } };
+            t.Start();
         }
 
         // Closed from here (the hotkey again, Alt+F4, the app opened): the search window goes at once, but the page
@@ -1129,7 +1176,7 @@ namespace SuperSpeedNote
         void ReleasePop()
         {
             popWanted = false;
-            if (pop != null) { pop.Attached = false; if (pop.Visible) pop.Hide(); }
+            if (pop != null) { pop.Attached = false; HidePopVeil(); if (pop.Visible) pop.Hide(); }
             if (!popShown) { DetachPop(); return; }
             Post("palette", "close");
             var t = new System.Windows.Forms.Timer { Interval = 500 };
@@ -1144,7 +1191,7 @@ namespace SuperSpeedNote
             holdWeb = false;
             if (!popShown && webIn == this) HideCover();     // the page never left: nothing to wait for
             // hide it first: moving the page out first would leave a bare window on screen for a moment
-            if (pop != null) { pop.Attached = false; if (pop.Visible) pop.Hide(); }
+            if (pop != null) { pop.Attached = false; HidePopVeil(); if (pop.Visible) pop.Hide(); }
             if (popShown)
             {
                 if (quickOpen && quick != null)
@@ -1310,6 +1357,9 @@ namespace SuperSpeedNote
             {
                 ctl.ParentWindow = f.Handle;
                 ctl.DefaultBackgroundColor = f == pop ? popBg : f == quick ? quickBg : bg;
+                // the scale of that window's monitor at once (on its own the page may take it up only a moment later,
+                // and lay itself out once more then)
+                try { double sc = Native.GetDpiForWindow(f.Handle) / 96.0; if (sc > 0 && Math.Abs(ctl.RasterizationScale - sc) > 0.001) ctl.RasterizationScale = sc; } catch { }
                 if (f != this || WindowState != FormWindowState.Minimized) ctl.Bounds = new Rectangle(Point.Empty, f.ClientSize);
                 if (f != this) wv.MemoryUsageTargetLevel = CoreWebView2MemoryUsageTargetLevel.Normal;
             }
@@ -1905,7 +1955,11 @@ namespace SuperSpeedNote
             switch (cmd)
             {
                 case "pong": pingAt = 0; break;
-                case "painted": drawWait = 0; PaintedUnderCover(); break;     // the page is drawn again in the app window
+                case "painted":                              // the page has drawn: in the search window (its veil goes) or the app window
+                    drawWait = 0;
+                    if (popVeil != null && a == "v" + popVeilGen) { int g = popVeilGen; After(50, () => { if (g == popVeilGen) HidePopVeil(); }); }
+                    else PaintedUnderCover();
+                    break;
                 case "ready":
                     webReady = true; pingAt = 0;
                     StartPulse();
@@ -3457,6 +3511,7 @@ namespace SuperSpeedNote
     sealed class StillForm : Form
     {
         public Bitmap Pic;
+        public Color Tint;                        // a plain picture's colour (the search window's veil)
         readonly IntPtr owner;
 
         public StillForm(IntPtr owner)
@@ -3511,6 +3566,7 @@ namespace SuperSpeedNote
     sealed class PopForm : Form
     {
         public bool Attached;                     // false while the engine is still starting (from standby)
+        public bool Starting;                     // the engine starts: "getting ready" shows (else just the colour, for a moment)
 
         public PopForm()
         {
@@ -3552,7 +3608,7 @@ namespace SuperSpeedNote
         protected override void OnPaintBackground(PaintEventArgs e)
         {
             e.Graphics.Clear(BackColor);
-            if (Attached) return;
+            if (Attached || !Starting) return;
             float scale = DeviceDpi / 96f;
             bool dark = BackColor.GetBrightness() < 0.5f;
             using (var f = new Font("Malgun Gothic", 14f * scale, GraphicsUnit.Pixel))

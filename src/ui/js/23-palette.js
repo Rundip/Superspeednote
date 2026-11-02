@@ -243,7 +243,7 @@ function openPalette(mode) {
   };
   const preview = () => {
     const it = items[idx];
-    if (!it) { pv.innerHTML = q ? `<div class="pv-tip"><b>이렇게 써 보세요</b>${tip}</div>` : ''; return; }
+    if (!it) { pv.innerHTML = `<div class="pv-tip"><b>이렇게 써 보세요</b>${tip}</div>`; return; }
     const L = linesOf(it.n.id), i = it.i;
     const P = it.part >= 0 ? partsOf(it.x)[it.part] : null;
     let h = `<div class="pv-head"><span class="c-dot" data-c="${it.n.color}" style="--c:${NOTE_COLORS[it.n.color]}"></span><b>${esc(titleOf(it.n) || '제목 없음')}</b><small>${relTime(it.n.updated)}</small></div>`;
@@ -269,11 +269,11 @@ function openPalette(mode) {
     items = q ? searchLines(q) : recentLines();
     idx = clamp(idx, 0, Math.max(0, items.length - 1));
     $('#palCount').textContent = q ? (items.length >= 50 ? '50+' : items.length) + '줄' : '';
-    pv.hidden = !items.length && !q;              // nothing typed, nothing recent: the tips fill the list instead
+    // the preview pane always there (with the tips when there is nothing to show): the list never changes width
     fit = Math.max(16, (list.clientWidth - 80) / 14 | 0);   // a hit further right is scrolled into view
     list.innerHTML = (!q && items.length ? '<div class="pal-sec">최근 붙여넣은 줄<span><kbd>Del</kbd>목록에서 빼기</span></div>' : '') +
       (items.map(itemHTML).join('') || (q ? '<div class="qs-empty"><b>일치하는 줄이 없어요</b><br>단어를 하나 줄이거나 초성(ㄱㅊㅅ)으로 찾아보세요</div>'
-        : `<div class="pal-sec">처음이라면 이렇게 찾아보세요</div><div class="pv-tip pal-tip">${tip}</div>`));
+        : '<div class="pal-sec">최근 붙여넣은 줄</div><div class="qs-empty">아직 없어요 · 찾아서 붙여넣은 줄이 여기에 모여요</div>'));
     const on = list.querySelector('.on');
     if (on) on.scrollIntoView({ block: 'nearest' });
     preview();
@@ -364,7 +364,13 @@ function openPalette(mode) {
       closeModal();
     }
   });
-  list.addEventListener('mousemove', e => { const it = e.target.closest('.qs-item'); if (it && +it.dataset.i !== idx) move(+it.dataset.i); });
+  let mx = -1, my = -1;                           // only a real move of the mouse picks a row - not the list scrolling or
+  list.addEventListener('mousemove', e => {       // being drawn again under a mouse resting on it
+    if (e.screenX === mx && e.screenY === my) return;
+    const first = mx < 0; mx = e.screenX; my = e.screenY;
+    if (first) return;                            // the box opened under the mouse: not a choice yet
+    const it = e.target.closest('.qs-item'); if (it && +it.dataset.i !== idx) move(+it.dataset.i);
+  });
   modal.querySelector('.pal').addEventListener('mousedown', e => { if (e.target !== inp) e.preventDefault(); });   // keep typing in the box
   list.addEventListener('click', e => { const it = e.target.closest('.qs-item'); if (it) pick(+it.dataset.i, howOf(e)); });
   pv.addEventListener('click', e => {             // a cell / word in the preview: that part only, like Tab then Enter
