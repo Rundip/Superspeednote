@@ -24,6 +24,7 @@ function doPaste(text, html, files, plain) {
     const L = linesForCells(text, html);
     // (lines with tabs that don't line up as a table: still split at the tabs)
     if (L.length > 1) { pasteGrid(L.map(v => v.includes('\t') ? v.split('\t') : [v]), text, true); return; }
+    if (L.length === 1 && L[0].includes('\n')) { text = L[0]; html = ''; }   // one quoted cell: its value, without the quotes
   }
   if (navLive()) {                                // cell(s) selected: the value replaces them, like Excel
     const val = text.replace(/\r\n?/g, '\n').replace(/\n+$/, '');
@@ -53,7 +54,10 @@ function doPaste(text, html, files, plain) {
 // The lines of a paste, as cell values: no trailing empty line, no empty line between paragraphs from a rich source
 // (a web page or Word put one there), no bullet or check box from a list copied out of a note
 function linesForCells(text, html) {
-  let L = (text || '').replace(/\r\n?/g, '\n').replace(/\n+$/, '').split('\n');
+  const t = (text || '').replace(/\r\n?/g, '\n').replace(/^\n+|\n+$/g, '');
+  const q = /^"((?:[^"]|"")*)"$/.exec(t);          // one cell with line breaks in it (Google Sheets puts it in quotes)
+  if (q && q[1].includes('\n')) return [q[1].replace(/""/g, '"')];
+  let L = t.split('\n');
   if (html) L = L.filter(v => v.trim());
   return L.map(v => v.replace(/^[ \t\u00a0]*(?:[•◦▪‣☐☑] ?)?/, '').replace(/[ \t\u00a0]+$/, ''));
 }
@@ -237,13 +241,20 @@ editor.addEventListener('cut', e => {
   edit(() => { for (const c of rectCells(rc)) c.innerHTML = '<br>'; });
   setNav(rc.t, rc.r0, rc.c0);
 });
-function pasteGrid(rows, src, lines) {
+function pasteGrid(rows, src, lines, sure) {
   const rc = selCellRect();                           // pasting over a multi-cell selection starts at its top-left cell
   const td = rc ? rc.t.rows[rc.r0].cells[rc.c0] : closestSel('td');
-  const count = rows.length, keepNav = navLive() ? Object.assign({}, nav) : null, tIdx = td ? $$('table', editor).indexOf(td.closest('table')) : -1;
+  const orig = rows, count = rows.length, keepNav = navLive() ? Object.assign({}, nav) : null, tIdx = td ? $$('table', editor).indexOf(td.closest('table')) : -1;
   if (rc && (rc.r1 > rc.r0 || rc.c1 > rc.c0)) rows = fitToCells(rows, rc.r1 - rc.r0 + 1, rc.c1 - rc.c0 + 1);
   const w = Math.max(...rows.map(r => r.length));
-  let grew = false;
+  // a long text pasted by mistake would stretch the table far down: many new rows are asked first
+  if (td && lines && !sure) {
+    const add = td.parentElement.rowIndex + rows.length - td.closest('table').rows.length;
+    if (add > 50) { askBigPaste(orig, src, add); return; }
+  }
+  // written in a cell that has text: the first line goes in at the caret (the cell's own text stays), the rest below
+  const r = selRange(), atCaret = !!(lines && td && !rc && !navLive() && r && td.contains(r.startContainer) && td.textContent.trim());
+  let grew = false, over = 0;
   edit(() => {
     if (td) {                      // fill the existing table from the caret cell, growing it as needed
       const t = td.closest('table');
@@ -255,7 +266,10 @@ function pasteGrid(rows, src, lines) {
         const tr = t.rows[r0 + i];
         r.forEach((v, j) => {
           while (tr.cells.length <= c0 + j) newCell(tr, -1);
-          tr.cells[c0 + j].innerHTML = cellHTML(v);
+          const c = tr.cells[c0 + j];
+          if (atCaret && !i && !j) { const sr = selRange(); sr.deleteContents(); if (v) sr.insertNode(document.createTextNode(v)); return; }
+          if (c.textContent.trim() && toPlain(c).replace(/\n+$/, '') !== v) over++;
+          c.innerHTML = cellHTML(v);
         });
       });
       // like Excel: the pasted block stays selected
@@ -270,8 +284,8 @@ function pasteGrid(rows, src, lines) {
       placeCaret(t.nextElementSibling || t.rows[0].cells[0], false);
     }
   });
-  const back = undoThis();
-  if (td && lines) toast(`${count}줄을 ${w === 1 ? '한 줄씩 행으로' : '칸마다'} 나눠 붙여넣었어요${grew ? ' · 표를 늘렸어요' : ''}`, '한 칸에', () => {
+  const back = undoThis(), more = (grew ? ' · 표를 늘렸어요' : '') + (over ? ` · 값이 있던 ${over}칸을 덮어썼어요` : '');
+  if (td && lines) toast(`${count}줄을 ${w === 1 ? '한 줄씩 행으로' : '칸마다'} 나눠 붙여넣었어요${more}`, '한 칸에', () => {
     const n = H.get(cur), i = n && n.i;
     back();
     if (!n || n.i >= i) return;                   // not undone (something else was edited since)
@@ -279,8 +293,26 @@ function pasteGrid(rows, src, lines) {
     if (keepNav && t) { nav = Object.assign(keepNav, { t }); editCell = null; editor.classList.add('cellnav'); const c = cellAt(t, nav.ar, nav.ac); if (c) parkNav(c); posOv(); }
     doPaste(src, '', [], true);                   // as text: all of it in the cell (each selected cell)
   });
-  else if (td) toast(`${rows.length}행 × ${w}열을 붙여넣었어요${grew ? ' · 표를 늘렸어요' : ''}`, '되돌리기', back);
+  else if (td) toast(`${rows.length}행 × ${w}열을 붙여넣었어요${more}`, '되돌리기', back);
   else toast(`표로 붙여넣었어요 · ${rows.length}행 × ${w}열`, '텍스트로', () => { const n = H.get(cur), i = n && n.i; back(); if (n && n.i < i) doPaste(src || rowsText(rows), '', [], true); });
+}
+// Many lines onto a table: rows (as asked), the lines in one cell, or nothing. The cell(s) chosen come back after.
+function askBigPaste(rows, src, add) {
+  const sv = selSave(), kn = navLive() ? Object.assign({}, nav) : null;
+  const again = () => {
+    if (kn && kn.t.isConnected) { nav = kn; editCell = null; editor.classList.add('cellnav'); const c = cellAt(kn.t, kn.ar, kn.ac); if (c) parkNav(c); posOv(); }
+    else if (sv) { editor.focus({ preventScroll: true }); selRestore(sv); }
+  };
+  openModal(`<div class="dlg confirm"><div class="dlg-head">${ic('i-plus')}<h3>표에 행을 ${add}개 더 만들어 붙여넣을까요?</h3></div>` +
+    `<div class="dlg-body"><div class="khint">${rows.length}줄이라 한 줄씩 행으로 넣으면 표가 아래로 길게 늘어나요.</div></div>` +
+    `<div class="dlg-foot"><span class="ver">Enter = 행으로 · Esc = 취소</span><span style="flex:1"></span><button class="btn" id="bpNo">취소</button>` +
+    `<button class="btn" id="bpOne">한 칸에 넣기</button><button class="btn primary" id="bpYes">행 ${add}개 늘려 붙여넣기</button></div></div>`,
+    () => setTimeout(again, 0));
+  const go = f => () => { closeModal(); setTimeout(f, 0); };
+  $('#bpNo').onclick = closeModal;
+  $('#bpOne').onclick = go(() => { again(); doPaste(src, '', [], true); });
+  $('#bpYes').onclick = go(() => { again(); pasteGrid(rows, src, true, true); });
+  $('#bpYes').focus();
 }
 // Copied cells put on selected cells of another shape: a column of values onto a row of cells (or the other way)
 // goes across it; a block that fits the selection a whole number of times fills it (like Excel). Else as it is.
