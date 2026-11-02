@@ -36,6 +36,7 @@
 
 ■ 엑셀처럼 쓰는 표
 엑셀에서 복사한 셀을 붙여넣으면 표가 되고, 방향키·F2·Enter로 엑셀과 같은 방식으로 편집합니다. 표의 행은 엑셀 칸 그대로 다시 붙여넣어집니다.
+메모장·웹 페이지·메신저에서 복사한 여러 줄은 표에 붙여넣으면 한 줄씩 행으로 들어갑니다.
 
 ■ 빠르고 가볍게
 메모 500개에서도 검색이 한 화면 프레임(16ms) 안에 끝납니다. 꺼져 있어도 단축키 대기 상태(메모리 약 30MB)로 바로 불러올 수 있습니다.
@@ -50,7 +51,7 @@
 2. 초성 검색, 여러 단어 검색, 표의 칸 하나만 골라 붙여넣기
 3. 화면 구석에 뜨는 빠른 메모 (단축키 한 번으로 열고 닫기)
 4. 메모마다 전역 단축키 지정, 다시 누르면 원래 창의 커서 자리로 복귀
-5. 엑셀 셀 복사 → 표 붙여넣기, 엑셀처럼 방향키·F2·Enter로 편집
+5. 엑셀 셀 복사 → 표 붙여넣기, 엑셀처럼 방향키·F2·Enter로 편집, 여러 줄을 붙여넣으면 한 줄씩 행으로
 6. 굵게, 밑줄, 형광펜, 잘 보이는 글자색, 체크리스트, 제목, 번호 목록(1. 가. a. 1) ① ㉮), -> 입력 시 → 화살표
 7. 앱 안의 모든 단축키를 원하는 키로 변경
 8. 자동 저장, 매일 자동 백업(앱을 지워도 남는 문서 폴더 백업), 휴지통에서 복원
@@ -61,19 +62,16 @@
 
 메모, 메모장, 빠른 메모, 단축키, 클립보드, 붙여넣기, 노트
 
-## 이번 버전의 새로운 기능 (1.6.6)
+## 이번 버전의 새로운 기능 (1.7.0)
 
-- 문서 폴더에 앱을 지워도 남는 백업 (설정에서 폴더 변경·끄기·백업에서 복원)
-- 찾아 붙여넣기: Outlook처럼 느린 프로그램에도 확실히 붙여넣기, 다른 모니터에서도 앱 창이 움직이지 않음
-- 앱 창이 남색 화면으로 멈추던 문제 해결 (빠른 메모를 열고 닫은 뒤 등)
-- -> 를 입력하면 → 화살표로 바뀜 (뒤에 글자를 써도 화살표가 움직이지 않음)
-- 번호 목록: 입력한 번호와 모양 그대로 시작 (1) (1) ① ㉮ 등), 하위 단계도 끊기지 않고 이어짐 (목록에서 빠진 줄에 "바. "를 치면 가.~마. 다음으로, 번호를 뗀 줄에서 Enter를 치면 다음 번호가 다시 붙음)
-- 표: 클릭·더블클릭으로 단어·줄·칸 선택, 칸 안의 글머리표를 Backspace로 지우기
-- 빠른 메모는 새 메모처럼 목록 맨 뒤로
+- 표에 여러 줄 붙여넣기: 메모장·웹 페이지·메신저·Word에서 복사한 줄이 한 줄씩 행으로 들어가고, 표는 필요한 만큼 늘어남 (알림의 "한 칸에" 또는 Ctrl+Shift+V로 한 칸에 넣기)
+- 엑셀처럼 채우기: 한 행을 여러 칸에 붙여넣으면 고른 칸만큼 반복, 줄 수만큼 고른 칸에는 하나씩
+- 칸에 쓰던 글과 그림은 그대로 두고 커서 자리부터 붙여넣기, 덮어쓴 칸 수를 알림, 50행이 넘으면 먼저 물어봄, Ctrl+Z 한 번으로 되돌리기
+- 찾아 붙여넣기: 창이 열릴 때나 글자를 칠 때 화면이 흔들리거나 깜빡이지 않음 (다른 모니터에서도)
 
-### (지난 버전) 1.4.9
+### (지난 버전) 1.6.6
 
-코드란 맨 아래에서 ↓로 아래 줄로 이동, 코드란을 통째로 선택해 Alt+↑/↓로 옮기기, 여러 메모를 한 번에 바탕화면·폴더로 끌어내기, 표 칸 편집 중 방향키는 칸 안에서 움직이고 Esc로 칸 선택, 표에서 Tab 후 Enter는 바로 아래 칸, 글자색 검정·형광펜 없음 선택 유지.
+문서 폴더에 앱을 지워도 남는 백업, Outlook처럼 느린 프로그램에도 확실히 붙여넣기, 앱 창이 남색 화면으로 멈추던 문제 해결, -> 를 입력하면 → 화살표, 번호 목록이 입력한 모양 그대로 시작하고 하위 단계도 끊기지 않고 이어짐, 표에서 클릭·더블클릭으로 단어·줄·칸 선택, 빠른 메모는 목록 맨 뒤로.
 
 ## 제한된 기능(restricted capability) 사용 이유 — Partner Center '제출 옵션'에 영어로 입력
 
@@ -84,7 +82,7 @@ Super Speed Note is a Win32 desktop app (WinForms + WebView2) packaged with the 
 
 ## 심사 담당자 메모 (Notes for certification, 영어)
 
-Update 1.6.6: no new capabilities or permissions. Editor and window fixes (lists, tables, arrows, find & paste, the app window drawing reliably), plus a second local backup: by default the app also copies its notes to Documents\Super Speed Note 백업 so they survive an uninstall/reinstall. This is a plain local folder (the user can change it or turn it off in Settings); nothing is sent over the network. Earlier changes (product ID 9N4JKW5GFTHS): the unvirtualizedResources restricted capability and the desktop6 FileSystemWriteVirtualization / RegistryWriteVirtualization properties have been removed. All app data now lives in the package's own data folders (LocalState / LocalCache) under standard MSIX virtualization, so the only restricted capability left is runFullTrust (a Win32 desktop app). Minimum supported version: Windows 10, version 2004 (build 19041). The support contact is now an e-mail address (no GitHub links).
+Update 1.7.0: no new capabilities or permissions. Changes: lines pasted into a table go one per row, and the find & paste window no longer flickers. Since 1.6.6 the app also copies its notes to Documents\Super Speed Note 백업 so they survive an uninstall/reinstall. This is a plain local folder (the user can change it or turn it off in Settings); nothing is sent over the network. Earlier changes (product ID 9N4JKW5GFTHS): the unvirtualizedResources restricted capability and the desktop6 FileSystemWriteVirtualization / RegistryWriteVirtualization properties have been removed. All app data now lives in the package's own data folders (LocalState / LocalCache) under standard MSIX virtualization, so the only restricted capability left is runFullTrust (a Win32 desktop app). Minimum supported version: Windows 10, version 2004 (build 19041). The support contact is now an e-mail address (no GitHub links).
 
 No account or sign-in is needed. Try: press Ctrl+Alt+F in any app (e.g. Notepad) to open the search window, type a word from a note and press Enter to paste that line back. Ctrl+Alt+M opens a quick memo in the screen corner; press it again to close. The app has no network communication.
 
