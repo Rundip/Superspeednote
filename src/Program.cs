@@ -33,7 +33,7 @@ namespace SuperSpeedNote
 {
     static class Program
     {
-        public const string Version = "1.7.0";
+        public const string Version = "1.7.1";
         public const string WebView2Version = "1.0.4258.31";
         public static string DataDir, LocalDir;
         public static bool Portable;                  // a "data" folder next to the exe holds the notes (test / USB copies)
@@ -465,7 +465,7 @@ namespace SuperSpeedNote
             saver.Flush(3000);
             // the page comes back in the app window; the find & paste window and the quick memo close
             popWanted = false; holdWeb = false;
-            if (pop != null) { pop.Attached = false; HidePopVeil(); if (pop.Visible) pop.Hide(); }
+            if (pop != null) { pop.Attached = false; HideVeil(popVeil); if (pop.Visible) pop.Hide(); }
             DetachQuick(true);
             if (webIn != this) PutWeb(this);
             webReady = false;
@@ -1115,53 +1115,58 @@ namespace SuperSpeedNote
         void AttachPop()
         {
             if (ctl == null || pop == null) return;
-            if (quick != null && quick.Visible) quick.Hide();   // a quick memo waits until the search is done
+            if (quick != null && quick.Visible) { HideVeil(quickVeil); quick.Hide(); }   // a quick memo waits until the search is done
             pop.Attached = true;
             if (!pop.Visible) pop.Show();
-            ShowPopVeil();
+            ShowVeil(pop, ref popVeil);
             holdWeb = false;
             PutWeb(pop);
             ForceForeground(pop.Handle);
             try { ctl.MoveFocus(CoreWebView2MoveFocusReason.Programmatic); } catch { }
             Post("palette", "focus");
-            if (popVeil == null || !Native.IsWindowVisible(popVeil.Handle)) return;
-            int gen = popVeilGen;
-            Post("paint", PaintArg(pop) + " v" + gen);
-            After(700, () => { if (gen == popVeilGen) HidePopVeil(); });   // never answered: shown anyway
+            LiftWhenDrawn(pop, popVeil);
         }
 
-        // Shown again in the search window, the page puts up for a few frames what it last showed (the app window's
-        // page, cropped) and only then the search box at this window's size (and, on another monitor, scale). A plain
-        // window of the search window's colour lies over it meanwhile, right above it, and goes once the box is drawn.
-        StillForm popVeil;
-        int popVeilGen;
-        void ShowPopVeil()
+        // Shown again in the search window or the quick memo, the page puts up for a few frames what it last showed
+        // (the app window's page, or the memo written before, at another size) and only then what it is now, at this
+        // window's size (and, on another monitor, scale). A plain window of that window's colour lies right over it
+        // meanwhile, and goes once the page has drawn there.
+        StillForm popVeil, quickVeil;
+        void ShowVeil(Form f, ref StillForm v)
         {
             try
             {
-                Size cs = pop.ClientSize;
-                if (cs.Width < 2 || cs.Height < 2) return;
-                if (popVeil == null) { popVeil = new StillForm(pop.Handle); int round = 2; Native.DwmSetWindowAttribute(popVeil.Handle, 33 /*rounded, as the search window*/, ref round, 4); }
-                if (popVeil.Pic == null || popVeil.Pic.Size != cs || popVeil.Tint != pop.BackColor)
+                Size cs = f.ClientSize;
+                if (cs.Width < 2 || cs.Height < 2 || !f.Visible) return;
+                if (v == null) { v = new StillForm(f.Handle); int round = 2; Native.DwmSetWindowAttribute(v.Handle, 33 /*rounded, as the window under it*/, ref round, 4); }
+                if (v.Pic == null || v.Pic.Size != cs || v.Tint != f.BackColor)
                 {
                     var b = new Bitmap(cs.Width, cs.Height, System.Drawing.Imaging.PixelFormat.Format32bppRgb);
-                    using (Graphics g = Graphics.FromImage(b)) g.Clear(pop.BackColor);
-                    if (popVeil.Pic != null) popVeil.Pic.Dispose();
-                    popVeil.Pic = b; popVeil.Tint = pop.BackColor;
+                    using (Graphics g = Graphics.FromImage(b)) g.Clear(f.BackColor);
+                    if (v.Pic != null) v.Pic.Dispose();
+                    v.Pic = b; v.Tint = f.BackColor;
                 }
-                popVeilGen++;
-                Rectangle r = pop.RectangleToScreen(pop.ClientRectangle);
-                Native.SetWindowPos(popVeil.Handle, (IntPtr)(-1) /*TOPMOST: over the search window*/, r.X, r.Y, r.Width, r.Height, 0x10 /*NOACTIVATE*/ | 0x40 /*SHOWWINDOW*/ | 0x200 /*NOOWNERZORDER*/);
-                popVeil.Invalidate();
-                popVeil.Update();
+                v.Gen++;
+                Rectangle r = f.RectangleToScreen(f.ClientRectangle);
+                Native.SetWindowPos(v.Handle, (IntPtr)(-1) /*TOPMOST: over that window*/, r.X, r.Y, r.Width, r.Height, 0x10 /*NOACTIVATE*/ | 0x40 /*SHOWWINDOW*/ | 0x200 /*NOOWNERZORDER*/);
+                v.Invalidate();
+                v.Update();
             }
-            catch (Exception ex) { Program.Log(ex); HidePopVeil(); }
+            catch (Exception ex) { Program.Log(ex); HideVeil(v); }
         }
-        void HidePopVeil()
+        // the page asked to draw at that window's size: its veil goes once it has (at the latest after a moment)
+        void LiftWhenDrawn(Form f, StillForm v)
         {
-            if (popVeil == null) return;
-            popVeilGen++;
-            if (popVeil.IsHandleCreated && Native.IsWindowVisible(popVeil.Handle)) Native.ShowWindow(popVeil.Handle, 0 /*SW_HIDE*/);
+            if (v == null || !v.IsHandleCreated || !Native.IsWindowVisible(v.Handle)) return;
+            int gen = v.Gen;
+            Post("paint", PaintArg(f) + " " + (v == popVeil ? "v" : "q") + gen);
+            After(700, () => { if (gen == v.Gen) HideVeil(v); });   // never answered: shown anyway
+        }
+        void HideVeil(StillForm v)
+        {
+            if (v == null) return;
+            v.Gen++;
+            if (v.IsHandleCreated && Native.IsWindowVisible(v.Handle)) Native.ShowWindow(v.Handle, 0 /*SW_HIDE*/);
         }
         void After(int ms, Action a)
         {
@@ -1176,7 +1181,7 @@ namespace SuperSpeedNote
         void ReleasePop()
         {
             popWanted = false;
-            if (pop != null) { pop.Attached = false; HidePopVeil(); if (pop.Visible) pop.Hide(); }
+            if (pop != null) { pop.Attached = false; HideVeil(popVeil); if (pop.Visible) pop.Hide(); }
             if (!popShown) { DetachPop(); return; }
             Post("palette", "close");
             var t = new System.Windows.Forms.Timer { Interval = 500 };
@@ -1191,13 +1196,15 @@ namespace SuperSpeedNote
             holdWeb = false;
             if (!popShown && webIn == this) HideCover();     // the page never left: nothing to wait for
             // hide it first: moving the page out first would leave a bare window on screen for a moment
-            if (pop != null) { pop.Attached = false; HidePopVeil(); if (pop.Visible) pop.Hide(); }
+            if (pop != null) { pop.Attached = false; HideVeil(popVeil); if (pop.Visible) pop.Hide(); }
             if (popShown)
             {
                 if (quickOpen && quick != null)
                 {
-                    PutWeb(quick);
                     Native.ShowWindow(quick.Handle, 8 /*SW_SHOWNA: back on top without taking the keyboard*/);
+                    ShowVeil(quick, ref quickVeil);
+                    PutWeb(quick);
+                    LiftWhenDrawn(quick, quickVeil);
                 }
                 else { PutWeb(this); UncoverWhenDrawn(); }
                 if (webIn == this && ctl != null && IsFront()) { try { ctl.MoveFocus(CoreWebView2MoveFocusReason.Programmatic); } catch { } }
@@ -1392,6 +1399,7 @@ namespace SuperSpeedNote
             PlaceQuick(quickRet);
             quickOpen = true;
             quick.Attached = false;
+            quick.Starting = !webReady;
             quick.Invalidate();
             if (!quick.Visible) quick.Show();
             SettleQuick();
@@ -1458,12 +1466,14 @@ namespace SuperSpeedNote
             // The app window keeps showing its picture while the memo has the page. Only without one (no picture could
             // be taken) does it go, at once: emptied of its page it would stay a bare navy box
             if (Visible && WindowState != FormWindowState.Minimized && still == null) { quickHidMain = true; SaveBounds(); Native.NoFade(Handle, true); Hide(); Native.NoFade(Handle, false); }
+            if (!quick.Visible) quick.Show();
+            ShowVeil(quick, ref quickVeil);             // (no glimpse of the memo written before)
             PutWeb(quick);
             Invalidate();
-            if (!quick.Visible) quick.Show();
             ForceForeground(quick.Handle);
             try { ctl.MoveFocus(CoreWebView2MoveFocusReason.Programmatic); } catch { }
             Post("quick", "focus");
+            LiftWhenDrawn(quick, quickVeil);
         }
 
         // how: "close" = put away (the page drops it if empty), "main" = carry on writing in the app window
@@ -1496,6 +1506,7 @@ namespace SuperSpeedNote
                     File.WriteAllText(Path.Combine(Program.LocalDir, "quick.txt"), (int)(quick.Width / s) + "," + (int)(quick.Height / s));
                 }
                 catch { }
+                HideVeil(quickVeil);
                 quick.Hide();
             }
             quick.Attached = false;
@@ -1957,8 +1968,11 @@ namespace SuperSpeedNote
                 case "pong": pingAt = 0; break;
                 case "painted":                              // the page has drawn: in the search window (its veil goes) or the app window
                     drawWait = 0;
-                    if (popVeil != null && a == "v" + popVeilGen) { int g = popVeilGen; After(50, () => { if (g == popVeilGen) HidePopVeil(); }); }
-                    else PaintedUnderCover();
+                    {
+                        StillForm v = popVeil != null && a == "v" + popVeil.Gen ? popVeil : quickVeil != null && a == "q" + quickVeil.Gen ? quickVeil : null;
+                        if (v != null) { int g = v.Gen; After(50, () => { if (g == v.Gen) HideVeil(v); }); }
+                        else PaintedUnderCover();
+                    }
                     break;
                 case "ready":
                     webReady = true; pingAt = 0;
@@ -3511,7 +3525,8 @@ namespace SuperSpeedNote
     sealed class StillForm : Form
     {
         public Bitmap Pic;
-        public Color Tint;                        // a plain picture's colour (the search window's veil)
+        public Color Tint;                        // a plain picture's colour (a veil over the search window / memo)
+        public int Gen;                           // which showing a late "drawn" / time-out belongs to
         readonly IntPtr owner;
 
         public StillForm(IntPtr owner)
@@ -3626,6 +3641,7 @@ namespace SuperSpeedNote
     sealed class QuickForm : Form
     {
         public bool Attached;                     // false while the engine is still starting (from standby)
+        public bool Starting;                     // the engine starts: "getting ready" shows (else just the colour, for a moment)
         public float Scale96 = 1f;                // DPI scale it was placed with (its size is saved unscaled)
         public Rectangle Want;                    // where PlaceQuick put it (the chosen corner, sized for that screen)
         public bool Placing;                      // being placed: a DPI change must not move it out of the corner
@@ -3682,7 +3698,7 @@ namespace SuperSpeedNote
         protected override void OnPaintBackground(PaintEventArgs e)
         {
             e.Graphics.Clear(BackColor);
-            if (Attached) return;
+            if (Attached || !Starting) return;
             float scale = DeviceDpi / 96f;
             bool dark = BackColor.GetBrightness() < 0.5f;
             using (var f = new Font("Malgun Gothic", 13f * scale, GraphicsUnit.Pixel))
