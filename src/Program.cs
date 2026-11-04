@@ -33,7 +33,7 @@ namespace SuperSpeedNote
 {
     static class Program
     {
-        public const string Version = "1.7.1";
+        public const string Version = "1.7.2";
         public const string WebView2Version = "1.0.4258.31";
         public static string DataDir, LocalDir;
         public static bool Portable;                  // a "data" folder next to the exe holds the notes (test / USB copies)
@@ -419,7 +419,11 @@ namespace SuperSpeedNote
                 webStarted = true;
                 InitWebView();
             }
-            else LoadSavedHotkeys();   // standby: no page yet, so register the last known hotkeys ourselves
+            else
+            {
+                LoadSavedHotkeys();    // standby: no page yet, so register the last known hotkeys ourselves
+                After(3000, PrepareQuick);
+            }
             BeginInvoke(new Action(SetupTray));
         }
 
@@ -630,6 +634,7 @@ namespace SuperSpeedNote
         {
             base.OnResize(e);
             if (Covered && (WindowState == FormWindowState.Minimized || still == null || still.Size != ClientSize)) HideCover();   // the picture no longer fits
+            if (WindowState == FormWindowState.Minimized) DropAhead();
             QuickToMain();
             if (ctl != null && webIn == this && WindowState != FormWindowState.Minimized)
                 ctl.Bounds = new Rectangle(Point.Empty, ClientSize);
@@ -647,7 +652,7 @@ namespace SuperSpeedNote
         protected override void OnVisibleChanged(EventArgs e)
         {
             base.OnVisibleChanged(e);
-            if (!Visible) HideCover();                  // an owned window stays on screen when its owner is hidden
+            if (!Visible) { HideCover(); DropAhead(); } // an owned window stays on screen when its owner is hidden
             UpdateWebVisibility();
             if (Visible) BeginInvoke(new Action(SettleWeb));
         }
@@ -655,6 +660,7 @@ namespace SuperSpeedNote
         protected override void OnActivated(EventArgs e)
         {
             base.OnActivated(e);
+            DropAhead();
             QuickToMain();
             SettleWeb();
             if (ctl != null && webIn == this) { try { ctl.MoveFocus(CoreWebView2MoveFocusReason.Programmatic); } catch { } }
@@ -767,6 +773,7 @@ namespace SuperSpeedNote
         {
             base.OnDeactivate(e);
             lastDeactivate = Environment.TickCount;
+            TakeAheadSoon();
         }
 
         void UpdateWebVisibility(bool shown = false)    // shown: the app window is known to be on screen
@@ -1138,11 +1145,16 @@ namespace SuperSpeedNote
             {
                 Size cs = f.ClientSize;
                 if (cs.Width < 2 || cs.Height < 2 || !f.Visible) return;
-                if (v == null) { v = new StillForm(f.Handle); int round = 2; Native.DwmSetWindowAttribute(v.Handle, 33 /*rounded, as the window under it*/, ref round, 4); }
+                if (v == null) v = NewVeil(f);
                 if (v.Pic == null || v.Pic.Size != cs || v.Tint != f.BackColor)
                 {
                     var b = new Bitmap(cs.Width, cs.Height, System.Drawing.Imaging.PixelFormat.Format32bppRgb);
-                    using (Graphics g = Graphics.FromImage(b)) g.Clear(f.BackColor);
+                    using (Graphics g = Graphics.FromImage(b))
+                    {
+                        g.Clear(f.BackColor);
+                        var q = f as QuickForm;
+                        if (q != null) q.DrawLook(g, cs);       // (as the memo window under it: nothing changes when it goes on)
+                    }
                     if (v.Pic != null) v.Pic.Dispose();
                     v.Pic = b; v.Tint = f.BackColor;
                 }
@@ -1153,6 +1165,13 @@ namespace SuperSpeedNote
                 v.Update();
             }
             catch (Exception ex) { Program.Log(ex); HideVeil(v); }
+        }
+        static StillForm NewVeil(Form f)
+        {
+            var v = new StillForm(f.Handle);
+            int round = 2;
+            Native.DwmSetWindowAttribute(v.Handle, 33 /*rounded, as the window under it*/, ref round, 4);
+            return v;
         }
         // the page asked to draw at that window's size: its veil goes once it has (at the latest after a moment)
         void LiftWhenDrawn(Form f, StillForm v)
@@ -1217,9 +1236,16 @@ namespace SuperSpeedNote
             if (Covered && webIn == this && still != null && still.Size == ClientSize) return;   // opened again while the page comes back: the picture from before still holds
             if (quickOpen && webIn != this) return;     // the page is in the quick memo: keep the app window's picture for its return
             DropStill();
-            if (!Visible || WindowState == FormWindowState.Minimized || webIn != this || ctl == null) return;
-            Size cs = ClientSize;
-            if (cs.Width < 2 || cs.Height < 2) return;
+            bool shown = Visible && WindowState != FormWindowState.Minimized && webIn == this && ctl != null;
+            if (shown && ahead != null && ahead.Size == ClientSize) { still = ahead; ahead = null; }   // taken ahead: nothing to wait for
+            DropAhead();
+            if (shown && still == null) still = WindowPicture(ClientSize);
+        }
+        void DropStill() { if (still != null) { still.Dispose(); still = null; } }
+        // the window capture: null when it missed the page (no picture beats a wrong one)
+        Bitmap WindowPicture(Size cs)
+        {
+            if (cs.Width < 2 || cs.Height < 2) return null;
             Bitmap b = null;
             try
             {
@@ -1231,12 +1257,12 @@ namespace SuperSpeedNote
                     try { ok = Native.PrintWindow(Handle, hdc, 3 /*PW_CLIENTONLY | PW_RENDERFULLCONTENT: the page too*/); }
                     finally { g.ReleaseHdc(hdc); }
                 }
-                if (ok && !LooksBare(b)) { still = b; b = null; }   // a capture that missed the page: no picture beats a wrong one
+                if (ok && !LooksBare(b)) { Bitmap good = b; b = null; return good; }
             }
             catch (Exception ex) { Program.Log(ex); }
             finally { if (b != null) b.Dispose(); }
+            return null;
         }
-        void DropStill() { if (still != null) { still.Dispose(); still = null; } }
         // A capture that missed the page: all one colour (black, white), or only the app window's own navy background
         // (the gradient OnPaintBackground draws under the page) - a picture of that would show a navy window.
         bool LooksBare(Bitmap b)
@@ -1269,33 +1295,71 @@ namespace SuperSpeedNote
             if (still == null && wv != null && webIn == this && Visible && WindowState != FormWindowState.Minimized && !Covered)
             {
                 Size cs = ClientSize;
-                Bitmap got = null;
-                try
-                {
-                    var ms = new MemoryStream();               // not disposed on a time-out: the capture may still write to it
-                    Task cap = wv.CapturePreviewAsync(CoreWebView2CapturePreviewImageFormat.Png, ms);
-                    if (await Task.WhenAny(cap, Task.Delay(500)) == cap && cap.Status == TaskStatus.RanToCompletion && ms.Length > 0)
-                    {
-                        ms.Position = 0;
-                        using (Image img = Image.FromStream(ms))
-                        {
-                            got = new Bitmap(cs.Width, cs.Height, System.Drawing.Imaging.PixelFormat.Format32bppRgb);
-                            using (Graphics g = Graphics.FromImage(got)) g.DrawImage(img, new Rectangle(Point.Empty, cs));
-                        }
-                        ms.Dispose();
-                    }
-                }
-                catch (Exception ex) { Program.Log(ex); }
+                Bitmap got = await PagePicture(cs);
                 if (seq != stillSeq) { if (got != null) got.Dispose(); return; }   // asked again meanwhile: that one carries on
-                if (got != null && still == null && webIn == this && ClientSize == cs && !LooksBare(got))
-                {
-                    still = got; got = null;
-                    if (!toldCapture) { toldCapture = true; Program.Log(new Exception("window capture missed the page: the page's own picture is used")); }
-                }
+                if (still == null && PageCaught(got, cs)) { still = got; got = null; }
                 if (got != null) got.Dispose();
             }
             if (seq != stillSeq) return;
             try { then(); } catch (Exception ex) { Program.Log(ex); }
+        }
+        async Task<Bitmap> PagePicture(Size cs)
+        {
+            Bitmap got = null;
+            try
+            {
+                var ms = new MemoryStream();                   // not disposed on a time-out: the capture may still write to it
+                Task cap = wv.CapturePreviewAsync(CoreWebView2CapturePreviewImageFormat.Png, ms);
+                if (await Task.WhenAny(cap, Task.Delay(500)) == cap && cap.Status == TaskStatus.RanToCompletion && ms.Length > 0)
+                {
+                    ms.Position = 0;
+                    using (Image img = Image.FromStream(ms))
+                    {
+                        got = new Bitmap(cs.Width, cs.Height, System.Drawing.Imaging.PixelFormat.Format32bppRgb);
+                        using (Graphics g = Graphics.FromImage(got)) g.DrawImage(img, new Rectangle(Point.Empty, cs));
+                    }
+                    ms.Dispose();
+                }
+            }
+            catch (Exception ex) { Program.Log(ex); }
+            return got;
+        }
+        bool PageCaught(Bitmap got, Size cs)            // the page's own picture still fits and really shows the page
+        {
+            if (got == null || webIn != this || ClientSize != cs || LooksBare(got)) return false;
+            if (!toldCapture) { toldCapture = true; Program.Log(new Exception("window capture missed the page: the page's own picture is used")); }
+            return true;
+        }
+
+        // Taking the picture takes a moment (the window capture tens of milliseconds and more, the page's own picture up
+        // to half a second) and a hotkey must not wait for it. So it is taken ahead: once you have left the app window and
+        // that has settled, and again when the page is back in it while you work elsewhere. In the app window again,
+        // where the page changes, it is let go. A hotkey that finds none (or one of another size) takes one as before.
+        Bitmap ahead;
+        int aheadGen;                                   // which taking a late answer belongs to
+        void TakeAheadSoon()
+        {
+            int gen = ++aheadGen;
+            After(600, () => TakeAhead(gen));
+        }
+        async void TakeAhead(int gen)
+        {
+            if (gen != aheadGen || ctl == null || wv == null || !webReady || webIn != this || holdWeb || popWanted || quickOpen) return;
+            if (!Visible || WindowState == FormWindowState.Minimized || IsFront()) return;
+            if (Covered) { TakeAheadSoon(); return; }   // the page is still coming back under its picture
+            DropAhead();
+            gen = aheadGen;
+            Size cs = ClientSize;
+            ahead = WindowPicture(cs);
+            if (ahead != null) return;
+            Bitmap got = await PagePicture(cs);
+            if (gen == aheadGen && PageCaught(got, cs)) { ahead = got; got = null; }
+            if (got != null) got.Dispose();
+        }
+        void DropAhead()
+        {
+            aheadGen++;
+            if (ahead != null) { ahead.Dispose(); ahead = null; }
         }
 
         // A picture of the app window laid over it while the page is away in the search window and while it comes
@@ -1372,6 +1436,7 @@ namespace SuperSpeedNote
             }
             catch (Exception ex) { Program.Log(ex); }
             UpdateWebVisibility();
+            if (f == this) TakeAheadSoon();
         }
 
         // ---------- quick memo ----------
@@ -1382,20 +1447,7 @@ namespace SuperSpeedNote
             ClosePop();
             IntPtr fg = Native.GetForegroundWindow();
             quickRet = IsExternalWindow(fg) ? fg : IsExternalWindow(lastExternal) ? lastExternal : IntPtr.Zero;
-            if (quick == null)
-            {
-                quick = new QuickForm();
-                quick.BackColor = quickBg;
-                quick.Activated += (s, e) => { if (quickShown && ctl != null) { try { ctl.MoveFocus(CoreWebView2MoveFocusReason.Programmatic); } catch { } } };
-                quick.Resize += (s, e) => { if (quickShown && ctl != null) ctl.Bounds = new Rectangle(Point.Empty, quick.ClientSize); };
-                quick.Move += (s, e) => { if (quickShown && ctl != null) { try { ctl.NotifyParentWindowPositionChanged(); } catch { } } };
-                quick.FormClosing += (s, e) =>   // Alt+F4 = X
-                {
-                    if (finished || e.CloseReason != CloseReason.UserClosing) return;
-                    e.Cancel = true;
-                    EndQuick("close", true);
-                };
-            }
+            EnsureQuick();
             PlaceQuick(quickRet);
             quickOpen = true;
             quick.Attached = false;
@@ -1403,6 +1455,7 @@ namespace SuperSpeedNote
             quick.Invalidate();
             if (!quick.Visible) quick.Show();
             SettleQuick();
+            quick.Update();                             // drawn now: it looks like a memo before anything else happens
             ForceForeground(quick.Handle);
             if (!webReady) { pendingQuick = true; EnsureWeb(); return; }   // from standby: the engine starts now (~1 s)
             // The app window stays where it is (on any screen), showing its picture while the page is in the memo
@@ -1412,6 +1465,41 @@ namespace SuperSpeedNote
                 ShowCover();
                 Post("quick", "open");
             });
+        }
+
+        void EnsureQuick()
+        {
+            if (quick != null) return;
+            quick = new QuickForm();
+            quick.BackColor = quickBg;
+            quick.Activated += (s, e) => { if (quickShown && ctl != null) { try { ctl.MoveFocus(CoreWebView2MoveFocusReason.Programmatic); } catch { } } };
+            quick.Resize += (s, e) => { if (quickShown && ctl != null) ctl.Bounds = new Rectangle(Point.Empty, quick.ClientSize); };
+            quick.Move += (s, e) => { if (quickShown && ctl != null) { try { ctl.NotifyParentWindowPositionChanged(); } catch { } } };
+            quick.FormClosing += (s, e) =>   // Alt+F4 = X
+            {
+                if (finished || e.CloseReason != CloseReason.UserClosing) return;
+                e.Cancel = true;
+                EndQuick("close", true);
+            };
+        }
+
+        // The first press pays for nothing either: the memo window and what goes over it are made ahead, hidden, in a
+        // quiet moment, and its first drawing is done once (in .NET the first run of anything is the slow one).
+        void PrepareQuick()
+        {
+            if (finished || quitting) return;
+            try
+            {
+                EnsureQuick();
+                IntPtr h = quick.Handle;
+                GC.KeepAlive(h);
+                if (quickVeil == null) quickVeil = NewVeil(quick);
+                if (cover == null) { cover = new StillForm(Handle); h = cover.Handle; GC.KeepAlive(h); }
+                using (var b = new Bitmap(16, 16, System.Drawing.Imaging.PixelFormat.Format32bppRgb))
+                using (Graphics g = Graphics.FromImage(b))
+                    quick.DrawLook(g, b.Size);
+            }
+            catch (Exception ex) { Program.Log(ex); }
         }
 
         // The corner the quick memo opens in (Settings: tl / tr / bl / br), kept here so it works from standby too.
@@ -1977,6 +2065,7 @@ namespace SuperSpeedNote
                 case "ready":
                     webReady = true; pingAt = 0;
                     StartPulse();
+                    After(1000, PrepareQuick);
                     Invalidate();
                     Post("winState", maxState ? "1" : "0");
                     Program.Mark("ready");
@@ -3698,7 +3787,9 @@ namespace SuperSpeedNote
         protected override void OnPaintBackground(PaintEventArgs e)
         {
             e.Graphics.Clear(BackColor);
-            if (Attached || !Starting) return;
+            if (Attached) return;
+            DrawLook(e.Graphics, ClientSize);
+            if (!Starting) return;
             float scale = DeviceDpi / 96f;
             bool dark = BackColor.GetBrightness() < 0.5f;
             using (var f = new Font("Malgun Gothic", 13f * scale, GraphicsUnit.Pixel))
@@ -3708,6 +3799,25 @@ namespace SuperSpeedNote
                 var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
                 e.Graphics.DrawString("빠른 메모 준비 중…", f, b, ClientRectangle, sf);
             }
+        }
+
+        // It is a memo from its first frame: the page's bar (#quickBar) over the colour of its paper, until the page itself
+        // is there a moment later and adds the hint, the buttons and the caret.
+        public void DrawLook(Graphics g, Size cs)
+        {
+            bool dark = BackColor.GetBrightness() < 0.5f;
+            float s = Scale96, k = 15 * s / 24;         // the icon: 15 px wide, its path drawn in 24
+            using (var bar = new SolidBrush(dark ? Color.FromArgb(0x05, 0x0C, 0x1F) : Color.FromArgb(0x0A, 0x15, 0x32)))   // = --top
+                g.FillRectangle(bar, 0, 0, cs.Width, (int)Math.Round(34 * s));
+            var bolt = new[] { new PointF(13, 2), new PointF(4, 14), new PointF(11, 14), new PointF(10, 22), new PointF(19, 10), new PointF(12, 10) };
+            for (int i = 0; i < bolt.Length; i++) bolt[i] = new PointF(12 * s + bolt[i].X * k, 9.5f * s + bolt[i].Y * k);
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            using (var pen = new Pen(Color.FromArgb(0x9C, 0xC0, 0xFF), 1.8f * k) { LineJoin = LineJoin.Round })
+                g.DrawPolygon(pen, bolt);
+            g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+            using (var f = new Font("Malgun Gothic", 12.5f * s, FontStyle.Bold, GraphicsUnit.Pixel))
+            using (var sf = new StringFormat(StringFormat.GenericTypographic) { LineAlignment = StringAlignment.Center })
+                g.DrawString("빠른 메모", f, Brushes.White, new RectangleF(34 * s, 0, cs.Width, 34 * s), sf);
         }
     }
 }
