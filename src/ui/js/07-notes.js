@@ -19,11 +19,11 @@ function newNoteTitled(t) {                       // searched for a note that is
 function deleteNote(id) { deleteNotes([id]); }
 // Several notes at once: ask first, so a stray Ctrl+A → Del can't clear the board. One note goes straight to
 // the trash (with 되돌리기). Cancel is focused; Del again confirms.
-// o.confirm: ask for a single note too (the list's Delete); o.after / o.cancel run once the dialog is gone
+// o.confirm: ask for a single note too (the list's Delete); o.after / o.cancel run once the dialog is gone; o.list: see deleteNotes
 function askDeleteNotes(ids, o = {}) {
   ids = ids.filter(id => noteById(id));
   if (!ids.length) return;
-  if (ids.length < 2 && !o.confirm) { deleteNotes(ids); return; }
+  if (ids.length < 2 && !o.confirm) { deleteNotes(ids, o); return; }
   const one = ids.length === 1, all = ids.length === S.notes.length && !one;
   const names = ids.slice(0, 6).map(id => `<li>${esc(titleOf(noteById(id)) || '제목 없음')}</li>`).join('') +
     (ids.length > 6 ? `<li class="more">외 ${ids.length - 6}개</li>` : '');
@@ -35,12 +35,13 @@ function askDeleteNotes(ids, o = {}) {
     () => { if (!done && o.cancel) setTimeout(o.cancel, 0); });
   const yes = $('#delYes');
   $('#delNo').onclick = closeModal;
-  yes.onclick = () => { done = true; closeModal(); deleteNotes(ids); if (o.after) setTimeout(o.after, 0); };
+  yes.onclick = () => { done = true; closeModal(); deleteNotes(ids, o); if (o.after) setTimeout(o.after, 0); };
   modal.querySelector('.dlg').addEventListener('keydown', e => { if (e.key === 'Delete') { e.preventDefault(); e.stopPropagation(); yes.click(); } });
   $('#delNo').focus();
 }
 // Deleted notes go to the data folder's trash\ (never erased); one "되돌리기" puts them all back in place.
-function deleteNotes(ids) {
+// o.list: deleted in the memo list: you stay in it, even when home is the board. The list stays where it is in any case.
+function deleteNotes(ids, o = {}) {
   const items = [];
   for (const id of ids) {
     const i = S.notes.findIndex(n => n.id === id);
@@ -51,10 +52,11 @@ function deleteNotes(ids) {
   if (!items.length) return;
   items.sort((a, b) => a.i - b.i);
   const gone = new Set(items.map(x => x.meta.id));
-  // the next card takes the selection (the one after, else before) - not the first card, often off screen
-  const vis = view === 'board' ? visibleIds() : [], at = Math.min(...items.map(x => vis.indexOf(x.meta.id)).filter(i => i >= 0));
+  // the next card / list row takes the selection (the one after, else before) - not the first, often off screen
+  const vis = view === 'board' ? visibleIds() : $$('.sb-item', sbList).map(x => x.dataset.id), at = Math.min(...items.map(x => vis.indexOf(x.meta.id)).filter(i => i >= 0));
   const nextSel = isFinite(at) ? vis.slice(at).find(id => !gone.has(id)) || vis.slice(0, at).reverse().find(id => !gone.has(id)) || null : selId;
   const wasOpen = cur && gone.has(cur) ? cur : null;
+  const spot = view === 'editor' ? sbSpot(gone) : null;
   S.notes = S.notes.filter(n => !gone.has(n.id));
   for (const x of items) {                        // empty: gone for good; else to the trash with its title, colour, place
     const id = x.meta.id;
@@ -66,9 +68,14 @@ function deleteNotes(ids) {
   if (gone.has(selId)) selId = nextSel;
   stateDirty = true; flushState();
   applyHotkeys();
-  if (cur && gone.has(cur)) { cur = null; goHome(); } else rerender();
+  if (wasOpen) { cur = null; if (o.list && noteById(selId)) showList(selId); else goHome(); } else rerender();
   markSb();
   if (view === 'board') { const c = grid.querySelector('.card.sel'); if (c) c.scrollIntoView({ block: 'nearest' }); }
+  else if (spot) {                                // drawing the list again went to the open note's row: back to where you were
+    sbToSpot(spot);
+    const on = wasOpen && sbList.querySelector('.on');   // the next note, now open, in view (it took the deleted one's place)
+    if (on) on.scrollIntoView({ block: 'nearest' });
+  }
   const kept = items.filter(x => !x.empty).length, purged = items.length - kept;
   const label = items.length === 1 ? (purged ? '빈 메모를 삭제했어요' : `‘${titleOf(items[0].meta) || '제목 없음'}’ 메모를 휴지통으로 옮겼어요`)
     : purged ? `메모 ${items.length}개를 삭제했어요 · 빈 메모 ${purged}개는 휴지통에 남기지 않아요` : `메모 ${items.length}개를 휴지통으로 옮겼어요`;

@@ -248,7 +248,7 @@ body.sb-off #sidebar{display:none}
 .sb-item.msel::before{opacity:1;background:#9cc0ff}
 #sbList{flex:1;overflow:auto;padding:0 10px 14px}
 #sbList::-webkit-scrollbar-thumb{background:rgba(255,255,255,.16);background-clip:padding-box}
-.sb-item{position:relative;padding:9px 12px 9px 16px;border-radius:11px;margin-bottom:2px;content-visibility:auto;contain-intrinsic-size:auto 52px}
+.sb-item{position:relative;padding:9px 12px 9px 16px;border-radius:11px;margin-bottom:2px;content-visibility:auto;contain-intrinsic-size:auto 39px}   /* the two lines' real height: rows drawn anew don't move the list when first seen */
 .sb-item::before{content:'';position:absolute;left:6px;top:12px;bottom:12px;width:3px;border-radius:3px;background:var(--c);opacity:.55}
 .sb-item:hover{background:rgba(255,255,255,.06)}
 .sb-item.on{background:rgba(255,255,255,.13)}

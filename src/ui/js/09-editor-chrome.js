@@ -63,11 +63,23 @@ sbList.addEventListener('click', e => {
 });
 // Del in the list: ask, then the next note in the list opens and the keys stay here for the next one
 function sbDelete(ids) {
-  const order = $$('.sb-item', sbList).map(x => x.dataset.id), gone = new Set(ids);
-  const last = Math.max(...ids.map(id => order.indexOf(id)));
-  const next = order.slice(last + 1).find(id => !gone.has(id)) || order.slice(0, last).reverse().find(id => !gone.has(id));
   const stay = () => { if (view === 'editor') sbList.focus({ preventScroll: true }); };
-  askDeleteNotes(ids, { confirm: true, cancel: stay, after: () => { if (next && noteById(next) && (!cur || gone.has(cur) || view !== 'editor')) openNote(next, { browse: true }); stay(); } });
+  askDeleteNotes(ids, { confirm: true, list: true, cancel: stay, after: stay });
+}
+// What you see in the list, kept while notes go: the row at its top stays at that height (one that goes: the next one
+// left takes its place), and the rows below a deleted one move up. By a row, not by scrollTop: rows drawn anew are
+// laid out at other heights until they are seen (content-visibility), so the same scrollTop can show other rows.
+function sbSpot(gone) {
+  const edge = sbList.getBoundingClientRect().top, rows = [...sbList.children];
+  const i = rows.findIndex(r => r.getBoundingClientRect().bottom > edge);
+  if (i < 0) return null;                         // (the list isn't on screen)
+  const keep = rows.slice(i).find(r => !gone.has(r.dataset.id));
+  return { id: keep ? keep.dataset.id : '', y: rows[i].getBoundingClientRect().top - edge };
+}
+function sbToSpot(spot) {
+  const r = spot.id && sbList.querySelector(`.sb-item[data-id="${spot.id}"]`);
+  if (r) sbList.scrollTop += r.getBoundingClientRect().top - sbList.getBoundingClientRect().top - spot.y;
+  else sbList.scrollTop = sbList.scrollHeight;    // nothing left below: the end of the list
 }
 sbList.addEventListener('keydown', e => {
   if (e.isComposing) return;
@@ -142,12 +154,12 @@ sbList.addEventListener('contextmenu', e => {
   if (sbMulti.size > 1 && sbMulti.has(it.dataset.id)) {
     const ids = [...sbMulti];
     showMenu(e.clientX, e.clientY, [
-      { label: `선택한 ${ids.length}개 삭제`, icon: 'i-trash', kbd: 'Del', danger: true, action: () => askDeleteNotes(ids) },
+      { label: `선택한 ${ids.length}개 삭제`, icon: 'i-trash', kbd: 'Del', danger: true, action: () => askDeleteNotes(ids, { list: true }) },
       { label: '선택 해제', kbd: 'Esc', action: clearSb }
     ]);
     return;
   }
-  noteMenu(it.dataset.id, e.clientX, e.clientY);
+  noteMenu(it.dataset.id, e.clientX, e.clientY, true);
 });
 function renderHead() {
   const n = noteById(cur);

@@ -81,7 +81,7 @@ function colorMenu(id, x, y) {
   const n = noteById(id);
   if (n) showMenu(x, y, [{ colors: true, value: n.color, pick: c => setColor(id, c) }]);
 }
-function noteMenu(id, x, y) {
+function noteMenu(id, x, y, inList) {            // inList: a row of the memo list
   const n = noteById(id);
   if (!n) return;
   const here = view === 'editor' && id === cur;   // the ⋯ menu of the open note: no '열기', and Del means a character here
@@ -98,7 +98,7 @@ function noteMenu(id, x, y) {
     { label: '내보내기 (.txt)', icon: 'i-export', action: () => exportNote(id, 'txt') },
     { label: '내보내기 (.html)', icon: 'i-export', action: () => exportNote(id, 'html') },
     { sep: true },
-    { label: '삭제', icon: 'i-trash', kbd: here ? '' : 'Del', danger: true, action: () => deleteNote(id) }
+    { label: '삭제', icon: 'i-trash', kbd: here ? '' : 'Del', danger: true, action: () => deleteNotes([id], { list: inList }) }
   ]);
 }
 
