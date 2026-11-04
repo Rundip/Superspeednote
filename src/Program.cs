@@ -1067,8 +1067,9 @@ namespace SuperSpeedNote
             pop.Starting = !webReady;
             pop.Invalidate();
             if (!pop.Visible) pop.Show();
+            pop.Update();
             ForceForeground(pop.Handle);
-            if (!webReady) { pendingPalette = "pop"; EnsureWeb(); return; }   // from standby: the engine starts now (~1 s)
+            if (!webReady) { pendingPalette = "pop"; EnsureWeb(); HoldKeys(PopHasKeys, 4000); return; }   // from standby: the engine starts now (~1 s)
             StillThen(() =>
             {
                 if (!popWanted) { if (!Covered && webIn == this) DropStill(); return; }   // closed meanwhile
@@ -1084,6 +1085,36 @@ namespace SuperSpeedNote
                 }
                 Post("palette", "pop");
             });
+            HoldKeys(PopHasKeys, 500);
+        }
+        bool PopHasKeys() { return !popWanted || (popShown && !holdWeb && pageHasKeys); }
+
+        // From the moment a search window / memo takes the foreground until the page in it has the keyboard, a key pressed
+        // would land on the bare window and be gone. So meanwhile only what isn't input is handled (the page's messages,
+        // painting, timers): the keys wait in the queue and then reach the page in order, Korean composition included.
+        bool pageHasKeys, holdingKeys;
+        void HoldKeys(Func<bool> until, int maxMs)
+        {
+            if (holdingKeys) return;
+            holdingKeys = true;
+            pageHasKeys = false;
+            const uint NotInput = 0xF8;                 // QS_POSTMESSAGE | QS_TIMER | QS_PAINT | QS_SENDMESSAGE | QS_HOTKEY
+            var sw = Stopwatch.StartNew();
+            try
+            {
+                while (!until() && sw.ElapsedMilliseconds < maxMs)
+                {
+                    Native.MSG m;
+                    while (Native.PeekMessage(out m, IntPtr.Zero, 0, 0, 1u /*PM_REMOVE*/ | (NotInput << 16)))
+                    {
+                        if (m.message == 0x0012 /*WM_QUIT*/) { Native.PostQuitMessage(m.wParam.ToInt32()); return; }
+                        Native.DispatchMessage(ref m);
+                        if (until()) return;
+                    }
+                    Native.MsgWaitForMultipleObjects(0, null, false, 5, NotInput);
+                }
+            }
+            finally { holdingKeys = false; }
         }
 
         // Taking the foreground and moving the WebView in make Windows send passing "deactivated" messages
@@ -1160,9 +1191,19 @@ namespace SuperSpeedNote
                 }
                 v.Gen++;
                 Rectangle r = f.RectangleToScreen(f.ClientRectangle);
-                Native.SetWindowPos(v.Handle, (IntPtr)(-1) /*TOPMOST: over that window*/, r.X, r.Y, r.Width, r.Height, 0x10 /*NOACTIVATE*/ | 0x40 /*SHOWWINDOW*/ | 0x200 /*NOOWNERZORDER*/);
-                v.Invalidate();
-                v.Update();
+                int cloak = 1;                          // out of sight until drawn: shown for the first time it would be a dark frame
+                Native.DwmSetWindowAttribute(v.Handle, 13 /*DWMWA_CLOAK*/, ref cloak, 4);
+                try
+                {
+                    Native.SetWindowPos(v.Handle, (IntPtr)(-1) /*TOPMOST: over that window*/, r.X, r.Y, r.Width, r.Height, 0x10 /*NOACTIVATE*/ | 0x40 /*SHOWWINDOW*/ | 0x200 /*NOOWNERZORDER*/);
+                    v.Invalidate();
+                    v.Update();
+                }
+                finally
+                {
+                    cloak = 0;
+                    Native.DwmSetWindowAttribute(v.Handle, 13, ref cloak, 4);
+                }
             }
             catch (Exception ex) { Program.Log(ex); HideVeil(v); }
         }
@@ -1457,7 +1498,7 @@ namespace SuperSpeedNote
             SettleQuick();
             quick.Update();                             // drawn now: it looks like a memo before anything else happens
             ForceForeground(quick.Handle);
-            if (!webReady) { pendingQuick = true; EnsureWeb(); return; }   // from standby: the engine starts now (~1 s)
+            if (!webReady) { pendingQuick = true; EnsureWeb(); HoldKeys(QuickHasKeys, 4000); return; }   // from standby: the engine starts now (~1 s)
             // The app window stays where it is (on any screen), showing its picture while the page is in the memo
             StillThen(() =>
             {
@@ -1465,7 +1506,9 @@ namespace SuperSpeedNote
                 ShowCover();
                 Post("quick", "open");
             });
+            HoldKeys(QuickHasKeys, 500);
         }
+        bool QuickHasKeys() { return !quickOpen || (webIn == quick && pageHasKeys); }
 
         void EnsureQuick()
         {
@@ -1885,6 +1928,8 @@ namespace SuperSpeedNote
                 Program.Mark("controller");
                 ctl.DefaultBackgroundColor = bg;
                 ctl.Bounds = new Rectangle(Point.Empty, ClientSize);
+                ctl.GotFocus += (o, e) => pageHasKeys = true;
+                ctl.LostFocus += (o, e) => pageHasKeys = false;
                 wv = ctl.CoreWebView2;
 
                 CoreWebView2Settings s = wv.Settings;
@@ -2058,7 +2103,7 @@ namespace SuperSpeedNote
                     drawWait = 0;
                     {
                         StillForm v = popVeil != null && a == "v" + popVeil.Gen ? popVeil : quickVeil != null && a == "q" + quickVeil.Gen ? quickVeil : null;
-                        if (v != null) { int g = v.Gen; After(50, () => { if (g == v.Gen) HideVeil(v); }); }
+                        if (v != null) { int g = v.Gen; After(20, () => { if (g == v.Gen) HideVeil(v); }); }
                         else PaintedUnderCover();
                     }
                     break;
@@ -3556,7 +3601,12 @@ namespace SuperSpeedNote
         [StructLayout(LayoutKind.Sequential)] public struct RECT { public int Left, Top, Right, Bottom; }
         [StructLayout(LayoutKind.Sequential)] public struct POINT { public int X, Y; }
         [StructLayout(LayoutKind.Sequential)] public struct NCCALCSIZE_PARAMS { public RECT r0, r1, r2; public IntPtr pos; }
+        [StructLayout(LayoutKind.Sequential)] public struct MSG { public IntPtr hwnd; public uint message; public IntPtr wParam, lParam; public uint time; public POINT pt; }
 
+        [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern bool PeekMessage(out MSG msg, IntPtr hWnd, uint min, uint max, uint remove);
+        [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern IntPtr DispatchMessage(ref MSG msg);
+        [DllImport("user32.dll")] public static extern uint MsgWaitForMultipleObjects(uint count, IntPtr[] handles, bool all, uint ms, uint mask);
+        [DllImport("user32.dll")] public static extern void PostQuitMessage(int code);
         [DllImport("user32.dll")] public static extern bool RegisterHotKey(IntPtr hWnd, int id, uint mods, uint vk);
         [DllImport("user32.dll")] public static extern bool UnregisterHotKey(IntPtr hWnd, int id);
         [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
