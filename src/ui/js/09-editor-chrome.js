@@ -1,7 +1,7 @@
 // ---------------------------------------------------------------- editor chrome
 let sbT = 0;
 function renderSidebarSoon() { clearTimeout(sbT); sbT = setTimeout(() => renderSidebar(), 250); }
-let sbSig = '';
+let sbSig = '', sbShown = null;                   // sbShown: the note whose row the list last brought into view
 const staleRows = new Set();                      // notes edited since their sidebar row was drawn
 function sbItemHTML(n) {
   return `<div class="sb-item${n.id === cur ? ' on' : ''}${sbMulti.has(n.id) ? ' msel' : ''}" data-id="${n.id}" data-c="${n.color}" draggable="true" style="--c:${NOTE_COLORS[n.color]}"><div class="sb-row"><div class="t${titleOf(n) ? '' : ' ph'}">${esc(titleOf(n) || '제목 없음')}</div>` +
@@ -25,8 +25,9 @@ function renderSidebar(force) {
     }
     staleRows.clear();
   }
+  // the open note's row comes into view when a note is opened, not whenever the list is drawn: you may have scrolled
   const on = sbList.querySelector('.on');
-  if (on) on.scrollIntoView({ block: 'nearest' });
+  if (on && cur !== sbShown && sbList.clientHeight) { sbShown = cur; on.scrollIntoView({ block: 'nearest' }); }
 }
 // Shift+click (range) / Ctrl+click (toggle) pick several rows; Delete or the right-click menu deletes them together.
 const sbMulti = new Set();
@@ -199,8 +200,8 @@ titleIn.addEventListener('keydown', e => {
 titleIn.addEventListener('compositionend', () => { if (titleGo) { titleGo = false; setTimeout(toBody, 0); } });
 const narrow = matchMedia('(max-width:820px)');  // a half-screen window: the list opens as a drawer over the note
 $('#hSide').onclick = () => {
-  if (narrow.matches) { app.classList.toggle('sb-peek'); return; }
-  st.sidebar = !st.sidebar; app.classList.toggle('sb-off', !st.sidebar); saveStateSoon(); posOvSoon();
+  if (narrow.matches) { app.classList.toggle('sb-peek'); renderSidebar(); return; }
+  st.sidebar = !st.sidebar; app.classList.toggle('sb-off', !st.sidebar); saveStateSoon(); posOvSoon(); renderSidebar();
 };
 $('#pane').addEventListener('mousedown', () => app.classList.remove('sb-peek'));
 $('#hColor').onclick = e => { const r = e.currentTarget.getBoundingClientRect(); popAnchorTop = r.top; colorMenu(cur, r.left, r.bottom + 6); };

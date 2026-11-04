@@ -119,7 +119,7 @@ function duplicate(id) {
   saveStateSoon(); selId = c.id; rerender();
   toast('메모를 복제했어요');
 }
-function togglePin(id) { const n = noteById(id); if (!n) return; n.pinned = !n.pinned; saveStateSoon(); rerender(); }
+function togglePin(id) { const n = noteById(id); if (!n) return; n.pinned = !n.pinned; if (id === cur) sbShown = null; saveStateSoon(); rerender(); }   // (the list follows the open note to its new place)
 function setColor(id, c) { const n = noteById(id); if (!n) return; n.color = c; saveStateSoon(); rerender(); }
 function rerender() { if (view === 'board') renderBoard(true); else { renderSidebar(true); renderHead(); } }
 function copyText(id) {

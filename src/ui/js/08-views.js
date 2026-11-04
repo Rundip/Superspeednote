@@ -32,6 +32,7 @@ function openNote(id, o = {}) {
     lastSel = null;
   }
   setView('editor');
+  sbShown = null;                                  // opened: its row comes into view
   renderHead(); renderSidebar(); stats(); setSave(false, true);
   S.lastOpen = id; saveStateSoon();
   host.send('active', id);
