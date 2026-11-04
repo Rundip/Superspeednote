@@ -20,7 +20,7 @@ function quickStart() {
   if (quickOn) { host.send('quick', '1'); return; }
   closeModal(); closePop();
   if (S.notes.length >= MAX_NOTES) { host.send('quick', 'full'); return; }
-  quickPrev = { view, cur };
+  quickPrev = { view, cur, sel: selId, last: S.lastOpen, query, search: boardSearch.value, top: (view === 'board' ? $('#board') : scroller).scrollTop, w: innerWidth, h: innerHeight };
   quickOn = true;
   app.classList.add('quick');
   mainPh = editor.dataset.ph;
@@ -45,10 +45,24 @@ function quickEnd(how) {
   const empty = noteEmpty(id);
   if (!here) { if (empty) dropNote(id); renderSidebar(true); return; }      // already moved on to another note
   if (how === 'main' && !empty) { renderSidebar(true); renderHead(); posOvSoon(); refocus(); return; }
-  if (empty) dropNote(id); else leaveNote();
-  cur = null;
   const p = quickPrev;
-  if (p && p.view === 'editor' && p.cur && noteById(p.cur)) openNote(p.cur); else goHome();
+  if (empty) {                                    // as if it never opened: what opening it changed goes back
+    selId = noteById(p.sel) ? p.sel : freshPrevSel;   // (the note open then: a new one left empty, gone by now)
+    S.lastOpen = p.last;
+    query = p.query; boardSearch.value = p.search;
+    dropNote(id);
+  } else leaveNote();
+  cur = null;
+  if (p.view === 'editor' && p.cur && noteById(p.cur)) openNote(p.cur, { stay: true }); else goHome();
+  if (view === p.view && cur === p.cur && (empty || view === 'editor')) quickBack(p);
+}
+// Where the board / the note was scrolled. At the memo's size the cards and lines lie elsewhere, so once more when the
+// page is back at the app window's size (the resize comes before that size is drawn, under the window's picture)
+function quickBack(p) {
+  const el = view === 'board' ? $('#board') : scroller;
+  const back = () => { if (view === p.view && cur === p.cur) el.scrollTop = p.top; };
+  back();
+  if (innerWidth !== p.w || innerHeight !== p.h) addEventListener('resize', back, { once: true });
 }
 $('#qbClose').onclick = () => { quickEnd('close'); host.send('quick', '0'); };
 $('#qbOpen').onclick = () => { quickEnd('main'); host.send('quick', 'main'); };

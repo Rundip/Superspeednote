@@ -32,7 +32,7 @@ function openNote(id, o = {}) {
     lastSel = null;
   }
   setView('editor');
-  sbShown = null;                                  // opened: its row comes into view
+  sbShown = o.stay ? id : null;                    // opened: its row comes into view (o.stay: only back from a quick memo, the list stays)
   renderHead(); renderSidebar(); stats(); setSave(false, true);
   S.lastOpen = id; saveStateSoon();
   host.send('active', id);

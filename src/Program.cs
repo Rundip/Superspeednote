@@ -33,7 +33,7 @@ namespace SuperSpeedNote
 {
     static class Program
     {
-        public const string Version = "1.7.2";
+        public const string Version = "1.7.3";
         public const string WebView2Version = "1.0.4258.31";
         public static string DataDir, LocalDir;
         public static bool Portable;                  // a "data" folder next to the exe holds the notes (test / USB copies)
@@ -627,7 +627,13 @@ namespace SuperSpeedNote
         void QuickToMain()
         {
             if (quickOpen && quick != null && webIn == quick && Visible && WindowState != FormWindowState.Minimized)
-                BeginInvoke(new Action(() => { if (quickOpen && webIn == quick && Visible && WindowState != FormWindowState.Minimized) EndQuick("main", false); }));
+                BeginInvoke(new Action(() =>
+                {
+                    if (!quickOpen || webIn != quick || !Visible || WindowState == FormWindowState.Minimized) return;
+                    EndQuick("main", false);
+                    // the window already came to the front while the page was away: the keys follow the page here, no click needed
+                    if (ctl != null && webIn == this && IsFront()) { try { ctl.MoveFocus(CoreWebView2MoveFocusReason.Programmatic); } catch { } }
+                }));
         }
 
         protected override void OnResize(EventArgs e)
