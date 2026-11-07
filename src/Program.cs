@@ -33,7 +33,7 @@ namespace SuperSpeedNote
 {
     static class Program
     {
-        public const string Version = "1.7.3";
+        public const string Version = "1.7.4";
         public const string WebView2Version = "1.0.4258.31";
         public static string DataDir, LocalDir;
         public static bool Portable;                  // a "data" folder next to the exe holds the notes (test / USB copies)
@@ -1914,8 +1914,10 @@ namespace SuperSpeedNote
                 bootTask = Task.Run(new Func<string>(BuildBootScript));
                 try { CoreWebView2Environment.SetLoaderDllFolderPath(Program.EnsureLoader()); }
                 catch (InvalidOperationException) { }
+                // PaintHolding: until the page's first frame the engine throws input away, and from standby that is when the
+                // keys pressed right after the hotkey arrive (the more notes, the later that frame)
                 var opts = new CoreWebView2EnvironmentOptions(
-                    "--disable-features=msSmartScreenProtection --disable-background-networking --disable-component-update --no-first-run");
+                    "--disable-features=msSmartScreenProtection,PaintHolding --disable-background-networking --disable-component-update --no-first-run");
                 envTask = CoreWebView2Environment.CreateAsync(null, Path.Combine(Program.LocalDir, "WebView2"), opts);
             }
             catch (Exception ex) { prewarmError = ex; }
@@ -2222,7 +2224,7 @@ namespace SuperSpeedNote
                         bool qfront = quick != null && Native.GetForegroundWindow() == quick.Handle;
                         DetachQuick(true);
                         if (qfront) GiveBackFromQuick();
-                        if (a == "full" && tray != null) tray.ShowBalloonTip(3000, "Super Speed Note", "메모가 500개라 새 메모를 만들 수 없어요. 안 쓰는 메모를 지워 주세요.", ToolTipIcon.None);
+                        if (a == "full" && tray != null) tray.ShowBalloonTip(3000, "Super Speed Note", "메모가 1000개라 새 메모를 만들 수 없어요. 안 쓰는 메모를 지워 주세요.", ToolTipIcon.None);
                     }
                     break;
                 case "back": GoBack(); break;                    // Esc in the search window: back to where you were

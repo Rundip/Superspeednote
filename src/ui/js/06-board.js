@@ -47,9 +47,9 @@ function filterBoard() {
 let hitsT = 0;
 // the hero count, the search box's ×, and a next step when no card is shown
 function boardStatus(shown) {
-  const q = query.trim(), n = S.notes.length, pill = $('#noteCount');
-  pill.textContent = q ? `${shown}개 찾음` : `메모 ${n}개${n >= 450 ? ` / ${MAX_NOTES}` : ''}`;
-  pill.classList.toggle('warn', !q && n >= 450);
+  const q = query.trim(), n = S.notes.length, pill = $('#noteCount'), near = n >= MAX_NOTES * .9;
+  pill.textContent = q ? `${shown}개 찾음` : `메모 ${n}개${near ? ` / ${MAX_NOTES}` : ''}`;
+  pill.classList.toggle('warn', !q && near);
   $('#sClear').hidden = !boardSearch.value;
   const empty = grid.querySelector('.empty');
   if (!empty) return;

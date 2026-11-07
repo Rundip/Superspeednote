@@ -4,7 +4,7 @@
 // ======================================================================
 const SEP = '\x1f';
 const HOST = !!(window.chrome && window.chrome.webview);
-const MAX_NOTES = 500;          // measured: up to 500 notes every action stays within one frame (see README)
+const MAX_NOTES = 1000;         // measured at 999 notes: hotkeys and typing as with few, board search about 35 ms per key (see README)
 const IMG_URL = 'https://app.ssn/img/';
 const BLOCK_TAGS = /^(DIV|P|H[1-6]|LI|TR|TD|TH|BLOCKQUOTE|PRE|UL|OL|TABLE|HR)$/;
 const $ = (s, r = document) => r.querySelector(s);

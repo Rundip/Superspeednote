@@ -5,7 +5,7 @@ function openSwitcher() {
     `<div class="pal-foot"><span><kbd>↑↓</kbd>선택</span><span><kbd>Enter</kbd>열기</span><span class="fill"></span><span><kbd>Esc</kbd>닫기</span></div></div>`);
   const inp = $('#qsIn'), list = $('#qsList');
   let items = [], idx = 0, terms = [], shownN = 0;
-  // rows are drawn 60 at a time (more as you scroll or arrow down): a word in every note must not lay out 500 rows per key
+  // rows are drawn 60 at a time (more as you scroll or arrow down): a word in every note must not lay out 1000 rows per key
   const rowHTML = (x, i) => `<div class="qs-item${i === idx ? ' on' : ''}" data-i="${i}"><span class="c-dot" data-c="${x.n.color}" style="--c:${NOTE_COLORS[x.n.color]}"></span><div class="qs-txt"><b>${mark(titleOf(x.n) || '제목 없음', terms)}</b><small>${snippet(x.e, terms)}</small></div>${x.n.hotkey ? `<span class="chip">${esc(x.n.hotkey.label)}</span>` : ''}</div>`;
   const more = upTo => {
     const to = Math.min(items.length, Math.max(upTo, shownN + 60));
