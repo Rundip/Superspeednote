@@ -33,7 +33,7 @@ namespace SuperSpeedNote
 {
     static class Program
     {
-        public const string Version = "1.7.4";
+        public const string Version = "1.7.5";
         public const string WebView2Version = "1.0.4258.31";
         public static string DataDir, LocalDir;
         public static bool Portable;                  // a "data" folder next to the exe holds the notes (test / USB copies)
@@ -1084,6 +1084,9 @@ namespace SuperSpeedNote
                 // instead of showing it turn into the search box and then vanish (it used to twitch twice)
                 if (webIn == this && ctl != null)
                 {
+                    // the veil first: on its way in (until it is hidden there) the page can show the search window a frame
+                    // of the app window's page
+                    ShowVeil(pop, ref popVeil);
                     holdWeb = true; PutWeb(pop); Invalidate();
                     var t = new System.Windows.Forms.Timer { Interval = 1500 };   // the page never answered: show it anyway
                     t.Tick += (s, e) => { t.Stop(); t.Dispose(); if (holdWeb && popWanted && webIn == pop) AttachPop(); };

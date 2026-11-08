@@ -97,16 +97,16 @@ sbList.addEventListener('keydown', e => {
       const to = ids[clamp(i + (e.key === 'ArrowDown' ? 1 : -1), 0, ids.length - 1)];
       if (to && to !== cur) openNote(to, { browse: true });   // only shows it: the caret stays out of the note
       sbList.focus({ preventScroll: true });
-    } else if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); e.stopPropagation(); refocus(); }
+    } else if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); e.stopPropagation(); refocus(true); }
     else if (e.key === 'Escape') {                // as from the note: Esc = home (the board; in the list view the list is home)
       e.preventDefault(); e.stopPropagation();
-      if (!listHome()) showBoard(); else if (app.classList.contains('sb-peek')) { app.classList.remove('sb-peek'); refocus(); }
+      if (!listHome()) showBoard(); else if (app.classList.contains('sb-peek')) { app.classList.remove('sb-peek'); refocus(true); }
     }
     // a key that writes: into the note (the list can't take Korean input, so this first key only switches over)
-    else if (!mods && (e.key.length === 1 || e.key === 'Backspace' || e.key === 'Process' || e.keyCode === 229)) { e.preventDefault(); e.stopPropagation(); refocus(); }
+    else if (!mods && (e.key.length === 1 || e.key === 'Backspace' || e.key === 'Process' || e.keyCode === 229)) { e.preventDefault(); e.stopPropagation(); refocus(true); }
     return;
   }
-  if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); clearSb(); refocus(); }
+  if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); clearSb(); refocus(true); }
 });
 // while the list has the keys, its label says which ones
 sbList.addEventListener('focus', () => markSb());

@@ -1,8 +1,10 @@
 // ---------------------------------------------------------------- quick switcher (Ctrl+K)
 function openSwitcher() {
   flushNote();
+  const fromList = view === 'editor' && document.activeElement === sbList;   // the keys were walking the memo list: back there on Esc
   openModal(`<div class="dlg qs"><div class="qs-in">${ic('i-search')}<input id="qsIn" placeholder="제목이나 내용으로 메모 찾기" spellcheck="false" autocomplete="off"></div><div class="qs-list" id="qsList"></div>` +
-    `<div class="pal-foot"><span><kbd>↑↓</kbd>선택</span><span><kbd>Enter</kbd>열기</span><span class="fill"></span><span><kbd>Esc</kbd>닫기</span></div></div>`);
+    `<div class="pal-foot"><span><kbd>↑↓</kbd>선택</span><span><kbd>Enter</kbd>열기</span><span class="fill"></span><span><kbd>Esc</kbd>닫기</span></div></div>`,
+    () => { if (fromList && view === 'editor') sbList.focus({ preventScroll: true }); });   // (a note picked opens after this, keys in it)
   const inp = $('#qsIn'), list = $('#qsList');
   let items = [], idx = 0, terms = [], shownN = 0;
   // rows are drawn 60 at a time (more as you scroll or arrow down): a word in every note must not lay out 1000 rows per key

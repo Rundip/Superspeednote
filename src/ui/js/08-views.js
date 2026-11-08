@@ -112,8 +112,11 @@ function cycle(d) {
   const n = list[(i + d + list.length) % list.length];
   if (view === 'editor') openNote(n.id); else setSel(n.id);
 }
-function refocus() {
+// The keys back where they belong: walking the memo list they stay there (the app window shown again, a memo or the
+// search closed); write: into the note all the same (Enter / a letter in the list)
+function refocus(write) {
   if (modalOpen()) return;
+  if (view === 'editor' && !write && document.activeElement === sbList) { sbList.focus({ preventScroll: true }); return; }
   if (view === 'editor') { if (document.activeElement !== titleIn) { editor.focus({ preventScroll: true }); if (lastSel) selRestore(lastSel); } }
   else if (!isTyping(document.activeElement)) boardSearch.focus({ preventScroll: true });   // (a card being renamed keeps it)
 }

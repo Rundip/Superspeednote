@@ -20,7 +20,8 @@ function quickStart() {
   if (quickOn) { host.send('quick', '1'); return; }
   closeModal(); closePop();
   if (S.notes.length >= MAX_NOTES) { host.send('quick', 'full'); return; }
-  quickPrev = { view, cur, sel: selId, last: S.lastOpen, query, search: boardSearch.value, top: (view === 'board' ? $('#board') : scroller).scrollTop, w: innerWidth, h: innerHeight };
+  quickPrev = { view, cur, sel: selId, last: S.lastOpen, query, search: boardSearch.value, top: (view === 'board' ? $('#board') : scroller).scrollTop, w: innerWidth, h: innerHeight,
+    list: view === 'editor' && document.activeElement === sbList, peek: app.classList.contains('sb-peek') };   // list: the keys were walking the memo list
   quickOn = true;
   app.classList.add('quick');
   mainPh = editor.dataset.ph;
@@ -53,14 +54,28 @@ function quickEnd(how) {
     dropNote(id);
   } else leaveNote();
   cur = null;
-  if (p.view === 'editor' && p.cur && noteById(p.cur)) openNote(p.cur, { stay: true }); else goHome();
-  if (view === p.view && cur === p.cur && (empty || view === 'editor')) quickBack(p);
+  if (p.view === 'editor' && p.cur && noteById(p.cur)) {
+    if (p.list) {                                 // back to walking the list: the note only shown, the keys in the list
+      openNote(p.cur, { stay: true, browse: true });
+      if (p.peek) app.classList.add('sb-peek');
+      sbList.focus({ preventScroll: true });
+    } else openNote(p.cur, { stay: true });
+  } else goHome();
+  const same = view === p.view && cur === p.cur;
+  if (same && (empty || view === 'editor')) quickBack(p);
+  else if (view === 'board') quickBack(p, true);  // the written memo's card picked, or the board instead of a note gone by now
 }
 // Where the board / the note was scrolled. At the memo's size the cards and lines lie elsewhere, so once more when the
-// page is back at the app window's size (the resize comes before that size is drawn, under the window's picture)
-function quickBack(p) {
-  const el = view === 'board' ? $('#board') : scroller;
-  const back = () => { if (view === p.view && cur === p.cur) el.scrollTop = p.top; };
+// page is back at the app window's size (the resize comes before that size is drawn, under the window's picture).
+// card: the picked card is brought into view too, the board moving no more than that takes
+function quickBack(p, card) {
+  const el = view === 'board' ? $('#board') : scroller, v = view, c = cur;
+  const back = () => {
+    if (view !== v || cur !== c) return;           // moved on meanwhile
+    if (v === p.view) el.scrollTop = p.top;
+    const s = card && grid.querySelector('.card.sel');
+    if (s) s.scrollIntoView({ block: 'nearest' });
+  };
   back();
   if (innerWidth !== p.w || innerHeight !== p.h) addEventListener('resize', back, { once: true });
 }

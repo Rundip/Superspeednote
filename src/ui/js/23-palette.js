@@ -212,6 +212,7 @@ function openPalette(mode) {
   // where the app was scrolled: the search (and, from another program, the page moving into its small window)
   // must leave the note / board exactly where it was
   const board = $('#board'), keepTop = [scroller.scrollTop, board ? board.scrollTop : 0];
+  let fromList = view === 'editor' && document.activeElement === sbList;   // the keys were walking the memo list: back there after
   if (mode === 'pop') app.classList.add('pal-pop');
   closePop();
   if (cur) flushNote();
@@ -226,6 +227,7 @@ function openPalette(mode) {
       paletteOn = false; app.classList.remove('pal-pop'); modal.classList.remove('palm');
       const back = () => { scroller.scrollTop = keepTop[0]; if (board) board.scrollTop = keepTop[1]; };
       back(); setTimeout(back, 0);                // again once the caret is back (refocus runs right after this)
+      if (fromList && view === 'editor') sbList.focus({ preventScroll: true });   // (refocus then leaves the keys there)
       host.send('palette', '0');
     });
   modal.classList.add('palm');                    // the quick memo shows it over the whole window
@@ -320,7 +322,7 @@ function openPalette(mode) {
     }
     rememberUse(it);
     const p = payloadOf(it);
-    if (how === 'note' || (quick && how === 'paste')) { closeModal(); insertLine(it, p); return; }   // closing puts the caret back
+    if (how === 'note' || (quick && how === 'paste')) { fromList = false; closeModal(); insertLine(it, p); return; }   // closing puts the caret back
     if (quick || how === 'clip') { closeModal(); putClip(p); toast('복사했어요'); return; }       // copy and stay here
     if (!HOST) { closeModal(); putClip(p); toast(`복사됨 · ${p.text.slice(0, 40)} (브라우저 미리보기에서는 창 전환이 없어요)`); return; }
     host.send('sendOut', how, String(p.text.length), p.text + p.html);   // back to the program, then paste

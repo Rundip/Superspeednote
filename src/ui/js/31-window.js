@@ -24,6 +24,7 @@ $('#btnPal').onclick = () => openPalette('key');
 $('#btnTheme').onclick = () => setTheme(st.theme === 'dark' ? 'light' : 'dark');
 $('#btnSettings').onclick = openSettings;
 $('#stZoom').onclick = () => zoom(0);
+$('#titlebar').addEventListener('mousedown', e => { if (e.target.closest('button')) e.preventDefault(); });   // its buttons leave the keys where they are (the note, the list)
 $('#noteHead').addEventListener('mousedown', e => { if (e.target.closest('button')) e.preventDefault(); });
 $('#status').addEventListener('mousedown', e => e.preventDefault());
 $('#pane').addEventListener('mousedown', e => { if (e.target.id === 'pane' || e.target.id === 'doc' || e.target === scroller || e.target === sheet) { e.preventDefault(); ensureEditorFocus(); } });
