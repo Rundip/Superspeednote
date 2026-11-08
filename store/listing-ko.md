@@ -39,7 +39,7 @@
 메모장·웹 페이지·메신저에서 복사한 여러 줄은 표에 붙여넣으면 한 줄씩 행으로 들어갑니다.
 
 ■ 빠르고 가볍게
-메모 500개에서도 검색이 한 화면 프레임(16ms) 안에 끝납니다. 꺼져 있어도 단축키 대기 상태(메모리 약 30MB)로 바로 불러올 수 있습니다.
+메모를 1000개까지 담을 수 있고, 500개에서도 검색 결과가 약 0.01초 만에 나옵니다. 꺼져 있어도 단축키 대기 상태(메모리 약 30MB)로 바로 불러올 수 있습니다.
 
 ■ 내 PC에만 저장
 인터넷 통신·계정·광고가 없습니다. 모든 메모는 내 PC에만 저장되고 매일 자동 백업되며, 지운 메모는 휴지통에서 복원할 수 있습니다.
@@ -62,12 +62,15 @@
 
 메모, 메모장, 빠른 메모, 단축키, 클립보드, 붙여넣기, 노트
 
-## 이번 버전의 새로운 기능 (1.7.0)
+## 이번 버전의 새로운 기능 (1.7.5)
 
 - 표에 여러 줄 붙여넣기: 메모장·웹 페이지·메신저·Word에서 복사한 줄이 한 줄씩 행으로 들어가고, 표는 필요한 만큼 늘어남 (알림의 "한 칸에" 또는 Ctrl+Shift+V로 한 칸에 넣기)
-- 엑셀처럼 채우기: 한 행을 여러 칸에 붙여넣으면 고른 칸만큼 반복, 줄 수만큼 고른 칸에는 하나씩
-- 칸에 쓰던 글과 그림은 그대로 두고 커서 자리부터 붙여넣기, 덮어쓴 칸 수를 알림, 50행이 넘으면 먼저 물어봄, Ctrl+Z 한 번으로 되돌리기
-- 찾아 붙여넣기: 창이 열릴 때나 글자를 칠 때 화면이 흔들리거나 깜빡이지 않음 (다른 모니터에서도)
+- 엑셀처럼 채우기: 한 행을 여러 칸에 붙여넣으면 고른 칸만큼 반복, 덮어쓴 칸 수를 알림, Ctrl+Z 한 번으로 되돌리기
+- 메모를 1000개까지 (이전 500개)
+- 빠른 메모가 더 빨리, 깨끗하게 열림: 직전에 쓴 메모가 잠깐 비치지 않고, 단축키 직후 바로 친 글자도 빠지지 않음 (앱이 꺼져 단축키만 대기 중일 때도)
+- 찾아 붙여넣기: 창이 열릴 때나 글자를 칠 때 흔들리거나 깜빡이지 않고, 단축키 직후 친 글자도 검색창에 그대로 들어감
+- 빠른 메모를 닫으면 앱은 열려 있던 그대로이고, 메모를 쓰고 돌아오면 그 메모 카드가 화면에 보임
+- 목록 보기: 메모를 지워도 목록이 제자리에 있고, 방향키로 목록을 넘기던 중이면 빠른 메모·검색창을 닫거나 앱을 다시 불러와도 키보드가 목록에 남음
 
 ### (지난 버전) 1.6.6
 
@@ -82,7 +85,7 @@ Super Speed Note is a Win32 desktop app (WinForms + WebView2) packaged with the 
 
 ## 심사 담당자 메모 (Notes for certification, 영어)
 
-Update 1.7.0: no new capabilities or permissions. Changes: lines pasted into a table go one per row, and the find & paste window no longer flickers. Since 1.6.6 the app also copies its notes to Documents\Super Speed Note 백업 so they survive an uninstall/reinstall. This is a plain local folder (the user can change it or turn it off in Settings); nothing is sent over the network. Earlier changes (product ID 9N4JKW5GFTHS): the unvirtualizedResources restricted capability and the desktop6 FileSystemWriteVirtualization / RegistryWriteVirtualization properties have been removed. All app data now lives in the package's own data folders (LocalState / LocalCache) under standard MSIX virtualization, so the only restricted capability left is runFullTrust (a Win32 desktop app). Minimum supported version: Windows 10, version 2004 (build 19041). The support contact is now an e-mail address (no GitHub links).
+Update 1.7.5: no new capabilities or permissions. Changes since 1.6.6: lines pasted into a table go one per row, up to 1000 notes, the quick memo and the find & paste window open faster and without flicker, and keys typed right after a hotkey are kept. Since 1.6.6 the app also copies its notes to Documents\Super Speed Note 백업 so they survive an uninstall/reinstall. This is a plain local folder (the user can change it or turn it off in Settings); nothing is sent over the network. Earlier changes (product ID 9N4JKW5GFTHS): the unvirtualizedResources restricted capability and the desktop6 FileSystemWriteVirtualization / RegistryWriteVirtualization properties have been removed. All app data now lives in the package's own data folders (LocalState / LocalCache) under standard MSIX virtualization, so the only restricted capability left is runFullTrust (a Win32 desktop app). Minimum supported version: Windows 10, version 2004 (build 19041). The support contact is now an e-mail address (no GitHub links).
 
 No account or sign-in is needed. Try: press Ctrl+Alt+F in any app (e.g. Notepad) to open the search window, type a word from a note and press Enter to paste that line back. Ctrl+Alt+M opens a quick memo in the screen corner; press it again to close. The app has no network communication.
 
