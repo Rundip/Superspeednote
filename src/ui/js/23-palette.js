@@ -14,8 +14,8 @@ const JAMO2 = { 'ㄳ': 'ㄱㅅ', 'ㄵ': 'ㄴㅈ', 'ㄶ': 'ㄴㅎ', 'ㄺ': 'ㄹ�
 const normQ = s => s.replace(/[ㄳㄵㄶㄺㄻㄼㄽㄾㄿㅀㅄ]/g, c => JAMO2[c]);
 const termsOf = q => [...new Set(normQ(q.toLowerCase()).split(/\s+/).filter(Boolean))];
 const isNum = t => /^\d{4,}$/.test(t);            // a phone / account number typed without its dashes
-// the digits of each number in s, dashes and dots dropped: '02-1234-5678 / 3층' -> '0212345678 3'
-const digitsOf = s => (s.match(/\d(?:[-. ]?\d)*/g) || []).map(v => v.replace(/\D/g, '')).join(' ');
+// the digits of each number in s, dashes, dots and commas dropped: '02-1234-5678 / 3층' -> '0212345678 3', '1,460,000' -> '1460000'
+const digitsOf = s => (s.match(/\d(?:[-., ]?\d)*/g) || []).map(v => v.replace(/\D/g, '')).join(' ');
 // where search word t is in o.l (-1: nowhere); as typed, as 초성 (o.k) or as a number without dashes (o.d, at the end).
 // o is a note's text entry or one indexed line; both caches are built on the first query that needs them.
 function termAt(o, t, kind) {
@@ -166,7 +166,7 @@ function hitMap(s, terms) {
   for (const t of terms) {
     let src = low;
     if (isNum(t) && !low.includes(t)) {           // typed without dashes: mark those digits and the dashes between
-      for (const m of low.matchAll(/\d(?:[-. ]?\d)*/g)) {
+      for (const m of low.matchAll(/\d(?:[-., ]?\d)*/g)) {
         const d = m[0].replace(/\D/g, ''), pos = [];
         for (let i = 0; i < m[0].length; i++) if (m[0][i] >= '0' && m[0][i] <= '9') pos.push(m.index + i);
         for (let k = d.indexOf(t); k >= 0; k = d.indexOf(t, k + 1)) hit.fill(1, pos[k], pos[k + t.length - 1] + 1);

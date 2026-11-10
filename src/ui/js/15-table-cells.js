@@ -15,6 +15,7 @@ function tblHint(m) {
   h.classList.toggle('tbl', !!m);
   h.textContent = m === 'nav' ? '칸 선택 · 입력하면 새로 씀 · F2 이어 쓰기 · Delete 지우기 · Ctrl+Enter 표 밖으로'
     : m === 'edit' ? '칸 편집 중 · 방향키는 칸 안에서 · Enter 확정 · Esc 칸 선택으로 · Shift+Enter 줄바꿈'
+    : m === 'loose' ? '칸 선택 해제 · Esc 한 번 더 표 아래 줄로 · 방향키 칸 선택 · 입력하면 이어 씀'
     : m === 'obj' ? '표 선택됨 · Ctrl+C 복사 · Delete 삭제 · Esc 해제' : defaultHint;
 }
 let parked = null, mouseSel = false, parkAfterMouse = false, dragFrom = null;   // dragFrom: the cell a mouse drag began in
@@ -111,6 +112,42 @@ function imeReplace() {
   if (td.textContent.trim() && !st.tipReplace) tipAfterIme = true;   // the tip waits for the syllable to finish
   posOvSoon();
 }
+// Esc on a selected cell (or range) lets go of it first - the box goes, the caret waits at the end of that cell's
+// text - and a second Esc leaves the table for the line under it. (One Esc used to jump out at once.)
+// In between ("loose"): the arrows select cells again from there, typing writes on in the cell, Enter / Tab move on.
+function looseCell() {
+  const td = cellAt(nav.t, nav.fr, nav.fc);
+  if (!td) return;
+  const t = nav.t, r = td.parentElement.rowIndex, c = td.cellIndex;
+  nav = { t, ar: r, ac: c, fr: r, fc: c };
+  editCell = td; editKind = 'loose'; editOrig = td.innerHTML; tabFrom = -1;
+  editor.classList.remove('cellnav');
+  parked = null;
+  parkCaret(td);
+  showOv(t); posOv(); tblHint('loose');
+}
+function looseKey(e, td) {
+  const t = td.closest('table'), r = td.parentElement.rowIndex, c = td.cellIndex, k = e.key, mod = e.ctrlKey || e.metaKey;
+  if (k === 'Escape' && !mod && !e.altKey && !e.shiftKey) { e.preventDefault(); e.stopPropagation(); leaveTable(t, false); return true; }
+  if (ARROWS[k] && !mod && !e.altKey) {
+    e.preventDefault();
+    const [dr, dc] = ARROWS[k];
+    if (!e.shiftKey && ((dr < 0 && r === 0) || (dr > 0 && r === t.rows.length - 1))) leaveTable(t, dr < 0);
+    else { setNav(t, r, c); moveNav(dr, dc, e.shiftKey, false); }
+    return true;
+  }
+  // writing in it (a letter, Backspace, a line break): editing it, as with F2 - the key then does its usual job there
+  if (k === 'F2' || (!mod && ((k.length === 1 && !e.altKey) || k === 'Backspace' || k === 'Delete' || (k === 'Enter' && (e.shiftKey || e.altKey))))) {
+    editCell = null; startEdit('f2', td, true);
+    if (k === 'F2') { e.preventDefault(); return true; }
+  }
+  return null;                                    // Enter / Tab and the rest: as when editing
+}
+function looseIme() {                             // the IME's first key there: no DOM or selection change on it (see parkNav)
+  const td = editCell;
+  markEdit(); editKind = 'f2'; editOrig = td.innerHTML;
+  requestAnimationFrame(() => { if (editCell === td) { tblHint('edit'); posOv(); } });
+}
 function leaveTable(t, up) {
   clearNav();
   let n = up ? t.previousElementSibling : t.nextElementSibling;
@@ -155,7 +192,7 @@ function navKey(e) {
   if (k === 'F2') { e.preventDefault(); startEdit('f2'); return true; }
   if (k === 'Delete' && !mod) { e.preventDefault(); const rc = navRect(); edit(() => { for (const c of rectCells(rc)) c.innerHTML = '<br>'; }); setNav(t, nav.fr, nav.fc); return true; }
   if (k === 'Backspace' && !mod) { e.preventDefault(); beginReplace(); return true; }
-  if (k === 'Escape') { e.preventDefault(); e.stopPropagation(); leaveTable(t, false); return true; }
+  if (k === 'Escape') { e.preventDefault(); e.stopPropagation(); looseCell(); return true; }
   if (k === 'Home') { e.preventDefault(); setNav(t, mod ? 0 : nav.fr, 0, e.shiftKey); return true; }
   if (k === 'End') { e.preventDefault(); setNav(t, mod ? t.rows.length - 1 : nav.fr, tableCols(t) - 1, e.shiftKey); return true; }
   if (mod && e.code === 'KeyA' && !e.shiftKey) {  // first Ctrl+A: the whole table, second: the whole note
@@ -173,10 +210,13 @@ function navKey(e) {
 function editKey(e) {
   const td = editCell;
   if (!td.isConnected) { clearNav(); return false; }
+  if (editKind === 'loose') { const v = looseKey(e, td); if (v !== null) return v; }
   const t = td.closest('table'), r = td.parentElement.rowIndex, c = td.cellIndex;
-  const back = () => { histCommit(); nav = { t, ar: r, ac: c, fr: r, fc: c }; editCell = null; };
+  // (a number written in a comma cell gets its commas as you leave it - in the same undo step as the typing)
+  const back = () => { numLeave(td); histCommit(); nav = { t, ar: r, ac: c, fr: r, fc: c }; editCell = null; };
   if (e.key === 'Escape') {                      // back to selecting the cell (what was typed stays; Ctrl+Z takes it back)
     e.preventDefault(); e.stopPropagation();
+    numLeave(td);
     histCommit();
     setNav(t, r, c);
     return true;

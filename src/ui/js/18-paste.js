@@ -29,7 +29,7 @@ function doPaste(text, html, files, plain) {
   if (navLive()) {                                // cell(s) selected: the value replaces them, like Excel
     const val = text.replace(/\r\n?/g, '\n').replace(/\n+$/, '');
     const keep = Object.assign({}, nav), cells = rectCells(navRect());
-    edit(() => { for (const c of cells) c.innerHTML = cellHTML(val); });
+    edit(() => { for (const c of cells) { c.innerHTML = cellHTML(val); if (c.classList.contains('num')) numText(c, true); } });
     nav = keep; editor.classList.add('cellnav'); parkNav(cellAt(nav.t, nav.fr, nav.fc)); posOv();
     return;
   }
@@ -271,6 +271,7 @@ function pasteGrid(rows, src, lines, sure) {
           if (atCaret && !i && !j) { const sr = selRange(); sr.deleteContents(); if (v) sr.insertNode(document.createTextNode(v)); return; }
           if (has(c) && (c.querySelector('img') || toPlain(c).replace(/\n+$/, '') !== v)) over++;
           c.innerHTML = cellHTML(v);
+          if (c.classList.contains('num')) numText(c, true);   // a comma cell (or a new row under one): 1,460,000
         });
       });
       // like Excel: the pasted block stays selected
@@ -392,6 +393,7 @@ function sanitize(html, o = {}) {
       if (o.own && tag === 'UL' && n.classList.contains('checklist')) el.className = 'checklist';
       if (o.own && tag === 'LI' && /^(true|false)$/.test(n.getAttribute('data-checked') || '')) el.setAttribute('data-checked', n.getAttribute('data-checked'));
       if (tag === 'TD') { if (n.colSpan > 1) el.colSpan = n.colSpan; if (n.rowSpan > 1) el.rowSpan = n.rowSpan; }   // spread out below
+      if (o.own && tag === 'TD') for (const c of lookOf(n)) el.classList.add(c);   // its alignment / number commas
       dst.appendChild(el);
       walk(n, el, pre || tag === 'PRE');
     }
@@ -665,6 +667,12 @@ editor.addEventListener('contextmenu', e => {
   if (td) {
     const t = td.closest('table');
     const rc = inNavRect(td) ? navRect() : null, nr = rc ? rc.r1 - rc.r0 + 1 : 1, nc = rc ? rc.c1 - rc.c0 + 1 : 1;
+    const tc = rc ? rectCells(rc) : [td], all = f => tc.every(f), anyIs = c => tc.some(x => x.classList.contains(c));   // the cells the menu acts on
+    items.push({ sep: true },
+      { label: '왼쪽 정렬', icon: 'i-al-l', kbd: kl('alignL'), on: !anyIs('al-c') && !anyIs('al-r'), action: () => cellAlign('l') },
+      { label: '가운데 정렬', icon: 'i-al-c', kbd: kl('alignC'), on: all(c => c.classList.contains('al-c')), action: () => cellAlign('c') },
+      { label: '오른쪽 정렬', icon: 'i-al-r', kbd: kl('alignR'), on: all(c => c.classList.contains('al-r')), action: () => cellAlign('r') },
+      { label: '천 단위 쉼표 (1,000)', glyph: '<b>,</b>', kbd: kl('numComma'), on: all(c => c.classList.contains('num')), action: cellNum });
     items.push({ sep: true },
       { label: '위에 행 삽입', kbd: kl('rowAbove'), action: () => tableOp('rowAbove', t, td) },
       { label: '아래에 행 삽입', kbd: kl('rowBelow'), action: () => tableOp('rowBelow', t, td) },

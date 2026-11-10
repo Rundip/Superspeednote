@@ -15,9 +15,74 @@ function tableCols(t) { let m = 0; for (const r of t.rows) m = Math.max(m, r.cel
 function newCell(tr, at) { const td = tr.insertCell(at); td.innerHTML = '<br>'; return td; }
 function addRow(t, at) {
   const cols = tableCols(t) || 1;
-  const tr = t.insertRow(clamp(at, 0, t.rows.length));
-  for (let i = 0; i < cols; i++) newCell(tr, -1);
+  at = clamp(at, 0, t.rows.length);
+  // a new row looks like the row it is added under (or over, at the top) - its alignment and number commas, like
+  // Excel - never like the header row
+  const hdr = t.classList.contains('hdr'), ok = i => i >= 0 && i < t.rows.length && !(hdr && i === 0);
+  const like = ok(at - 1) ? t.rows[at - 1] : ok(at) ? t.rows[at] : null;
+  const tr = t.insertRow(at);
+  for (let i = 0; i < cols; i++) { const td = newCell(tr, -1), s = like && like.cells[i]; if (s) for (const c of lookOf(s)) td.classList.add(c); }
   return tr;
+}
+// ---- how a cell shows its value (kept on the cell as classes, Excel-style): al-c / al-r centred / right-aligned
+// (left is the default), num = numbers with thousands commas (1,460,000). The commas are in the text itself, so a
+// copy, the search and the find & paste window get what you see; a number typed into such a cell later gets them
+// when you leave it.
+const LOOK = /^(al-c|al-r|num)$/;
+function lookOf(td) { return Array.from(td.classList).filter(c => LOOK.test(c)); }
+// a number as one line of a cell, with or without its commas: '1460000', '-2,500.5', '₩1200', '30000원', '15%'.
+// Not 010-1234-5678, 2026.11.10 or 0123 (codes, dates: they keep their digits as written).
+const NUM_LINE = /^([\s​]*[₩$\\]?[\s​]*[-+]?)(\d{1,3}(?:,\d{3})+|\d+)((?:\.\d+)?[\s​]*[가-힣A-Za-z%]{0,4}[\s​]*)$/;
+function numFmt(s, on) {
+  const m = NUM_LINE.exec(s);
+  if (!m) return s;
+  const d = m[2].replace(/,/g, '');
+  if (d.length > 1 && d[0] === '0') return s;
+  return m[1] + (on ? d.replace(/\B(?=(\d{3})+$)/g, ',') : d) + m[3];
+}
+function numText(td, on) {                        // every line of the cell that is a number; true if any changed
+  let changed = false;
+  const w = document.createTreeWalker(td, NodeFilter.SHOW_TEXT);
+  for (let n; (n = w.nextNode());) {
+    if (!/\d/.test(n.nodeValue)) continue;
+    const v = numFmt(n.nodeValue, on);
+    if (v !== n.nodeValue) { n.nodeValue = v; changed = true; }
+  }
+  return changed;
+}
+// a value written into a comma cell (typed and left, pasted) gets its commas
+function numLeave(td) { return !!td && td.isConnected && !composing && td.classList.contains('num') && numText(td, true); }
+// left some other way (a click elsewhere, Ctrl+Enter ...): caught on the next caret move
+let numEditing = null;
+function numWatch() {
+  const c = numEditing;
+  if (c && c !== editCell) { numEditing = null; if (numLeave(c)) { markDirty(); histCommit(); } }
+  if (editCell && editCell.classList.contains('num')) numEditing = editCell;
+}
+// the cells a table command works on: the selected ones, else the one being written in (or holding the caret)
+function tblCells() {
+  if (navLive()) return rectCells(navRect());
+  const td = editCell && editCell.isConnected ? editCell : closestSel('td');
+  return td ? [td] : [];
+}
+function cellsLook(fn, text) {                    // text: fn changes the cells' text (the caret goes back to its end)
+  const cells = tblCells();
+  if (!cells.length) { toast('표 칸에서 쓰는 기능이에요'); return false; }
+  finishIme();
+  const keep = navLive() ? Object.assign({}, nav) : null, ec = editCell, kind = editKind;
+  edit(() => cells.forEach(fn));
+  if (keep && keep.t.isConnected) { nav = keep; editCell = null; editor.classList.add('cellnav'); const f = cellAt(nav.t, nav.fr, nav.fc); if (f) parkNav(f); }
+  else if (ec && ec.isConnected) { editCell = ec; editKind = kind; if (text) parkCaret(ec); }
+  posOv(); updateToolbar();
+  return true;
+}
+function cellAlign(a) {                          // 'l' / 'c' / 'r'
+  cellsLook(td => { td.classList.remove('al-c', 'al-r'); if (a !== 'l') td.classList.add('al-' + a); });
+}
+function cellNum() {                             // on for all the cells (right-aligned), or off if they all had it
+  const cells = tblCells(), on = !cells.length || !cells.every(c => c.classList.contains('num'));
+  if (!cellsLook(td => { td.classList.toggle('num', on); numText(td, on); td.classList.remove('al-c', 'al-r'); if (on) td.classList.add('al-r'); }, true)) return;
+  toast(on ? '천 단위 쉼표를 넣었어요 · 이 칸에 새로 쓰는 숫자에도 찍혀요' : '천 단위 쉼표를 뺐어요', '되돌리기', undoThis());
 }
 function addCol(t, at) { for (const tr of t.rows) newCell(tr, Math.min(at, tr.cells.length)); }
 function removeTable(t) {

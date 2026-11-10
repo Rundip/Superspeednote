@@ -34,6 +34,7 @@ function runFind(fromCaret) {
   const q = findIn.value.toLowerCase();
   if (!q) { $('#findCount').textContent = ''; $('#findbar').classList.remove('none'); return; }
   const w = document.createTreeWalker(editor, NodeFilter.SHOW_TEXT);
+  const digits = /^\d{4,}$/.test(q);               // a number typed without commas finds it with them too: 1460000 -> 1,460,000
   let n;
   while ((n = w.nextNode()) && hits.length < 5000) {
     const t = n.nodeValue.toLowerCase();
@@ -41,7 +42,17 @@ function runFind(fromCaret) {
       const r = new Range(); r.setStart(n, i); r.setEnd(n, i + q.length);
       hits.push(r); hlAll.add(r);
     }
+    if (!digits || !t.includes(',')) continue;
+    for (const m of t.matchAll(/\d{1,3}(?:,\d{3})+/g)) {
+      const d = m[0].replace(/,/g, ''), pos = [];
+      for (let i = 0; i < m[0].length; i++) if (m[0][i] !== ',') pos.push(m.index + i);
+      for (let k = d.indexOf(q); k >= 0 && hits.length < 5000; k = d.indexOf(q, k + q.length)) {
+        const r = new Range(); r.setStart(n, pos[k]); r.setEnd(n, pos[k + q.length - 1] + 1);
+        hits.push(r); hlAll.add(r);
+      }
+    }
   }
+  if (digits) hits.sort((a, b) => a.compareBoundaryPoints(Range.START_TO_START, b));   // in reading order
   if (hits.length) {
     hitI = 0;
     const c = fromCaret && lastSel && selRangeFrom(lastSel);

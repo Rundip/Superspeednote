@@ -37,6 +37,7 @@
 ■ 엑셀처럼 쓰는 표
 엑셀에서 복사한 셀을 붙여넣으면 표가 되고, 방향키·F2·Enter로 엑셀과 같은 방식으로 편집합니다. 표의 행은 엑셀 칸 그대로 다시 붙여넣어집니다.
 메모장·웹 페이지·메신저에서 복사한 여러 줄은 표에 붙여넣으면 한 줄씩 행으로 들어갑니다.
+칸마다 왼쪽·가운데·오른쪽 정렬, 금액은 천 단위 쉼표(1,000)로 보기 좋게 정리할 수 있습니다.
 
 ■ 빠르고 가볍게
 메모를 1000개까지 담을 수 있고, 500개에서도 검색 결과가 약 0.01초 만에 나옵니다. 꺼져 있어도 단축키 대기 상태(메모리 약 30MB)로 바로 불러올 수 있습니다.
@@ -51,7 +52,7 @@
 2. 초성 검색, 여러 단어 검색, 표의 칸 하나만 골라 붙여넣기
 3. 화면 구석에 뜨는 빠른 메모 (단축키 한 번으로 열고 닫기)
 4. 메모마다 전역 단축키 지정, 다시 누르면 원래 창의 커서 자리로 복귀
-5. 엑셀 셀 복사 → 표 붙여넣기, 엑셀처럼 방향키·F2·Enter로 편집, 여러 줄을 붙여넣으면 한 줄씩 행으로
+5. 엑셀 셀 복사 → 표 붙여넣기, 엑셀처럼 방향키·F2·Enter로 편집, 여러 줄을 붙여넣으면 한 줄씩 행으로, 칸 정렬과 천 단위 쉼표
 6. 굵게, 밑줄, 형광펜, 잘 보이는 글자색, 체크리스트, 제목, 번호 목록(1. 가. a. 1) ① ㉮), -> 입력 시 → 화살표
 7. 앱 안의 모든 단축키를 원하는 키로 변경
 8. 자동 저장, 매일 자동 백업(앱을 지워도 남는 문서 폴더 백업), 휴지통에서 복원
@@ -62,8 +63,12 @@
 
 메모, 메모장, 빠른 메모, 단축키, 클립보드, 붙여넣기, 노트
 
-## 이번 버전의 새로운 기능 (1.7.5)
+## 이번 버전의 새로운 기능 (1.7.6)
 
+- 표 칸 정렬: 왼쪽·가운데·오른쪽 (Ctrl+L / Ctrl+E / Ctrl+R, 오른쪽 클릭 메뉴)
+- 천 단위 쉼표: 금액 칸을 1,460,000처럼 (Ctrl+Shift+1) · 자동으로 오른쪽 정렬, 나중에 쓰는 숫자와 새 행에도 그대로, 쉼표 없이 검색해도 찾음
+- 표에서 Esc: 한 번은 칸 선택만 풀고, 한 번 더 누르면 표 아래 줄로
+- 창이 좁아 표가 옆으로 잘려도 칸 선택 표시가 표 밖으로 나가지 않음
 - 표에 여러 줄 붙여넣기: 메모장·웹 페이지·메신저·Word에서 복사한 줄이 한 줄씩 행으로 들어가고, 표는 필요한 만큼 늘어남 (알림의 "한 칸에" 또는 Ctrl+Shift+V로 한 칸에 넣기)
 - 엑셀처럼 채우기: 한 행을 여러 칸에 붙여넣으면 고른 칸만큼 반복, 덮어쓴 칸 수를 알림, Ctrl+Z 한 번으로 되돌리기
 - 메모를 1000개까지 (이전 500개)
@@ -85,7 +90,7 @@ Super Speed Note is a Win32 desktop app (WinForms + WebView2) packaged with the 
 
 ## 심사 담당자 메모 (Notes for certification, 영어)
 
-Update 1.7.5: no new capabilities or permissions. Changes since 1.6.6: lines pasted into a table go one per row, up to 1000 notes, the quick memo and the find & paste window open faster and without flicker, and keys typed right after a hotkey are kept. Since 1.6.6 the app also copies its notes to Documents\Super Speed Note 백업 so they survive an uninstall/reinstall. This is a plain local folder (the user can change it or turn it off in Settings); nothing is sent over the network. Earlier changes (product ID 9N4JKW5GFTHS): the unvirtualizedResources restricted capability and the desktop6 FileSystemWriteVirtualization / RegistryWriteVirtualization properties have been removed. All app data now lives in the package's own data folders (LocalState / LocalCache) under standard MSIX virtualization, so the only restricted capability left is runFullTrust (a Win32 desktop app). Minimum supported version: Windows 10, version 2004 (build 19041). The support contact is now an e-mail address (no GitHub links).
+Update 1.7.6: no new capabilities or permissions. Changes since 1.6.6: table cells can be aligned and show thousands separators, lines pasted into a table go one per row, up to 1000 notes, the quick memo and the find & paste window open faster and without flicker, and keys typed right after a hotkey are kept. Since 1.6.6 the app also copies its notes to Documents\Super Speed Note 백업 so they survive an uninstall/reinstall. This is a plain local folder (the user can change it or turn it off in Settings); nothing is sent over the network. Earlier changes (product ID 9N4JKW5GFTHS): the unvirtualizedResources restricted capability and the desktop6 FileSystemWriteVirtualization / RegistryWriteVirtualization properties have been removed. All app data now lives in the package's own data folders (LocalState / LocalCache) under standard MSIX virtualization, so the only restricted capability left is runFullTrust (a Win32 desktop app). Minimum supported version: Windows 10, version 2004 (build 19041). The support contact is now an e-mail address (no GitHub links).
 
 No account or sign-in is needed. Try: press Ctrl+Alt+F in any app (e.g. Notepad) to open the search window, type a word from a note and press Enter to paste that line back. Ctrl+Alt+M opens a quick memo in the screen corner; press it again to close. The app has no network communication.
 

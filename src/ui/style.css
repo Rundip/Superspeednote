@@ -368,6 +368,9 @@ body.sb-off #sidebar{display:none}
 #editor table.t{background:linear-gradient(90deg,var(--paper) 30%,transparent) left/28px 100% no-repeat local,linear-gradient(270deg,var(--paper) 30%,transparent) right/28px 100% no-repeat local,radial-gradient(farthest-side at 0 50%,rgba(16,26,48,.16),transparent) left/12px 100% no-repeat scroll,radial-gradient(farthest-side at 100% 50%,rgba(16,26,48,.16),transparent) right/12px 100% no-repeat scroll}
 [data-theme=dark] #editor table.t{background:linear-gradient(90deg,var(--paper) 30%,transparent) left/28px 100% no-repeat local,linear-gradient(270deg,var(--paper) 30%,transparent) right/28px 100% no-repeat local,radial-gradient(farthest-side at 0 50%,rgba(0,0,0,.55),transparent) left/12px 100% no-repeat scroll,radial-gradient(farthest-side at 100% 50%,rgba(0,0,0,.55),transparent) right/12px 100% no-repeat scroll}
 #editor table.t.hdr tr:first-child td{background:var(--th-bg);color:var(--th-ink);font-weight:700}
+#editor table.t td.al-c{text-align:center}
+#editor table.t td.al-r{text-align:right}
+#editor table.t td.num{font-variant-numeric:tabular-nums}   /* amounts in a column line up digit under digit */
 ::highlight(ssn-find){background-color:rgba(255,200,40,.45)}
 [data-theme=dark] ::highlight(ssn-find){background-color:rgba(255,200,40,.7);color:#111}
 ::highlight(ssn-cur){background-color:#ff9f1c;color:#111}
@@ -444,7 +447,7 @@ body.sb-off #sidebar{display:none}
 .mit kbd{color:var(--ink-2);margin-left:18px}
 .mit.danger,.mit.danger .i{color:var(--danger)}
 .mit:disabled{opacity:.38;pointer-events:none}
-.mit.on{color:var(--accent-ink)}
+.mit.on,.mit.on .i,.mit.on>.mg{color:var(--accent-ink)}
 .msep{height:1px;background:var(--line);margin:5px 4px}
 .mlabel{padding:5px 10px 3px;font-size:11px;color:var(--ink-3);font-weight:650}
 .swatches{display:flex;gap:6px;padding:6px 10px 8px;flex-wrap:nowrap}

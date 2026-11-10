@@ -84,7 +84,7 @@ editor.addEventListener('compositionend', () => { composing = false; if (needsRo
 editor.addEventListener('keydown', e => {
   if (objSel && !e.isComposing && objKey(e)) return;   // a selected picture / divider / table
   if (!e.isComposing) {                           // table cells first (Excel-style navigation / editing)
-    if (editCell) { if (!editCell.isConnected) clearNav(); else if (e.keyCode !== 229 && editKey(e)) return; }
+    if (editCell) { if (!editCell.isConnected) clearNav(); else if (e.keyCode === 229) { if (editKind === 'loose') looseIme(); } else if (editKey(e)) return; }
     else if (navLive() && navKey(e)) return;
   }
   if (e.isComposing || e.keyCode === 229) { autoArrow = null; return; }
@@ -204,6 +204,7 @@ document.addEventListener('selectionchange', () => {
   if (view !== 'editor') return;
   if (burstSel && grpAtKey && !composing && selRange() && JSON.stringify(selSave()) !== grpAtKey) histCommit();   // the caret moved: the typed step ends here
   if (selRange()) { lastSel = selSave(); syncNav(); }
+  numWatch();
   if (!tbRaf) tbRaf = requestAnimationFrame(() => { tbRaf = 0; updateToolbar(); caretTable(); selCount(); });
 });
 let tbRaf = 0;

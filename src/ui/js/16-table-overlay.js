@@ -28,13 +28,22 @@ function posOv() {
   ov.style.width = tr.width + 'px'; ov.style.height = tr.height + 'px';
   // selection box: the selected cell / range, or the cell being edited
   let a = null, b = null;
-  if (nav && nav.t === ovTable) { const rc = navRect(); a = cellAt(rc.t, rc.r0, rc.c0); b = cellAt(rc.t, rc.r1, rc.c1); }
+  if (editCell && editKind === 'loose') { /* Esc let go of the cell: no box (the caret waits in it) */ }
+  else if (nav && nav.t === ovTable) { const rc = navRect(); a = cellAt(rc.t, rc.r0, rc.c0); b = cellAt(rc.t, rc.r1, rc.c1); }
   else { const td = closestSel('td'); if (td && ovTable.contains(td)) a = b = td; }
+  // the box stays inside the part of the table you can see: a wide table scrolls sideways in a narrow window, and
+  // its cells out there used to pull the box past the table's edge
+  // (1 px of slack: the box sits 1 px outside its cells, on the table's own edge too)
+  const vl = tr.left + ovTable.clientLeft - 1, vt = tr.top + ovTable.clientTop - 1, vr = vl + ovTable.clientWidth + 2, vb = vt + ovTable.clientHeight + 2;
+  let L = 0, T = 0, Rr = 0, B = 0;
   if (a && b) {
     const ra = a.getBoundingClientRect(), rb = b.getBoundingClientRect();
-    const L = Math.min(ra.left, rb.left), T = Math.min(ra.top, rb.top), Rr = Math.max(ra.right, rb.right), B = Math.max(ra.bottom, rb.bottom);
+    L = Math.min(ra.left, rb.left) - 1; T = Math.min(ra.top, rb.top) - 1; Rr = Math.max(ra.right, rb.right) + 1; B = Math.max(ra.bottom, rb.bottom) + 1;
+    L = Math.max(L, vl); T = Math.max(T, vt); Rr = Math.min(Rr, vr); B = Math.min(B, vb);
+  }
+  if (a && b && Rr - L > 2 && B - T > 2) {
     cellbox.className = (editCell ? 'edit' : 'nav') + (cellbox.classList.contains('copied') ? ' copied' : '');
-    Object.assign(cellbox.style, { display: 'block', left: (L - tr.left - 1) + 'px', top: (T - tr.top - 1) + 'px', width: (Rr - L + 2) + 'px', height: (B - T + 2) + 'px' });
+    Object.assign(cellbox.style, { display: 'block', left: (L - tr.left) + 'px', top: (T - tr.top) + 'px', width: (Rr - L) + 'px', height: (B - T) + 'px' });
   } else cellbox.style.display = 'none';
   placeIns();
 }

@@ -44,7 +44,11 @@ const ACTIONS = [
   { id: 'colBefore', s: 'ed', g: '표 (셀 안에서)', n: '왼쪽에 열 삽입', k: [5, 'ArrowLeft'], run: () => tblAct('colBefore') },
   { id: 'colAfter', s: 'ed', g: '표 (셀 안에서)', n: '오른쪽에 열 삽입', k: [5, 'ArrowRight'], run: () => tblAct('colAfter') },
   { id: 'delRow', s: 'ed', g: '표 (셀 안에서)', n: '행 삭제 (선택한 행 모두)', k: [6, 'Minus'], run: () => tblAct('delRow') },
-  { id: 'delCol', s: 'ed', g: '표 (셀 안에서)', n: '열 삭제 (선택한 열 모두)', k: [3, 'Minus'], run: () => tblAct('delCol') }
+  { id: 'delCol', s: 'ed', g: '표 (셀 안에서)', n: '열 삭제 (선택한 열 모두)', k: [3, 'Minus'], run: () => tblAct('delCol') },
+  { id: 'alignL', s: 'ed', g: '표 (셀 안에서)', n: '칸 왼쪽 정렬', k: [2, 'KeyL'], run: () => cellAlign('l') },
+  { id: 'alignC', s: 'ed', g: '표 (셀 안에서)', n: '칸 가운데 정렬', k: [2, 'KeyE'], run: () => cellAlign('c') },
+  { id: 'alignR', s: 'ed', g: '표 (셀 안에서)', n: '칸 오른쪽 정렬', k: [2, 'KeyR'], run: () => cellAlign('r') },
+  { id: 'numComma', s: 'ed', g: '표 (셀 안에서)', n: '천 단위 쉼표 (1,000) 넣기 / 빼기', k: [6, 'Digit1'], run: () => cellNum() }
 ];
 const ACT = new Map(ACTIONS.map(a => [a.id, a]));
 function syncQuitLabel() { ACT.get('quit').n = startMode() === 'off' ? '끄기 (완전 종료)' : '끄기 (단축키는 계속 대기)'; }
