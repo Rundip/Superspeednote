@@ -79,6 +79,20 @@ function quickBack(p, card) {
   back();
   if (innerWidth !== p.w || innerHeight !== p.h) addEventListener('resize', back, { once: true });
 }
+// Writing at the bottom of the memo window: the line you write in stays about three lines above its bottom edge,
+// so you never have to press Enter a few times to see where you are writing
+function quickCaretRoom() {
+  if (!quickOn || view !== 'editor') return;
+  const r = selRange();
+  if (!r || !editor.contains(r.endContainer)) return;
+  let b = r.getBoundingClientRect();
+  if (!b.height) { const blk = blockOf(r.endContainer); b = blk && blk !== editor ? blk.getBoundingClientRect() : null; }   // an empty line
+  if (!b || !b.height) return;
+  const box = scroller.getBoundingClientRect(), room = Math.min(90, box.height * 0.25);
+  const over = b.bottom - (box.bottom - room);
+  if (over > 0) scroller.scrollTop += Math.ceil(over);
+}
+editor.addEventListener('input', () => { if (quickOn) requestAnimationFrame(quickCaretRoom); });
 $('#qbClose').onclick = () => { quickEnd('close'); host.send('quick', '0'); };
 $('#qbOpen').onclick = () => { quickEnd('main'); host.send('quick', 'main'); };
 

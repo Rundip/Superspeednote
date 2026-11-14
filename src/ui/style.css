@@ -604,7 +604,7 @@ body.quick #quickBar{display:flex;align-items:center;gap:7px;height:34px;flex:no
 body.quick #titlebar,body.quick #board,body.quick #sidebar,body.quick #noteHead,body.quick #toolbar,body.quick #status{display:none!important}
 body.quick #pane{background:var(--paper)}
 body.quick #doc{margin:0;border:0;border-radius:0;box-shadow:none}
-body.quick #editor{padding:14px 26px 40px 30px}
+body.quick #editor{padding:14px 26px 40vh 30px}   /* room under the text: the line you write in can sit above the bottom */
 body.quick #editor.is-empty::before{left:30px;top:14px;right:26px}
 body.quick .tgrip{left:-26px;top:-22px}
 body.quick .tbar.r{right:-20px}
