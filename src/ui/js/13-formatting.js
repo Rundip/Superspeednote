@@ -821,7 +821,8 @@ function toolPop(kind, anchor) {
   if (kind === 'block') {
     const look = { div: 'font-size:13.5px', h1: 'font-size:19px;font-weight:800', h2: 'font-size:16.5px;font-weight:750', h3: 'font-size:14.5px;font-weight:700', blockquote: 'font-size:13.5px;border-left:3px solid var(--accent);padding-left:8px', pre: 'font:12.5px var(--mono)' };
     const now0 = (document.queryCommandValue('formatBlock') || 'div').toLowerCase();
-    showPop(r.left, r.bottom + 6, BLOCKS.map(([t, l, k]) => `<button class="mit blk${t === now0 ? ' on' : ''}" data-v="${t}"${t === 'blockquote' || t === 'pre' ? ' title="빈 줄에서 Enter를 누르면 빠져나가요"' : ''}><span style="${look[t]}">${l}</span>${t === now0 ? '<b class="blk-on">✓</b>' : ''}<kbd>${esc(k.trim())}</kbd></button>`).join(''),
+    // what to type at a line's start for each (easy to forget): "# + Space" right beside it
+    showPop(r.left, r.bottom + 6, '<div class="mlabel">줄 맨 앞에서 입력 + Space로도 바뀌어요</div>' + BLOCKS.map(([t, l, k]) => `<button class="mit blk${t === now0 ? ' on' : ''}" data-v="${t}"${t === 'blockquote' || t === 'pre' ? ' title="빈 줄에서 Enter를 누르면 빠져나가요"' : ''}><span style="${look[t]}">${l}</span>${t === now0 ? '<b class="blk-on">✓</b>' : ''}<kbd>${k.trim() ? esc(k.trim()) + ' + Space' : ''}</kbd></button>`).join(''),
       b => { setBlock(b.dataset.v); });
     menuOn = true;                                 // ↑ / ↓ / Enter / Esc, like the other menus
   } else if (kind === 'fg') {
