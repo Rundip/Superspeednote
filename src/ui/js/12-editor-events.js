@@ -11,7 +11,19 @@ editor.addEventListener('beforeinput', e => {
   if (!histT && !burstSel) burstSel = selSave();
   grpKind = kind;
   if (e.inputType.startsWith('insert')) editor.classList.remove('is-empty');   // hide the hint on the first keystroke
+  // Enter on an empty numbered line in the middle of a list: the browser makes it a normal line and splits the list
+  // there - the lines below then numbered from 1 again (its copy of the list kept a typed "1." start)
+  const li = e.inputType === 'insertParagraph' && closestSel('li'), L = li && li.parentElement;
+  splitOl = L && L.nodeName === 'OL' && L.parentNode === editor && li.previousElementSibling && li.nextElementSibling && emptyHtml(li.innerHTML) ? L : null;
 });
+let splitOl = null;
+function splitOn() {                              // ...so the lines below go on from the ones above
+  const L = splitOl;
+  splitOl = null;
+  // (the browser may keep the list as either half: the line is now between the two)
+  const r = selRange(), top = L && r && topLevel(r.startContainer), head = top && top.previousElementSibling, tail = top && top.nextElementSibling;
+  if (top && !isList(top) && head && tail && head.nodeName === 'OL' && tail.nodeName === 'OL' && (head === L || tail === L)) tail.dataset.start = lastNum(head) + 1;
+}
 editor.addEventListener('input', e => {
   autoList = null;                                // something typed after a marker made a list: Backspace is Backspace again
   if (objSel && !objSel.isConnected) clearObj();
@@ -29,6 +41,7 @@ editor.addEventListener('input', e => {
       if (nl.parentElement.classList.contains('checklist')) nl.dataset.checked = 'false';
     }
   }
+  if (e.inputType === 'insertParagraph') splitOn(); else splitOl = null;
   if (!/^insert(Text|CompositionText|ReplacementText)$/.test(e.inputType)) relist();   // Enter, deleting, a drop: numbers again
   markDirty();
   histSoon();

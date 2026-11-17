@@ -79,8 +79,8 @@ function quickBack(p, card) {
   back();
   if (innerWidth !== p.w || innerHeight !== p.h) addEventListener('resize', back, { once: true });
 }
-// Writing at the bottom of the memo window: the line you write in stays about three lines above its bottom edge,
-// so you never have to press Enter a few times to see where you are writing
+// Writing at the bottom of the memo window: the line you write in keeps two empty lines under it (the note's own line
+// height, so it follows the text size), so you never have to press Enter a few times to see where you are writing
 function quickCaretRoom() {
   if (!quickOn || view !== 'editor') return;
   const r = selRange();
@@ -88,7 +88,8 @@ function quickCaretRoom() {
   let b = r.getBoundingClientRect();
   if (!b.height) { const blk = blockOf(r.endContainer); b = blk && blk !== editor ? blk.getBoundingClientRect() : null; }   // an empty line
   if (!b || !b.height) return;
-  const box = scroller.getBoundingClientRect(), room = Math.min(90, box.height * 0.25);
+  const cs = getComputedStyle(editor), lh = parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.75 || 24;
+  const box = scroller.getBoundingClientRect(), room = Math.min(lh * 2, box.height * 0.25);
   const over = b.bottom - (box.bottom - room);
   if (over > 0) scroller.scrollTop += Math.ceil(over);
 }

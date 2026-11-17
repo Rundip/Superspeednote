@@ -185,6 +185,9 @@ function liftItem(li) {
     list.after(d);
     li.remove();
     moved = d;
+    // the lines below go on numbering from the ones above (the copy of a typed "1." list carried its "start at 1":
+    // taking an empty line out of the middle of 1. 2. 3. made the rest 1. 2.); at the top they start it as before
+    if (tail && tail.nodeName === 'OL' && list.querySelector('li')) tail.dataset.start = lastNum(list) + 1;
   }
   if (!list.querySelector('li')) list.remove();
   placeCaret(moved, false);
@@ -281,7 +284,11 @@ const LIST_KINDS = new Set(Object.keys(LIST_LOOK));
 const DEPTH_KINDS = ['number', 'hangul', 'num-paren', 'ga-paren', 'num-wrap', 'ga-wrap', 'circle', 'ga-circle'];
 function relist() {
   if (!editor.querySelector('ol')) return;
-  const counters = new Array(10).fill(0), kinds = new Array(10).fill(null);
+  const counters = new Array(10).fill(0), kinds = new Array(10).fill(null), shows = new Array(10).fill('');
+  // where each numbered list ended, by depth and the kind it shows ("0|number" -> 3): a list carried on below it
+  // (a typed "4." after other lines) goes on from there
+  const ended = new Map();
+  const keep = d => { if (counters[d] > 0 && shows[d]) ended.set(d + '|' + shows[d], counters[d]); };
   const run = (L, d) => {
     d = Math.min(d, 9);
     let kind = 'bullet';
@@ -289,11 +296,21 @@ function relist() {
       kind = LIST_KINDS.has(L.dataset.type) ? L.dataset.type : '';
       if (!kind && kinds[d] && kinds[d] !== 'bullet') { kind = kinds[d]; L.dataset.type = kind; }   // inherited
     }
-    if (kinds[d] !== null && kinds[d] !== kind) counters[d] = 0;      // another kind at this depth counts again
+    const before = kinds[d], counted = counters[d];
+    if (before !== null && before !== kind) { keep(d); counters[d] = 0; }   // another kind at this depth counts again
     kinds[d] = kind;
-    // started by typing its number ("2. ", "다. ", "c. "): it starts right there, whatever came before it
+    shows[d] = L.nodeName === 'OL' ? olKind(L) : '';
+    // Started by typing its number. "1." starts again. A later number ("4. ", "라. ") was typed as the next one of
+    // a list of that kind above it: it carries that list on from wherever it ends now - a line added or taken out
+    // up there renumbers it too (it used to keep the number it was typed with: 1. 2. new 3. / text / 3.). Right
+    // under a list of another kind ("2)" typed on a "2." line) it goes on from that list's count; with no list to
+    // carry on any more it starts at the number typed.
     const from = L.nodeName === 'OL' ? parseInt(L.dataset.start, 10) : 0;
-    if (from > 0) counters[d] = from - 1;
+    if (from === 1) counters[d] = 0;
+    else if (from > 1 && !counters[d]) {
+      const at = before === null || before === 'bullet' ? ended.get(d + '|' + shows[d]) : counted || undefined;
+      counters[d] = at !== undefined ? at : from - 1;
+    }
     if (L.nodeName === 'OL') {
       const first = counters[d] + 1;
       if (first > 1) { if (L.getAttribute('start') !== String(first)) L.setAttribute('start', first); }
@@ -306,9 +323,11 @@ function relist() {
       } else if (isList(c)) run(c, d + 1);                               // Chrome's shape: a list after its item
     }
   };
+  let open = false;
   for (const b of editor.children) {
-    if (isList(b)) run(b, 0);
-    else { counters.fill(0); kinds.fill(null); }                       // a normal line: the list run ends
+    if (isList(b)) { run(b, 0); open = true; continue; }
+    if (open) { for (let d = 0; d < 10; d++) keep(d); open = false; }   // the lists still open where the run ends
+    counters.fill(0); kinds.fill(null); shows.fill('');               // a normal line: the list run ends
   }
 }
 // what number a numbered line shows (1. 가. 1) 가) (1) (가) ① ㉮ by depth, or its list's own kind) - for copying as text
