@@ -694,6 +694,11 @@ editor.addEventListener('contextmenu', e => {
       { label: '밑줄', glyph: '<u>U</u>', kbd: kl('underline'), action: () => fmt('underline') },
       { label: '형광펜', icon: 'i-marker', kbd: kl('hl'), action: toggleHl },
       { label: '서식 지우기', icon: 'i-eraser', kbd: kl('clearFmt'), action: clearFmt });
+    // only where it would change a number: the selection, else this line (a long selection is only looked over for
+    // digits, so the menu opens at once - the command itself says what it did)
+    const sr = selRange(), long = sr && !sr.collapsed && sr.toString();
+    const np = long && long.length > 5000 ? { mode: /\d{4}|\d,\d{3}/.test(long) ? 'on' : '' } : numPlan();
+    if (np && np.mode) items.push({ label: '천 단위 쉼표 (1,000)', glyph: '<b>,</b>', kbd: kl('numComma'), on: np.mode === 'off', action: cellNum });
   }
   items.push({ sep: true }, { label: '모두 선택', kbd: td ? '' : 'Ctrl+A', action: () => { clearNav(); editor.focus(); exec('selectAll'); } });
   showMenu(e.clientX, e.clientY, items);

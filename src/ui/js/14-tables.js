@@ -80,9 +80,140 @@ function cellAlign(a) {                          // 'l' / 'c' / 'r'
   cellsLook(td => { td.classList.remove('al-c', 'al-r'); if (a !== 'l') td.classList.add('al-' + a); });
 }
 function cellNum() {                             // on for all the cells (right-aligned), or off if they all had it
-  const cells = tblCells(), on = !cells.length || !cells.every(c => c.classList.contains('num'));
+  const cells = tblCells();
+  if (!cells.length) { textNum(); return; }       // outside a table: the numbers in the selection, else in the line
+  const on = !cells.every(c => c.classList.contains('num'));
   if (!cellsLook(td => { td.classList.toggle('num', on); numText(td, on); td.classList.remove('al-c', 'al-r'); if (on) td.classList.add('al-r'); }, true)) return;
   toast(on ? '천 단위 쉼표를 넣었어요 · 이 칸에 새로 쓰는 숫자에도 찍혀요' : '천 단위 쉼표를 뺐어요', '되돌리기', undoThis());
+}
+// ---- thousands commas in ordinary text: the numbers in the selection, else in the caret's line. A number inside a
+// sentence gets them only when it reads as an amount (1460000원, ₩25000, 합계 1500000); numbers that are codes keep
+// their digits as written - phone, account and card numbers (010-1234-5678, 1588-1234, 1234 5678, 11 digits or
+// more), dates and times (2026-11-19, 2026.11.19, 12:30), years and addresses (2026년, 올해 2026, 2020~2026, 1203호, 101동),
+// 0123, A1234, #1234, web and mail addresses. One number selected on its own gets them anyway. Code stays as typed;
+// table cells have their own (cellNum, above).
+const NUM_TOK = /\d+(?:,\d+)*(?:\.\d+)?/g;
+const yearish = t => /^(19|20)\d\d$/.test(t);
+function numAmount(s, i, j, d, plain) {          // the number s[i, j) (integer digits d; plain: no commas yet) reads as an amount
+  const p = s[i - 1] || '', pp = s[i - 2] || '', n = s[j] || '', nn = s[j + 1] || '';
+  if (d.length > 10) return false;
+  if (/[\w#@]/.test(p) || /[-/:.]/.test(p) && /[A-Za-z\d]/.test(pp) || p === ' ' && /\d/.test(pp)) return false;   // A1234 #1234 010-1234 1234 5678
+  if (/[-/:. ]/.test(n) && /\d/.test(nn)) return false;                                 // 1588-1234 2026.11.19 2026/11
+  if (/[년호동층번]/.test(n)) return false;
+  // 1900-2099 on its own is a year (올해 2026 실적, 2020~2026); with a unit or a sign it is an amount (2000원, ₩1990)
+  if (plain && yearish(d) && !/[-+₩$\\~]/.test(p) && !/[가-힣%A-Za-z~]/.test(n)) return false;
+  if (plain && yearish(d) && (n === '~' && yearish((/^\d+/.exec(s.slice(j + 1, j + 12)) || [''])[0]) ||
+                              p === '~' && yearish((/\d+$/.exec(s.slice(Math.max(0, i - 12), i - 1)) || [''])[0]))) return false;
+  // the word it sits in (a long line is only looked at around the number: the command stays instant)
+  const w = (/\S*$/.exec(s.slice(Math.max(0, i - 300), i)) || [''])[0] + (/^\S*/.exec(s.slice(j, j + 300)) || [''])[0];
+  return !/:\/\/|www\.|@/.test(w);
+}
+// one line's own text as a string (a <br>, a picture or a line inside it breaks it) and where each text node sits in it
+function numRun(b) {
+  let s = '';
+  const parts = [], w = document.createTreeWalker(b, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT);
+  for (let n = w.nextNode(); n; n = w.nextNode()) {
+    if (n.nodeType === 1) { if (!n.firstChild) s += '\n'; continue; }
+    if ((blockOf(n) || editor) !== b || n.parentNode.closest('code')) { s += '\n'; continue; }
+    parts.push([n, s.length]); s += n.nodeValue;
+  }
+  return { s, parts };
+}
+// the text nodes a selection touches, in order: walked from its first to its last one, so a whole long note stays quick
+function textIn(r) {
+  const w = document.createTreeWalker(editor, NodeFilter.SHOW_TEXT);
+  const at = (c, o) => {                          // the first node at or after the point (c, o), inside the editor
+    if (c.nodeType !== 3 && o < c.childNodes.length) return c.childNodes[o];
+    for (let x = c; x && x !== editor; x = x.parentNode) if (x.nextSibling) return x.nextSibling;
+    return null;
+  };
+  let first, last;
+  if (r.startContainer.nodeType === 3) first = r.startContainer;
+  else { const f = at(r.startContainer, r.startOffset); if (!f) return []; w.currentNode = f; first = f.nodeType === 3 ? f : w.nextNode(); }
+  if (r.endContainer.nodeType === 3 && editor.contains(r.endContainer)) last = r.endContainer;
+  else { const e = editor.contains(r.endContainer) ? at(r.endContainer, r.endOffset) : null; w.currentNode = e || editor; last = e ? w.previousNode() : w.lastChild(); }
+  if (!first || !last || first !== last && first.compareDocumentPosition(last) & Node.DOCUMENT_POSITION_PRECEDING) return [];
+  const out = [first];
+  w.currentNode = first;
+  for (let n = first; n !== last && (n = w.nextNode());) out.push(n);
+  return out;
+}
+// what the command would do here: mode 'on' (some amount has no commas yet), 'off' (they all have them), '' (none)
+function numPlan() {
+  const r = selRange();
+  if (!r) return null;
+  const blocks = [], seen = new Set(), sel = !r.collapsed;
+  let code = false;
+  const add = n => {
+    const b = blockOf(n) || editor;
+    if (seen.has(b)) return;
+    seen.add(b);
+    if (b.closest('td, pre')) code = code || !!b.closest('pre'); else blocks.push(b);
+  };
+  const tn = sel ? textIn(r) : [];
+  if (!sel) add(r.startContainer); else tn.forEach(add);
+  // only the first and the last line can be partly selected: just their numbers are checked against the selection
+  const edge = new Set(tn.length ? [blockOf(tn[0]) || editor, blockOf(tn[tn.length - 1]) || editor] : []);
+  const st = sel && r.toString().trim().replace(/^[-+₩$\\]/, '');   // just one number selected: it gets them anyway
+  const toks = [];
+  let skipped = 0, zero = 0;
+  for (const b of blocks) {
+    const { s, parts } = numRun(b), part = edge.has(b);
+    let pi = 0;
+    for (const m of s.matchAll(NUM_TOK)) {
+      const t = m[0], i = m.index, j = i + t.length, int = t.split('.')[0], d = int.replace(/,/g, ''), has = int !== d;
+      if (has ? !/^\d{1,3}(,\d{3})+$/.test(int) : d.length < 4) continue;
+      while (pi < parts.length && parts[pi][1] + parts[pi][0].nodeValue.length <= i) pi++;   // the numbers come in order
+      const pt = parts[pi];
+      if (!pt || pt[1] > i || j > pt[1] + pt[0].nodeValue.length) continue;   // split over two pieces of formatting (12<b>34</b>): left as it is
+      const [n, at] = pt, a = i - at, z = j - at;
+      if (part && !((r.endContainer !== n || r.endOffset > a) && r.comparePoint(n, a) < 1 &&
+                   (r.startContainer !== n || r.startOffset < z) && r.comparePoint(n, z) > -1)) continue;
+      if (d.length > 1 && d[0] === '0') { zero++; continue; }
+      if (st !== t && !numAmount(s, i, j, d, !has)) { if (!has) skipped++; continue; }
+      toks.push({ n, a, z, t, int, d, has });
+    }
+  }
+  const mode = toks.some(k => !k.has) ? 'on' : toks.length ? 'off' : '';
+  return { r, mode, toks, skipped, zero, code, sel };
+}
+function textNum() {
+  finishIme();
+  histCommit();                                   // (it joins split text first: the numbers are found in the joined text)
+  const p = numPlan();
+  if (!p) return;
+  if (!p.mode) {
+    const where = p.sel ? '선택한 부분의' : '이 줄의';
+    toast(p.skipped ? `${where} 숫자는 전화번호·날짜·연도 같은 번호로 보여서 그대로 뒀어요 · 숫자만 선택하고 누르면 쉼표가 들어가요`
+      : p.zero ? '0으로 시작하는 번호에는 쉼표를 넣지 않아요'
+      : p.code ? '코드란의 숫자는 쓴 그대로 둬요'
+      : p.sel ? '선택한 부분에 쉼표를 넣을 숫자(1000 이상)가 없어요' : '이 줄에 쉼표를 넣을 숫자(1000 이상)가 없어요 · 여러 줄은 선택하고 눌러 주세요');
+    return;
+  }
+  const on = p.mode === 'on', r = p.r;
+  const pts = [[r.startContainer, r.startOffset], [r.endContainer, r.endOffset]];
+  let k = 0;
+  edit(() => {
+    for (const x of p.toks.slice().reverse()) {   // last first: the offsets of the ones before stay right
+      if (on === x.has) continue;
+      const v = (on ? x.d.replace(/\B(?=(\d{3})+$)/g, ',') : x.d) + x.t.slice(x.int.length);
+      for (const q of pts) {                      // the caret / selection stays by the same digit
+        if (q[0] !== x.n || q[1] <= x.a) continue;
+        if (q[1] >= x.z) { q[1] += v.length - x.t.length; continue; }
+        let c = x.t.slice(0, q[1] - x.a).replace(/,/g, '').length, o = 0;
+        while (c > 0 && o < v.length) { if (v[o] !== ',') c--; o++; }
+        q[1] = x.a + o;
+      }
+      x.n.replaceData(x.a, x.z - x.a, v);
+      k++;
+    }
+    if (document.activeElement !== editor) editor.focus({ preventScroll: true });
+    const g = document.createRange();
+    g.setStart(pts[0][0], pts[0][1]); g.setEnd(pts[1][0], pts[1][1]);
+    const s = getSelection(); s.removeAllRanges(); s.addRange(g);
+  });
+  toast(on ? (k > 1 ? `숫자 ${k}개에 천 단위 쉼표를 넣었어요` : '천 단위 쉼표를 넣었어요') + (p.skipped ? ' · 전화번호·날짜 같은 번호는 그대로 뒀어요' : '')
+    : '천 단위 쉼표를 뺐어요', '되돌리기', undoThis());
 }
 function addCol(t, at) { for (const tr of t.rows) newCell(tr, Math.min(at, tr.cells.length)); }
 function removeTable(t) {

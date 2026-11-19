@@ -29,6 +29,7 @@ const ACTIONS = [
   { id: 'fgColor', s: 'ed', g: '편집 (메모 안)', n: '글자색 (마지막에 고른 색)', k: null, run: () => applyFg(st.fg) },
   { id: 'hl', s: 'ed', g: '편집 (메모 안)', n: '형광펜', k: [6, 'KeyH'], run: () => toggleHl() },
   { id: 'clearFmt', s: 'ed', g: '편집 (메모 안)', n: '서식 지우기', k: [2, 'Backslash'], run: () => clearFmt() },
+  { id: 'numComma', s: 'ed', g: '편집 (메모 안)', n: '천 단위 쉼표 (1,000) 넣기 / 빼기 (표 칸 · 선택한 부분 · 현재 줄)', k: [6, 'Digit1'], run: () => cellNum() },
   { id: 'ul', s: 'ed', g: '편집 (메모 안)', n: '글머리 목록', k: [6, 'Digit8'], run: () => toggleList('ul') },
   { id: 'ol', s: 'ed', g: '편집 (메모 안)', n: '번호 목록', k: [6, 'Digit7'], run: () => toggleList('ol') },
   { id: 'chk', s: 'ed', g: '편집 (메모 안)', n: '체크리스트', k: [6, 'KeyL'], run: () => toggleList('chk') },
@@ -47,8 +48,7 @@ const ACTIONS = [
   { id: 'delCol', s: 'ed', g: '표 (셀 안에서)', n: '열 삭제 (선택한 열 모두)', k: [3, 'Minus'], run: () => tblAct('delCol') },
   { id: 'alignL', s: 'ed', g: '표 (셀 안에서)', n: '칸 왼쪽 정렬', k: [2, 'KeyL'], run: () => cellAlign('l') },
   { id: 'alignC', s: 'ed', g: '표 (셀 안에서)', n: '칸 가운데 정렬', k: [2, 'KeyE'], run: () => cellAlign('c') },
-  { id: 'alignR', s: 'ed', g: '표 (셀 안에서)', n: '칸 오른쪽 정렬', k: [2, 'KeyR'], run: () => cellAlign('r') },
-  { id: 'numComma', s: 'ed', g: '표 (셀 안에서)', n: '천 단위 쉼표 (1,000) 넣기 / 빼기', k: [6, 'Digit1'], run: () => cellNum() }
+  { id: 'alignR', s: 'ed', g: '표 (셀 안에서)', n: '칸 오른쪽 정렬', k: [2, 'KeyR'], run: () => cellAlign('r') }
 ];
 const ACT = new Map(ACTIONS.map(a => [a.id, a]));
 function syncQuitLabel() { ACT.get('quit').n = startMode() === 'off' ? '끄기 (완전 종료)' : '끄기 (단축키는 계속 대기)'; }

@@ -63,8 +63,9 @@
 
 메모, 메모장, 빠른 메모, 단축키, 클립보드, 붙여넣기, 노트
 
-## 이번 버전의 새로운 기능 (1.8.0)
+## 이번 버전의 새로운 기능 (1.8.1)
 
+- 글 속 숫자에도 천 단위 쉼표: 선택한 부분이나 커서가 있는 줄의 금액을 1,460,000처럼 (Ctrl+Shift+1, 오른쪽 클릭 메뉴) · 전화번호·계좌·날짜·연도는 그대로
 - 번호 목록: 중간에 줄을 넣거나 빼면 아래 번호가 모두 다시 매겨짐 (사이에 다른 줄이 있는 목록까지)
 - 빠른 메모: 아래로 계속 써도 쓰는 줄 아래에 두 줄 여백이 남음
 - 문단 스타일 메뉴에 줄 맨 앞에서 칠 글자 표시 (# + Space = 제목 1 등)
@@ -94,7 +95,7 @@ Super Speed Note is a Win32 desktop app (WinForms + WebView2) packaged with the 
 
 ## 심사 담당자 메모 (Notes for certification, 영어)
 
-Update 1.8.0: no new capabilities or permissions. Changes since 1.6.6: numbered lists renumber as lines are added or removed, table cells can be aligned and show thousands separators, lines pasted into a table go one per row, up to 1000 notes, the quick memo and the find & paste window open faster and without flicker, and keys typed right after a hotkey are kept. Since 1.6.6 the app also copies its notes to Documents\Super Speed Note 백업 so they survive an uninstall/reinstall. This is a plain local folder (the user can change it or turn it off in Settings); nothing is sent over the network. Earlier changes (product ID 9N4JKW5GFTHS): the unvirtualizedResources restricted capability and the desktop6 FileSystemWriteVirtualization / RegistryWriteVirtualization properties have been removed. All app data now lives in the package's own data folders (LocalState / LocalCache) under standard MSIX virtualization, so the only restricted capability left is runFullTrust (a Win32 desktop app). Minimum supported version: Windows 10, version 2004 (build 19041). The support contact is now an e-mail address (no GitHub links).
+Update 1.8.1: no new capabilities or permissions. Changes since 1.6.6: numbered lists renumber as lines are added or removed, table cells can be aligned and show thousands separators (also for amounts in ordinary text), lines pasted into a table go one per row, up to 1000 notes, the quick memo and the find & paste window open faster and without flicker, and keys typed right after a hotkey are kept. Since 1.6.6 the app also copies its notes to Documents\Super Speed Note 백업 so they survive an uninstall/reinstall. This is a plain local folder (the user can change it or turn it off in Settings); nothing is sent over the network. Earlier changes (product ID 9N4JKW5GFTHS): the unvirtualizedResources restricted capability and the desktop6 FileSystemWriteVirtualization / RegistryWriteVirtualization properties have been removed. All app data now lives in the package's own data folders (LocalState / LocalCache) under standard MSIX virtualization, so the only restricted capability left is runFullTrust (a Win32 desktop app). Minimum supported version: Windows 10, version 2004 (build 19041). The support contact is now an e-mail address (no GitHub links).
 
 No account or sign-in is needed. Try: press Ctrl+Alt+F in any app (e.g. Notepad) to open the search window, type a word from a note and press Enter to paste that line back. Ctrl+Alt+M opens a quick memo in the screen corner; press it again to close. The app has no network communication.
 
