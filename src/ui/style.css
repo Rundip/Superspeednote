@@ -617,7 +617,7 @@ body.quick .rz{display:block}
 body.quick .rz.t{top:0;height:3px}
 /* the search window on its own, over another program */
 body.pal-pop{background:var(--menu)}
-body.pal-pop #app{visibility:hidden;content-visibility:hidden}
+body.pal-pop #app{visibility:hidden}   /* not content-visibility: Chromium could keep it hidden after the class went (an all-navy app window) */
 body.pal-pop .rz{display:none}
 body.pal-pop #modal{background:transparent;padding:0;align-items:stretch}
 body.pal-pop .pal{width:100%;max-height:none;border-radius:0;border:1px solid var(--line-2);box-shadow:none;animation:none}

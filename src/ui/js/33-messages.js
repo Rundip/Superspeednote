@@ -1,4 +1,11 @@
 // ---------------------------------------------------------------- messages from the shell
+// The page is in the app window, in front: a search box left open for the search window (or for a memo that is gone)
+// is closed. Its look hides the whole app - in the dark theme a page of plain navy that takes no clicks - and the
+// app can bring the page home without the box being closed first (the search window tidied away, the memo put away).
+function homeAgain(memoOpen) {
+  if (paletteOn && (palMode === 'pop' || (palMode === 'quick' && !quickOn && !memoOpen))) closeModal();
+  if (!paletteOn) app.classList.remove('pal-pop');
+}
 if (HOST) window.chrome.webview.addEventListener('message', e => {
   const m = String(e.data);
   const i = m.indexOf(SEP);
@@ -7,7 +14,7 @@ if (HOST) window.chrome.webview.addEventListener('message', e => {
     case 'open': if (noteById(arg)) { closeModal(); closePop(); openNote(arg); } break;
     case 'board': closeModal(); goHome(); break;
     case 'new': closeModal(); newNote(); break;
-    case 'focus': if (!paletteOn) app.classList.remove('pal-pop'); refocus(); break;   // the app window shown: never its hidden pop-up look
+    case 'focus': homeAgain(); refocus(); break;   // the app window shown: never its hidden pop-up look
     case 'hidden': flushAll(); closePop(); if (recording || (paletteOn && palMode !== 'pop')) closeModal(); break;
     case 'winState': app.classList.toggle('maxed', arg === '1'); break;
     case 'hotkeyStatus': onHotkeyStatus(arg); break;
@@ -47,7 +54,7 @@ if (HOST) window.chrome.webview.addEventListener('message', e => {
       break;
     }
     case 'settle':                                // the app window came to the front: no left-over pop-up / memo-window look
-      if (!paletteOn) app.classList.remove('pal-pop');
+      homeAgain(arg === 'quick');
       if (!quickOn && arg !== 'quick') app.classList.remove('quick');
       if (modalOpen() && !modal.querySelector('.dlg')) closeModal();
       break;
