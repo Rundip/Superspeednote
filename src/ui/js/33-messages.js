@@ -54,7 +54,7 @@ if (HOST) window.chrome.webview.addEventListener('message', e => {
     case 'palette':                               // global "find & paste" hotkey
       if (arg === 'close') { if (paletteOn) closeModal(); }
       else if (arg === 'focus') { const i = $('#palIn'); if (i) i.focus(); }
-      else openPalette(arg === 'pop' || arg === 'quick' ? arg : 'in');
+      else openPalette(arg === 'pop' || arg === 'quick' ? arg : arg === 'popq' ? 'pop' : 'in', arg === 'popq');   // popq: the search window, opened from the quick memo
       break;
   }
 });

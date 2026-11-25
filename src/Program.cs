@@ -33,7 +33,7 @@ namespace SuperSpeedNote
 {
     static class Program
     {
-        public const string Version = "1.8.1";
+        public const string Version = "1.8.2";
         public const string WebView2Version = "1.0.4258.31";
         public static string DataDir, LocalDir;
         public static bool Portable;                  // a "data" folder next to the exe holds the notes (test / USB copies)
@@ -994,10 +994,11 @@ namespace SuperSpeedNote
             }
             if (key == FindKey)                    // find a line in any note, Enter pastes it back where you were
             {
-                if (popWanted || popShown) { GoBack(); ReleasePop(); return; }   // pressed again
+                if (popWanted || popShown) { if (!popFromQuick) GoBack(); ReleasePop(); return; }   // pressed again
                 if (quickShown && Native.GetForegroundWindow() == quick.Handle)
-                {                                  // writing a quick memo: search opens in it, Enter puts the line in the memo
-                    Post("palette", paletteOpen ? "close" : "quick");
+                {                                  // writing a quick memo: the search window of its own, Enter puts the line in the memo
+                    if (paletteOpen) { Post("palette", "close"); return; }   // (a search box left open in the memo itself)
+                    OpenPop(true);
                     return;
                 }
                 if (front)                         // inside the app: the search box opens over the app
@@ -1050,8 +1051,10 @@ namespace SuperSpeedNote
         // ---------- find & paste window ----------
         // Opens right over the program you are in. Instead of a second page it borrows the app's WebView
         // (moved into this window while it is open), so it is instant and every note is already indexed.
-        void OpenPop()
+        bool popFromQuick;                              // the search window was opened from the quick memo: it goes back there
+        void OpenPop(bool fromQuick = false)
         {
+            popFromQuick = fromQuick;
             RememberReturn();
             if (pop == null)
             {
@@ -1092,7 +1095,7 @@ namespace SuperSpeedNote
                     t.Tick += (s, e) => { t.Stop(); t.Dispose(); if (holdWeb && popWanted && webIn == pop) AttachPop(); };
                     t.Start();
                 }
-                Post("palette", "pop");
+                Post("palette", popFromQuick ? "popq" : "pop");
             });
             HoldKeys(PopHasKeys, 500);
         }
@@ -1138,6 +1141,7 @@ namespace SuperSpeedNote
                 IntPtr fg = Native.GetForegroundWindow();
                 if (fg == pop.Handle || Native.GetAncestor(fg, 3 /*GA_ROOTOWNER*/) == pop.Handle) return;
                 if (fg == IntPtr.Zero) { if (tries < 5) CheckPopFocus(tries + 1); return; }
+                popFromQuick = false;                  // you went to another window: the keys stay there, not back in the memo
                 if (popShown) ReleasePop(); else { pendingPalette = null; DetachPop(); }
             };
             t.Start();
@@ -1146,7 +1150,7 @@ namespace SuperSpeedNote
         // centred on the screen of the program you came from, a bit above the middle
         void PlacePop()
         {
-            IntPtr anchor = hasReturn ? retHwnd : IntPtr.Zero, mon;
+            IntPtr anchor = popFromQuick && quick != null ? quick.Handle : hasReturn ? retHwnd : IntPtr.Zero, mon;
             Native.POINT cur;
             Native.GetCursorPos(out cur);
             mon = anchor != IntPtr.Zero ? Native.MonitorFromWindow(anchor, 2 /*NEAREST*/) : Native.MonitorFromPoint(cur, 2);
@@ -1274,10 +1278,17 @@ namespace SuperSpeedNote
                     ShowVeil(quick, ref quickVeil);
                     PutWeb(quick);
                     LiftWhenDrawn(quick, quickVeil);
+                    if (popFromQuick)                       // opened from the memo: the keys go back to it
+                    {
+                        ForceForeground(quick.Handle);
+                        try { ctl.MoveFocus(CoreWebView2MoveFocusReason.Programmatic); } catch { }
+                        Post("quick", "focus");
+                    }
                 }
                 else { PutWeb(this); UncoverWhenDrawn(); }
                 if (webIn == this && ctl != null && IsFront()) { try { ctl.MoveFocus(CoreWebView2MoveFocusReason.Programmatic); } catch { } }
             }
+            popFromQuick = false;
         }
 
         // a picture of the app window with its page, taken before the page leaves it (see still)
@@ -2230,7 +2241,7 @@ namespace SuperSpeedNote
                         if (a == "full" && tray != null) tray.ShowBalloonTip(3000, "Super Speed Note", "메모가 1000개라 새 메모를 만들 수 없어요. 안 쓰는 메모를 지워 주세요.", ToolTipIcon.None);
                     }
                     break;
-                case "back": GoBack(); break;                    // Esc in the search window: back to where you were
+                case "back": if (!popFromQuick) GoBack(); break;   // Esc in the search window: back to where you were (the memo: DetachPop)
                 case "show": ShowApp(); break;                   // search window -> "open this note"
                 case "drag": BeginDrag(HTCAPTION); break;
                 case "resize": EdgeDown(a); break;

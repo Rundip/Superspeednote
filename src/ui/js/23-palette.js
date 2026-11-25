@@ -1,7 +1,7 @@
 // ---------------------------------------------------------------- quick paste search (찾아 붙여넣기)
 // A global hotkey opens a small search window right over the program you are using: find any line of any
 // note and Enter pastes it straight back there. It all runs on an in-memory line index built while idle.
-let paletteOn = false, palMode = '';             // 'pop' = own little window over another program, 'in' / 'key' = inside the app
+let paletteOn = false, palMode = '', palMemo = false;   // 'pop' = own little window over another program, 'in' / 'key' = inside the app; palMemo: that window opened from the quick memo (Enter puts the line in it)
 const CHO = 'ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ';
 function choOf(s) {                               // 김철수 -> ㄱㅊㅅ (same length, so match positions line up)
   const a = new Array(s.length);
@@ -201,7 +201,7 @@ function lineHTML(s, terms, P, max = 220, lead = 50) {
   if (!P || P.a < a || P.b > b) return pre + marked(s, hit, a, b) + post;
   return pre + marked(s, hit, a, P.a) + '<span class="pick">' + marked(s, hit, P.a, P.b) + '</span>' + marked(s, hit, P.b, b) + post;
 }
-function openPalette(mode) {
+function openPalette(mode, fromMemo = false) {
   if (paletteOn) {                                // already open: maybe now in its own window
     if (mode === 'pop' && palMode !== 'pop') { palMode = 'pop'; app.classList.add('pal-pop'); }
     const i = $('#palIn'); if (i) { i.focus(); i.select(); }
@@ -209,6 +209,7 @@ function openPalette(mode) {
     return;
   }
   palMode = mode;
+  palMemo = mode === 'pop' && fromMemo && quickOn;
   // where the app was scrolled: the search (and, from another program, the page moving into its small window)
   // must leave the note / board exactly where it was
   const board = $('#board'), keepTop = [scroller.scrollTop, board ? board.scrollTop : 0];
@@ -220,7 +221,7 @@ function openPalette(mode) {
   const isPop = mode === 'pop', inNote = (mode === 'in' || mode === 'key') && view === 'editor' && !!cur;   // inNote: Alt+Enter puts it here
   openModal(`<div class="dlg qs pal"><div class="qs-in">${ic('i-search')}<input id="palIn" placeholder="${mode === 'quick' ? '다른 메모에서 찾아 넣기 (초성도 돼요)' : '찾을 단어 (초성 ㄱㅊㅅ도 돼요)'}" spellcheck="false" autocomplete="off"><span class="pal-count" id="palCount"></span></div>` +
     `<div class="pal-body"><div class="qs-list" id="palList"></div><div class="pal-pv" id="palPv"></div></div>` +
-    (mode === 'quick' ? `<div class="pal-foot"><span><kbd>Enter</kbd>넣기</span><span><kbd>Tab</kbd><kbd>Shift+Tab</kbd>칸·단어 고르기</span><span><kbd>Shift+Enter</kbd>복사만</span><span class="fill"></span><span><kbd>Esc</kbd>닫기</span></div></div>`
+    (mode === 'quick' || palMemo ? `<div class="pal-foot"><span><kbd>Enter</kbd>${palMemo ? '메모에 넣기' : '넣기'}</span><span><kbd>Tab</kbd><kbd>Shift+Tab</kbd>칸·단어 고르기</span><span><kbd>Shift+Enter</kbd>복사만</span><span class="fill"></span><span><kbd>Esc</kbd>닫기</span></div></div>`
       : `<div class="pal-foot">${inNote ? '<span><kbd>Alt+Enter</kbd>이 메모에 넣기</span>' : ''}<span><kbd>Enter</kbd>${isPop ? '붙여넣기' : '이전 창에 붙여넣기'}</span><span><kbd>Tab</kbd><kbd>Shift+Tab</kbd>칸·단어 고르기</span>` +
         `<span><kbd>Shift+Enter</kbd>${isPop ? '복사만' : '복사하고 이전 창으로'}</span><span><kbd>Ctrl+Enter</kbd>메모 열기</span>${inNote ? '' : '<span><kbd>Alt+1~9</kbd>바로 붙여넣기</span>'}<span class="fill"></span><span><kbd>Esc</kbd>${isPop ? '돌아가기' : '닫기'}</span></div></div>`),
     () => {
@@ -306,7 +307,7 @@ function openPalette(mode) {
   const pick = (i, how) => {
     const it = items[i];
     if (!it) return;
-    const quick = palMode === 'quick', pop = palMode === 'pop';
+    const quick = palMode === 'quick' || palMemo, pop = palMode === 'pop';   // (from the memo: the line goes into it, as in the memo itself)
     if (how === 'open') {
       if (quick) return;                          // the memo window stays a memo
       if (it.i < 0) { closeModal(); openNote(it.n.id); if (pop) host.send('show'); return; }   // found by its name only
